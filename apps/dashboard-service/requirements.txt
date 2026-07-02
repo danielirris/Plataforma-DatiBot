@@ -1,0 +1,8 @@
+streamlit
+pandas
+numpy
+facebook-business
+supabase
+python-dotenv
+plotly
+openai

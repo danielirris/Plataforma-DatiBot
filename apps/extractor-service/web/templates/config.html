@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Configuración — Clip Generator</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <main class="container">
+    <header>
+      <h1>⚙️ Configuración</h1>
+      <p class="subtitle">
+        <a href="/" style="color:var(--accent-2)">← Volver</a>
+        &nbsp;·&nbsp;
+        <a href="/galeria" style="color:var(--accent-2)">🎞️ Galería</a>
+      </p>
+    </header>
+
+    <section class="card">
+      <h2>🎵 Biblioteca de música (libre de derechos)</h2>
+      <p style="color:var(--muted); font-size:.9rem; line-height:1.5">
+        Sube aquí tu música <b>libre de derechos</b> (Pixabay, Mixkit, etc.) una sola
+        vez. La app la usará <b>automáticamente</b> de fondo en los anuncios cuando no
+        subas una pista en ese trabajo. Si subes música en el trabajo, esa manda.
+      </p>
+
+      <label for="lib" class="dropzone" id="dropzone">
+        <span class="dz-icon">⬆️</span>
+        <span class="dz-text">Añadir pistas de música</span>
+        <span class="dz-hint">mp3, m4a, wav, aac, ogg — varias a la vez</span>
+        <input type="file" id="lib" accept=".mp3,.m4a,.wav,.aac,.ogg" multiple hidden>
+      </label>
+
+      <p id="msg" class="progress-msg"></p>
+      <ul id="tracks" class="track-list"></ul>
+    </section>
+
+    <section class="card">
+      <h2>📘 Video de la guía (se sube por trabajo)</h2>
+      <p style="color:var(--muted); font-size:.9rem; line-height:1.5">
+        La guía <b>ya no se configura aquí</b>: ahora la subes <b>en cada trabajo</b>,
+        junto a tus videos del Apartado 2. Así cada producto lleva su propia guía sin
+        tener que cambiar nada. Cuando la IA detecte que el audio ofrece una guía,
+        mostrará ese video <b>sobrepuesto</b> (tamaño moderado, centrado, con el fondo
+        difuminado) para dar confianza.
+      </p>
+    </section>
+
+    <section class="card">
+      <h2>✍️ Prompt de edición (Remotion)</h2>
+      <p style="color:var(--muted); font-size:.9rem; line-height:1.5">
+        Estas son las indicaciones que guían la edición del Apartado 2. La IA las
+        lee junto con la transcripción para <b>entender el tema</b> y decidir el
+        estilo de los subtítulos (color de acento, palabras a resaltar, intensidad).
+        Edítalas a tu gusto y guarda.
+      </p>
+      <textarea id="prompt" class="prompt-area" spellcheck="false"></textarea>
+      <button id="save-prompt">💾 Guardar prompt</button>
+      <p id="prompt-msg" class="progress-msg"></p>
+    </section>
+
+    <section class="card">
+      <h2>🔊 Efectos de sonido (SFX)</h2>
+      <p style="color:var(--muted); font-size:.9rem; line-height:1.5">
+        Los SFX (whoosh, pop, ding) se generan automáticamente y se añaden con
+        moderación en los momentos clave del anuncio. No tienes que subir nada.
+      </p>
+    </section>
+  </main>
+
+  <script>
+    const $ = (id) => document.getElementById(id);
+    const tracksEl = $("tracks");
+    const msg = $("msg");
+
+    async function load() {
+      const r = await fetch("/api/library/music");
+      const { tracks } = await r.json();
+      render(tracks);
+    }
+    function render(tracks) {
+      tracksEl.innerHTML = "";
+      if (!tracks.length) {
+        tracksEl.innerHTML = '<li class="track-empty">No hay pistas todavía. Sube algunas ↑</li>';
+        return;
+      }
+      tracks.forEach((name) => {
+        const li = document.createElement("li");
+        li.className = "track-item";
+        const span = document.createElement("span");
+        span.textContent = "🎵 " + name;
+        const del = document.createElement("button");
+        del.className = "track-del";
+        del.textContent = "🗑️";
+        del.onclick = async () => {
+          await fetch("/api/library/music/" + encodeURIComponent(name), { method: "DELETE" });
+          load();
+        };
+        li.append(span, del);
+        tracksEl.append(li);
+      });
+    }
+    // --- Prompt de edición ---
+    async function loadPrompt() {
+      const r = await fetch("/api/config/prompt");
+      const { prompt } = await r.json();
+      $("prompt").value = prompt || "";
+    }
+    $("save-prompt").addEventListener("click", async () => {
+      $("prompt-msg").textContent = "Guardando…";
+      try {
+        const r = await fetch("/api/config/prompt", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ prompt: $("prompt").value }),
+        });
+        const d = await r.json();
+        $("prompt-msg").textContent = `✅ Guardado (${d.chars} caracteres).`;
+      } catch (err) {
+        $("prompt-msg").textContent = "Error: " + err.message;
+      }
+    });
+    loadPrompt();
+
+    $("lib").addEventListener("change", async (e) => {
+      const files = e.target.files;
+      if (!files.length) return;
+      const data = new FormData();
+      for (const f of files) data.append("files", f);
+      msg.textContent = "Subiendo…";
+      try {
+        const r = await fetch("/api/library/music", { method: "POST", body: data });
+        const { tracks } = await r.json();
+        msg.textContent = "✅ Añadidas.";
+        render(tracks);
+      } catch (err) {
+        msg.textContent = "Error al subir: " + err.message;
+      }
+      e.target.value = "";
+    });
+    load();
+  </script>
+</body>
+</html>

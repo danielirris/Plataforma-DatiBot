@@ -1,0 +1,33 @@
+# deps
+node_modules/
+.pnpm-store/
+
+# next
+.next/
+out/
+next-env.d.ts
+
+# build
+dist/
+.turbo/
+
+# env / secretos
+.env
+.env.local
+.env*.local
+.config-store.json
+
+# python
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# datos de runtime de los servicios
+apps/extractor-service/storage/incoming/
+apps/extractor-service/storage/jobs/
+apps/extractor-service/storage/outputs/
+
+# misc
+.DS_Store
+*.log

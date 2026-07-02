@@ -1,0 +1,11 @@
+{
+  "name": "dashboard-service",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Dashboard ads (Streamlit) como servicio embebido del shell.",
+  "scripts": {
+    "dev": "./.venv/bin/streamlit run app.py",
+    "start": "./.venv/bin/streamlit run app.py",
+    "setup": "python3 -m venv .venv && ./.venv/bin/pip install -r requirements.txt"
+  }
+}

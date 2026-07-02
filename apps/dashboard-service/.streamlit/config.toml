@@ -1,0 +1,12 @@
+[server]
+port = 8501
+headless = true
+# Permite embeber el dashboard en el iframe del shell (otro origen: :3000).
+enableCORS = false
+enableXsrfProtection = false
+
+[browser]
+gatherUsageStats = false
+
+[theme]
+base = "dark"
