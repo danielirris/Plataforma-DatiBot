@@ -74,6 +74,12 @@ export default function ProductosPage() {
                       ? new Date(p.actualizadoEn).toLocaleDateString("es")
                       : ""}
                   </div>
+                  {p.historialEmisiones?.length > 0 && (
+                    <div className="mt-1 text-xs text-accent-2">
+                      Emitido:{" "}
+                      {[...new Set(p.historialEmisiones.map((e) => e.pais))].join(", ")}
+                    </div>
+                  )}
                 </div>
               </Link>
               <div className="mt-auto flex items-center gap-2 border-t border-border px-4 py-2 text-sm">
