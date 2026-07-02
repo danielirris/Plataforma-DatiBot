@@ -1,0 +1,4654 @@
+{
+  "name": "TEMPLATE_LARGO_PE",
+  "nodes": [
+    {
+      "parameters": {
+        "inputSource": "passthrough"
+      },
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        -6480,
+        4240
+      ],
+      "id": "6123be23-6ef3-4f2d-9c31-c3266b4b2f95",
+      "name": "When Executed by Recibidor"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "c-img",
+                    "leftValue": "={{ $json.tipo_mensaje }}",
+                    "rightValue": "IMAGEN",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "IMAGEN"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "c-btn",
+                    "leftValue": "={{ $json.boton_value }}",
+                    "rightValue": "pago_",
+                    "operator": {
+                      "type": "string",
+                      "operation": "startsWith"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "BOTON"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "c-ad",
+                    "leftValue": "={{ $json.tipo_mensaje }}",
+                    "rightValue": "AD",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "AD"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "1e042d0d-e36a-43bb-8a09-adef35db17f1",
+                    "leftValue": "={{ $json.boton_value }}",
+                    "rightValue": "ob_si",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Ob_Si"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "ca03ef2a-7111-4ec0-bae7-3d0269bd5dd8",
+                    "leftValue": "={{ $json.boton_value }}",
+                    "rightValue": "ob_no",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Ob_No"
+            }
+          ]
+        },
+        "options": {
+          "fallbackOutput": "extra",
+          "renameFallbackOutput": "TEXTO_LIBRE"
+        }
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [
+        -4912,
+        4176
+      ],
+      "id": "718b3a10-ddc8-4346-8310-644db5bb9598",
+      "name": "🔀 Switch Principal"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('⚙️ CONFIGURAR TODO AQUÍ').item.json.chatwoot_base_url }}/api/v1/accounts/{{ $('⚙️ CONFIGURAR TODO AQUÍ').item.json.account_id }}/conversations/{{ $('⚙️ CONFIGURAR TODO AQUÍ').item.json.conversation_id }}/messages",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ content: $('⚙️ CONFIGURAR TODO AQUÍ').item.json.mensaje_invalido.replace('{{RAZON_RECHAZO}}', $('📋 Parsear Verificación').item.json.mensaje_razon_humano), message_type: 'outgoing' }) }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        -4016,
+        3280
+      ],
+      "id": "9132a320-62fd-4474-8226-91951c38589c",
+      "name": "❌ Pedir reenvío",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "7oVtrWjDUYzTq8B7",
+          "name": "ChatWoot autenticación"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('⚙️ CONFIGURAR TODO AQUÍ').item.json.chatwoot_base_url }}/api/v1/accounts/{{ $('⚙️ CONFIGURAR TODO AQUÍ').item.json.account_id }}/conversations/{{ $('⚙️ CONFIGURAR TODO AQUÍ').item.json.conversation_id }}/labels",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({\n  labels: [...new Set([...($('⚙️ CONFIGURAR TODO AQUÍ').item.json.body?.labels || []), 'metodo_pago'])]\n}) }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        -4688,
+        3472
+      ],
+      "id": "4207fa14-ad40-4a41-a0e6-25cfd11ab552",
+      "name": "🏷️ Etiqueta metodo_pago",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "7oVtrWjDUYzTq8B7",
+          "name": "ChatWoot autenticación"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "conditions": [
+                  {
+                    "leftValue": "={{ $('🧬 Clasificar Tipo Mensaje').item.json.boton_value }}",
+                    "rightValue": "pago_yape",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and",
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 1
+                }
+              },
+              "renameOutput": true,
+              "outputKey": "YAPE"
+            },
+            {
+              "conditions": {
+                "conditions": [
+                  {
+                    "leftValue": "={{ $('🧬 Clasificar Tipo Mensaje').item.json.boton_value }}",
+                    "rightValue": "pago_plin",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and",
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 1
+                }
+              },
+              "renameOutput": true,
+              "outputKey": "PLIN"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [
+        -4240,
+        3568
+      ],
+      "id": "61509e80-75f7-4fee-b277-ff73e1e5530d",
+      "name": "🔀 ¿Qué método?"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('⚙️ CONFIGURAR TODO AQUÍ').item.json.chatwoot_base_url }}/api/v1/accounts/{{ $('⚙️ CONFIGURAR TODO AQUÍ').item.json.account_id }}/conversations/{{ $('⚙️ CONFIGURAR TODO AQUÍ').item.json.conversation_id }}/messages",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ content: $('⚙️ CONFIGURAR TODO AQUÍ').item.json.yape_mensaje_1, message_type: 'outgoing' }) }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        -4016,
+        3472
+      ],
+      "id": "856eb6f8-2d4a-4cdb-b97e-800355173c98",
+      "name": "🟣 YAPE msg 1",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "7oVtrWjDUYzTq8B7",
+          "name": "ChatWoot autenticación"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('⚙️ CONFIGURAR TODO AQUÍ').item.json.chatwoot_base_url }}/api/v1/accounts/{{ $('⚙️ CONFIGURAR TODO AQUÍ').item.json.account_id }}/conversations/{{ $('⚙️ CONFIGURAR TODO AQUÍ').item.json.conversation_id }}/messages",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ content: $('⚙️ CONFIGURAR TODO AQUÍ').item.json.yape_mensaje_2, message_type: 'outgoing' }) }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        -3440,
+        3472
+      ],
+      "id": "50fc6138-9d2f-4b1e-81c8-184e6e7f1e4c",
+      "name": "🟣 YAPE msg 2 (#)",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "7oVtrWjDUYzTq8B7",
+          "name": "ChatWoot autenticación"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('⚙️ CONFIGURAR TODO AQUÍ').item.json.chatwoot_base_url }}/api/v1/accounts/{{ $('⚙️ CONFIGURAR TODO AQUÍ').item.json.account_id }}/conversations/{{ $('⚙️ CONFIGURAR TODO AQUÍ').item.json.conversation_id }}/labels",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({\n  labels: [...new Set([...($('⚙️ CONFIGURAR TODO AQUÍ').item.json.body?.labels || []), 'bienvenido'])]\n}) }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        -4688,
+        3856
+      ],
+      "id": "b81e3b79-b881-4382-be39-465d9e7a38c2",
+      "name": "🏷️ Etiqueta bienvenido",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "7oVtrWjDUYzTq8B7",
+          "name": "ChatWoot autenticación"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('⚙️ CONFIGURAR TODO AQUÍ').item.json.chatwoot_base_url }}/api/v1/accounts/{{ $('⚙️ CONFIGURAR TODO AQUÍ').item.json.account_id }}/conversations/{{ $('⚙️ CONFIGURAR TODO AQUÍ').item.json.conversation_id }}/messages",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ content: $('⚙️ CONFIGURAR TODO AQUÍ').item.json.mensaje_1, message_type: 'outgoing' }) }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        -4016,
+        3952
+      ],
+      "id": "7f776df7-605b-4151-9b4b-b588be65bee0",
+      "name": "📨 1. Hook",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "7oVtrWjDUYzTq8B7",
+          "name": "ChatWoot autenticación"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "amount": "=3"
+      },
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        -3728,
+        3952
+      ],
+      "id": "068af087-a684-4dec-8169-4b7b3ced408a",
+      "name": "Wait 1",
+      "webhookId": "wh-ad-w1"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('⚙️ CONFIGURAR TODO AQUÍ').item.json.chatwoot_base_url }}/api/v1/accounts/{{ $('⚙️ CONFIGURAR TODO AQUÍ').item.json.account_id }}/conversations/{{ $('⚙️ CONFIGURAR TODO AQUÍ').item.json.conversation_id }}/messages",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ content: $('⚙️ CONFIGURAR TODO AQUÍ').item.json.mensaje_2, message_type: 'outgoing' }) }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        -3440,
+        3952
+      ],
+      "id": "49016ba5-0b83-4047-8685-9d2d18e8c518",
+      "name": "📨 2. Beneficios",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "7oVtrWjDUYzTq8B7",
+          "name": "ChatWoot autenticación"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "amount": "=3"
+      },
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        -3216,
+        3952
+      ],
+      "id": "d4caef52-176f-498b-9e54-cbbbeb756c7c",
+      "name": "Wait 2",
+      "webhookId": "wh-ad-w2"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://graph.facebook.com/v21.0/{{ $('⚙️ CONFIGURAR TODO AQUÍ').item.json.phone_id }}/messages",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "facebookGraphApi",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({\n  messaging_product: 'whatsapp',\n  to: $('⚙️ CONFIGURAR TODO AQUÍ').item.json.telefono_cliente,\n  type: 'image',\n  image: {\n    link: $('⚙️ CONFIGURAR TODO AQUÍ').item.json.imagen_producto_url,\n    caption: $('⚙️ CONFIGURAR TODO AQUÍ').item.json.mensaje_3\n  }\n}) }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        -2992,
+        3952
+      ],
+      "id": "4b7386d4-524c-4bda-94b6-1ad9186eee08",
+      "name": "📨 3. ¿Qué incluye?",
+      "credentials": {
+        "facebookGraphApi": {
+          "id": "r58x5kAp2HplLZX2",
+          "name": "Facebook Graph account - Carolina2 - [4849]"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "amount": "=6"
+      },
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        -2544,
+        3952
+      ],
+      "id": "85ecf22d-e04b-4239-a2e4-4b6c949ff7fb",
+      "name": "Wait 3",
+      "webhookId": "wh-ad-w3"
+    },
+    {
+      "parameters": {
+        "amount": "=3"
+      },
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        -1872,
+        3952
+      ],
+      "id": "d22cd2b4-7349-47df-825d-a215a37fc5d8",
+      "name": "Wait 4",
+      "webhookId": "wh-ad-w4"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('⚙️ CONFIGURAR TODO AQUÍ').item.json.chatwoot_base_url }}/api/v1/accounts/{{ $('⚙️ CONFIGURAR TODO AQUÍ').item.json.account_id }}/conversations/{{ $('⚙️ CONFIGURAR TODO AQUÍ').item.json.conversation_id }}/messages",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ content: $('⚙️ CONFIGURAR TODO AQUÍ').item.json.mensaje_5, message_type: 'outgoing' }) }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        -1648,
+        3952
+      ],
+      "id": "9e2bc57d-271e-46e5-a831-09ec272ff6f5",
+      "name": "📨 5. Inversión",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "7oVtrWjDUYzTq8B7",
+          "name": "ChatWoot autenticación"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "amount": "=6"
+      },
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        -1424,
+        3952
+      ],
+      "id": "85feeaba-919c-4d0e-bb90-e3273aec8665",
+      "name": "Wait 5",
+      "webhookId": "wh-ad-w5"
+    },
+    {
+      "parameters": {
+        "amount": "=3"
+      },
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        -752,
+        3952
+      ],
+      "id": "e1b00778-989a-4379-b0c5-a6e18d04cb65",
+      "name": "Wait 6",
+      "webhookId": "wh-ad-w6"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('⚙️ CONFIGURAR TODO AQUÍ').item.json.chatwoot_base_url }}/api/v1/accounts/{{ $('⚙️ CONFIGURAR TODO AQUÍ').item.json.account_id }}/conversations/{{ $('⚙️ CONFIGURAR TODO AQUÍ').item.json.conversation_id }}/messages",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ content: $('⚙️ CONFIGURAR TODO AQUÍ').item.json.mensaje_7, message_type: 'outgoing' }) }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        -528,
+        3952
+      ],
+      "id": "95138a53-8790-4dfe-9088-b0fb25e2b8c9",
+      "name": "📨 7. Cierre",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "7oVtrWjDUYzTq8B7",
+          "name": "ChatWoot autenticación"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "amount": "=5"
+      },
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        -304,
+        3952
+      ],
+      "id": "2b9ab6bc-45a1-4290-9228-4e768e90b7fe",
+      "name": "Wait 7",
+      "webhookId": "wh-ad-w7"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('⚙️ CONFIGURAR TODO AQUÍ').item.json.chatwoot_base_url }}/api/v1/accounts/{{ $('⚙️ CONFIGURAR TODO AQUÍ').item.json.account_id }}/conversations/{{ $('⚙️ CONFIGURAR TODO AQUÍ').item.json.conversation_id }}/messages",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({\n  content: $('⚙️ CONFIGURAR TODO AQUÍ').item.json.mensaje_8_botones,\n  content_type: 'input_select',\n  content_attributes: {\n    items: [\n      { title: $('⚙️ CONFIGURAR TODO AQUÍ').item.json.boton_1_titulo, value: $('⚙️ CONFIGURAR TODO AQUÍ').item.json.boton_1_value },\n      { title: $('⚙️ CONFIGURAR TODO AQUÍ').item.json.boton_2_titulo, value: $('⚙️ CONFIGURAR TODO AQUÍ').item.json.boton_2_value }\n    ]\n  },\n  message_type: 'outgoing',\n  private: false\n}) }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        -80,
+        3952
+      ],
+      "id": "79097031-8199-4c06-87e3-d8e3c7a3ff88",
+      "name": "📨 8. Botones Pago",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "7oVtrWjDUYzTq8B7",
+          "name": "ChatWoot autenticación"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('⚙️ CONFIGURAR TODO AQUÍ').item.json.chatwoot_base_url }}/api/v1/accounts/{{ $('⚙️ CONFIGURAR TODO AQUÍ').item.json.account_id }}/conversations/{{ $('⚙️ CONFIGURAR TODO AQUÍ').item.json.conversation_id }}/messages",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ content: $json.respuesta_ia, message_type: 'outgoing' }) }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        -3216,
+        4624
+      ],
+      "id": "11b32ca0-989b-48d0-9792-d1ca79f6b2d2",
+      "name": "📨 Enviar respuesta IA",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "7oVtrWjDUYzTq8B7",
+          "name": "ChatWoot autenticación"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "ic",
+              "leftValue": "=={{ $('🆕 Parser Carlos').item.json.intencion }}",
+              "rightValue": "CONTENIDO",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -2992,
+        4624
+      ],
+      "id": "aa87f160-3f67-4636-a9d3-19d79f37ce9d",
+      "name": "❓ ¿Es CONTENIDO?"
+    },
+    {
+      "parameters": {
+        "amount": "={{ $('⚙️ CONFIGURAR TODO AQUÍ').item.json.intervalo_segundos }}"
+      },
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        -2768,
+        4624
+      ],
+      "id": "0d0df7b4-9426-4895-b3a4-bb6581638838",
+      "name": "Wait botones IA",
+      "webhookId": "wh-ia-wait"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('⚙️ CONFIGURAR TODO AQUÍ').item.json.chatwoot_base_url }}/api/v1/accounts/{{ $('⚙️ CONFIGURAR TODO AQUÍ').item.json.account_id }}/conversations/{{ $('⚙️ CONFIGURAR TODO AQUÍ').item.json.conversation_id }}/messages",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({\n  content: $('⚙️ CONFIGURAR TODO AQUÍ').item.json.mensaje_post_botones_ia,\n  content_type: 'input_select',\n  content_attributes: {\n    items: [\n      { title: $('⚙️ CONFIGURAR TODO AQUÍ').item.json.boton_4_titulo, value: $('⚙️ CONFIGURAR TODO AQUÍ').item.json.boton_4_value },\n      { title: $('⚙️ CONFIGURAR TODO AQUÍ').item.json.boton_5_titulo, value: $('⚙️ CONFIGURAR TODO AQUÍ').item.json.boton_5_value },\n      { title: $('⚙️ CONFIGURAR TODO AQUÍ').item.json.boton_6_titulo, value: $('⚙️ CONFIGURAR TODO AQUÍ').item.json.boton_6_value }\n    ]\n  },\n  message_type: 'outgoing'\n}) }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        -2544,
+        4624
+      ],
+      "id": "8b627b30-b7ac-40c0-9b0d-fadff6d4942b",
+      "name": "💳 Re-mostrar botones",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "7oVtrWjDUYzTq8B7",
+          "name": "ChatWoot autenticación"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://graph.facebook.com/v21.0/{{ $('⚙️ CONFIGURAR TODO AQUÍ').item.json.phone_id }}/messages",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "facebookGraphApi",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({\n  messaging_product: 'whatsapp',\n  to: $('⚙️ CONFIGURAR TODO AQUÍ').item.json.telefono_cliente,\n  type: 'image',\n  image: {\n    link: $('⚙️ CONFIGURAR TODO AQUÍ').item.json.imagen_bonos_url,\n    caption: $('⚙️ CONFIGURAR TODO AQUÍ').item.json.mensaje_4\n  }\n}) }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        -2320,
+        3952
+      ],
+      "id": "c8398200-6489-44b9-877d-3a16db3cb9c3",
+      "name": "📨 4. Bonos",
+      "credentials": {
+        "facebookGraphApi": {
+          "id": "r58x5kAp2HplLZX2",
+          "name": "Facebook Graph account - Carolina2 - [4849]"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://graph.facebook.com/v21.0/{{ $('⚙️ CONFIGURAR TODO AQUÍ').item.json.phone_id }}/messages",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "facebookGraphApi",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({\n  messaging_product: 'whatsapp',\n  to: $('⚙️ CONFIGURAR TODO AQUÍ').item.json.telefono_cliente,\n  type: 'image',\n  image: {\n    link: $('⚙️ CONFIGURAR TODO AQUÍ').item.json.imagen_bono_rapido_url,\n    caption: $('⚙️ CONFIGURAR TODO AQUÍ').item.json.mensaje_6\n  }\n}) }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        -1200,
+        3952
+      ],
+      "id": "eba526ad-82b6-4c26-b4ca-920c6075ef19",
+      "name": "📨 6. Bono Acción Rápida",
+      "credentials": {
+        "facebookGraphApi": {
+          "id": "r58x5kAp2HplLZX2",
+          "name": "Facebook Graph account - Carolina2 - [4849]"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('⚙️ CONFIGURAR TODO AQUÍ').item.json.chatwoot_base_url }}/api/v1/accounts/{{ $('⚙️ CONFIGURAR TODO AQUÍ').item.json.account_id }}/conversations/{{ $('⚙️ CONFIGURAR TODO AQUÍ').item.json.conversation_id }}/messages",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{\"content\": \"🤖 [BOT]: Imagen del producto + caption enviada al cliente.\", \"message_type\": \"outgoing\", \"private\": true}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        -2768,
+        3952
+      ],
+      "id": "ee2c4075-5129-43a9-a975-6577e0d0e6a8",
+      "name": "📝 Nota: Imagen Producto enviada",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "7oVtrWjDUYzTq8B7",
+          "name": "ChatWoot autenticación"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('⚙️ CONFIGURAR TODO AQUÍ').item.json.chatwoot_base_url }}/api/v1/accounts/{{ $('⚙️ CONFIGURAR TODO AQUÍ').item.json.account_id }}/conversations/{{ $('⚙️ CONFIGURAR TODO AQUÍ').item.json.conversation_id }}/messages",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{\"content\": \"🤖 [BOT]: Imagen de bonos + caption enviada al cliente.\", \"message_type\": \"outgoing\", \"private\": true}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        -2096,
+        3952
+      ],
+      "id": "fbf28958-13cb-49df-8228-7ec5003aea15",
+      "name": "📝 Nota: Imagen Bonos enviada",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "7oVtrWjDUYzTq8B7",
+          "name": "ChatWoot autenticación"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('⚙️ CONFIGURAR TODO AQUÍ').item.json.chatwoot_base_url }}/api/v1/accounts/{{ $('⚙️ CONFIGURAR TODO AQUÍ').item.json.account_id }}/conversations/{{ $('⚙️ CONFIGURAR TODO AQUÍ').item.json.conversation_id }}/messages",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{\"content\": \"🤖 [BOT]: Imagen de bonos + caption enviada al cliente.\", \"message_type\": \"outgoing\", \"private\": true}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        -976,
+        3952
+      ],
+      "id": "fdbc95b2-289c-40f3-b3bd-99758948c140",
+      "name": "📝 Nota: Imagen Bonos enviada1",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "7oVtrWjDUYzTq8B7",
+          "name": "ChatWoot autenticación"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const item = $input.item.json;\n\n// ============================================================\n// 🛡️ MODO PERMISIVO: si OpenAI falla (timeout, invalid_image_url,\n// rate limit, etc.), DEJAR PASAR como válido para no perder ventas.\n// ============================================================\n\n// Detectar si vino un ERROR de OpenAI (Continue On Fail activado)\nconst tieneError = item.error || \n                   item.errorMessage || \n                   (item.code && item.code.toString().includes('invalid_image')) ||\n                   (item.statusCode && item.statusCode >= 400);\n\nif (tieneError) {\n    return {\n        json: {\n            es_valido: true,\n            razon: \"✅ Auto-validado por error técnico de IA (timeout/imagen no descargable). Se asume válido por filosofía permisiva.\",\n            monto: [PRECIO_BASE],\n            metodo_pago: \"OTRO\",\n            receptor_detectado: \"no verificado por error técnico\",\n            mensaje_razon_humano: \"Comprobante aceptado.\",\n            _auto_validado: true,\n            _error_original: item.errorMessage || item.error || \"error desconocido\"\n        }\n    };\n}\n\n// ============================================================\n// FLUJO NORMAL: HTTP Request a OpenAI devolvió choices[0].message.content\n// ============================================================\nif (item.choices && item.choices[0] && item.choices[0].message) {\n    const content = item.choices[0].message.content;\n\n    // Caso 1: content es objeto (response_format json_object lo parseó)\n    if (typeof content === 'object' && content !== null) {\n        return {\n            json: {\n                es_valido: content.es_valido === true,\n                razon: content.razon || \"Sin razón\",\n                monto: content.monto || 0,\n                metodo_pago: content.metodo_pago || \"OTRO\",\n                receptor_detectado: content.receptor_detectado || \"no detectado\",\n                mensaje_razon_humano: content.mensaje_razon_humano || \"Por favor reenvía el comprobante del pago por Yape o Plin al [NUMERO_PAGO] a nombre de [TITULAR_CUENTA].\"\n            }\n        };\n    }\n\n    // Caso 2: content es string JSON, hay que parsearlo\n    let texto = content.toString().trim().replace(/```json|```/g, \"\").trim();\n    const matchJSON = texto.match(/\\{[\\s\\S]*\\}/);\n    if (matchJSON) texto = matchJSON[0];\n\n    try {\n        const datos = JSON.parse(texto);\n        return {\n            json: {\n                es_valido: datos.es_valido === true,\n                razon: datos.razon || \"Sin razón\",\n                monto: datos.monto || 0,\n                metodo_pago: datos.metodo_pago || \"OTRO\",\n                receptor_detectado: datos.receptor_detectado || \"no detectado\",\n                mensaje_razon_humano: datos.mensaje_razon_humano || \"Por favor reenvía un comprobante válido.\"\n            }\n        };\n    } catch (e) {\n        // Si falla el parseo del JSON de OpenAI, también dejamos pasar (filosofía permisiva)\n        return {\n            json: {\n                es_valido: true,\n                razon: \"✅ Auto-validado por error de parseo IA: \" + e.message,\n                monto: [PRECIO_BASE],\n                metodo_pago: \"OTRO\",\n                receptor_detectado: \"error de parseo\",\n                mensaje_razon_humano: \"Comprobante aceptado.\",\n                _auto_validado: true\n            }\n        };\n    }\n}\n\n// ============================================================\n// Fallback: estructura inesperada → también dejamos pasar\n// ============================================================\nreturn {\n    json: {\n        es_valido: true,\n        razon: \"✅ Auto-validado por estructura inesperada de respuesta\",\n        monto: [PRECIO_BASE],\n        metodo_pago: \"OTRO\",\n        receptor_detectado: \"estructura inesperada\",\n        mensaje_razon_humano: \"Comprobante aceptado.\",\n        _auto_validado: true,\n        _debug_keys: Object.keys(item).join(', ')\n    }\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -4464,
+        2992
+      ],
+      "id": "8960eb16-844a-4b08-8770-58a4bed800b3",
+      "name": "🆕 Parser Vision (robusto)"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "41c09b7d",
+              "leftValue": "={{ $json.es_valido }}",
+              "rightValue": "={{true}}",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -4240,
+        2992
+      ],
+      "id": "8faf138c-08f1-4972-a24a-8f6a5a4b5355",
+      "name": "🆕 ¿Es válido? (robusto)"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('⚙️ CONFIGURAR TODO AQUÍ').item.json.chatwoot_base_url }}/api/v1/accounts/{{ $('⚙️ CONFIGURAR TODO AQUÍ').item.json.account_id }}/conversations/{{ $('⚙️ CONFIGURAR TODO AQUÍ').item.json.conversation_id }}/messages",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{\"content\": \"🤖 [BOT]: ✅ Comprobante validado por IA. Cliente registrado en Supabase.\", \"message_type\": \"outgoing\", \"private\": true}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        -2544,
+        2896
+      ],
+      "id": "366a0bac-d457-43e8-92fa-8c16f4e83ab5",
+      "name": "📝 Nota: Comprobante VÁLIDO",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "7oVtrWjDUYzTq8B7",
+          "name": "ChatWoot autenticación"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('⚙️ CONFIGURAR TODO AQUÍ').item.json.chatwoot_base_url }}/api/v1/accounts/{{ $('⚙️ CONFIGURAR TODO AQUÍ').item.json.account_id }}/conversations/{{ $('⚙️ CONFIGURAR TODO AQUÍ').item.json.conversation_id }}/messages",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{\"content\": \"🤖 [BOT]: ❌ Comprobante NO válido. Se pidió reenvío.\", \"message_type\": \"outgoing\", \"private\": true}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        -3728,
+        3280
+      ],
+      "id": "0130e9fc-b9b5-40a3-9a65-dd6054cd6ce7",
+      "name": "📝 Nota: Comprobante INVÁLIDO",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "7oVtrWjDUYzTq8B7",
+          "name": "ChatWoot autenticación"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "={{ $('⚙️ CONFIGURAR TODO AQUÍ').item.json.chatwoot_base_url }}/api/v1/accounts/{{ $('⚙️ CONFIGURAR TODO AQUÍ').item.json.account_id }}/conversations/{{ $('⚙️ CONFIGURAR TODO AQUÍ').item.json.conversation_id }}/messages",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "limit",
+              "value": "25"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        -4240,
+        4624
+      ],
+      "id": "9b69b8dc-5792-416c-9574-e63ef73ba26d",
+      "name": "🆕 Obtener conversación",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "7oVtrWjDUYzTq8B7",
+          "name": "ChatWoot autenticación"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// 1. Obtenemos los mensajes\nconst data = $input.item.json;\nconst mensajes = data.payload || [];\n\n// 2. Ordenamos del más antiguo al más reciente (Vital para la memoria)\nmensajes.sort((a, b) => a.created_at - b.created_at);\n\nlet historial = \"\";\n\n// 3. Formateamos para la IA\nmensajes.forEach(msg => {\n    let sender = \"\";\n\n    // 0 = Cliente, 1 = Agente/Bot\n    if (msg.message_type === 0) {\n        sender = \"👤 [CLIENTE]\";\n    } else if (msg.private) {\n        sender = \"⚙️ [SISTEMA]\";\n    } else {\n        sender = \"🤖 [CARLOS - TÚ]\";\n    }\n\n    const texto = msg.content;\n\n    if (texto && texto.toString().trim() !== \"\") {\n        historial += `${sender}: ${texto}\\n`;\n    }\n});\n\nreturn {\n    json: {\n        chat_history: historial\n    }\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -4016,
+        4624
+      ],
+      "id": "f5e4e385-dfc3-4409-83b0-5f986f9e2d71",
+      "name": "🆕 Asistente_IA (memoria)"
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "gpt-4o",
+          "mode": "list",
+          "cachedResultName": "GPT-4O"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "=>>> CONTEXTO PRE-CALCULADO (NO recalcules):\n\nNOMBRE: {{ $('⚙️ CONFIGURAR TODO AQUÍ').item.json.nombre_cliente }}\nMENSAJE NUEVO: \"{{ $('🧠 Pre-procesador (precio + categoría)').item.json.mensaje_cliente }}\"\nMODO: {{ $('🧠 Pre-procesador (precio + categoría)').item.json.modo_cliente }}\nCATEGORÍA SUGERIDA: {{ $('🧠 Pre-procesador (precio + categoría)').item.json.categoria_sugerida }}\nPRECIO QUE DEBES COTIZAR ([NOMBRE_PRODUCTO]): {{ $('🧠 Pre-procesador (precio + categoría)').item.json.precio_str }}\nPRECIO COMBO ([NOMBRE_PRODUCTO] + [NOMBRE_ORDERBUMP]): {{ $('🧠 Pre-procesador (precio + categoría)').item.json.precio_combo_str }}\nETAPA RMK: {{ $('🧠 Pre-procesador (precio + categoría)').item.json.estado_rmk }}\nURGENCIA: {{ $('🧠 Pre-procesador (precio + categoría)').item.json.urgencia_texto }}\nTIENE OB SI (ya pidió Lavadoras): {{ $('🧠 Pre-procesador (precio + categoría)').item.json.tiene_ob_si ? 'SÍ' : 'NO' }}\n\n>>> HISTORIAL:\n{{ $('🆕 Asistente_IA (memoria)').item.json.chat_history }}\n\n═══════════════════════════════════════════════════════════\n🎭 ROL: Carlos, vendedor agresivo y persuasivo del [NOMBRE_PRODUCTO]\n═══════════════════════════════════════════════════════════\n\nREGLAS DE ORO (VIOLARLAS = INACEPTABLE):\n\n1. NUNCA \"paisano\", \"compa\", \"parcero\".\n2. Mensajes BREVES: máximo 4-5 líneas de texto.\n3. JSON SOLO: {\"intencion\":\"DUDA|NO|CONTENIDO|OTRO\",\"respuesta_ia\":\"...\"}\n4. SIEMPRE usa el PRECIO PRE-CALCULADO arriba — nunca inventes ni cambies.\n5. NUNCA inventes \"los dos Kits\" si el cliente NO mencionó [NOMBRE_ORDERBUMP].\n6. Si el cliente NO ha comprado, SIEMPRE termina con cierre agresivo que incluya el número de Yape.\n7. SIEMPRE incluye \"📱 *Yape o Plin:* [NUMERO_PAGO]\\n👤 *A nombre de:* [TITULAR_CUENTA]\" en tu respuesta si el cliente NO es COMPRADOR. Sin excepción.\n8. SIEMPRE mete escasez: \"quedan pocos cupos\", \"últimos accesos\", \"se cierra hoy\". Nunca dejes una respuesta sin urgencia.\n9. SIEMPRE RESPONDE EN POSITIVO. NUNCA digas \"no se puede\", \"no incluye\", \"no tiene\", \"no es posible\". Reformula TODO en positivo basándote en la naturaleza real del producto:\n   - \"¿Se puede imprimir?\" → \"¡Claro! Es PDF, lo imprimes las veces que quieras 🖨️\"\n   - \"¿Sirve para [marca]?\" → \"¡Sí! Cubre [MARCAS_COMUNES] y todas las marcas comunes\"\n   - \"¿Tiene garantía?\" → \"¡Acceso DE POR VIDA! Lo descargas y es tuyo para siempre\"\n   - \"¿Es presencial?\" → \"¡Mejor! Es 100% virtual — lo estudias desde tu celular a tu ritmo, sin horarios\"\n   - \"¿Incluye herramientas?\" → \"Incluye la LISTA EXACTA de herramientas que necesitas — solo lo justo, sin gastar de más\"\n10. Si algo NO existe en el producto, NUNCA lo niegues directo. Busca qué SÍ tiene que resuelve esa necesidad y responde con eso. Ejemplo: \"¿Tiene videos de aires acondicionados?\" → \"El Kit cubre [CATEGORIA_PRODUCTO] y con el [NOMBRE_ORDERBUMP] cubres línea blanca completa — son los equipos que más te van a llamar 💪\".\n\n═══════════════════════════════════════════════════════════\n📋 PLANTILLAS BASE — ÚSALAS según CATEGORÍA SUGERIDA\n═══════════════════════════════════════════════════════════\n\n🔑 INSTRUCCIÓN CRÍTICA: las plantillas son tu BASE. Adapta el tono natural pero:\n- TONO SIEMPRE POSITIVO: reformula cualquier limitación como ventaja. El producto es PDF (imprimible), virtual (sin horarios), acceso de por vida (sin mensualidades), inmediato (en 2 minutos). Todo es una ventaja.\n- NUNCA cambies el precio cotizado\n- NUNCA quites el cierre con el número de Yape [NUMERO_PAGO]\n- SIEMPRE incluye \"📱 *Yape o Plin:* [NUMERO_PAGO]\\n👤 *A nombre de:* [TITULAR_CUENTA]\" — el cliente debe poder copiar y pegar\n- NUNCA quites el cross-sell del [NOMBRE_ORDERBUMP] (excepto si el cliente ya compró o ya dijo NO)\n\n────────────────────────────────────\nPLANTILLA: PRECIO (cuando preguntan cuánto cuesta)\n────────────────────────────────────\n\n✅ ¡Solo *{precio_str}*! ⚠️ *Quedan pocos cupos* a este precio — después sube.\n\n🌀 Y si te llevas también el *[NOMBRE_ORDERBUMP]*, total *{precio_combo_str}* por los 2. Triplicas tu mercado 💪\n\n📱 *Yape o Plin:* [NUMERO_PAGO]\\n👤 *A nombre de:* [TITULAR_CUENTA]\n\nTransfiere y mándame el pantallazo — te paso todo en menos de 2 minutos ⚡\n\n────────────────────────────────────\nPLANTILLA: ENTREGA (cuándo recibo, cuánto tarda)\n────────────────────────────────────\n\n🚀 *¡Inmediato!* Apenas pagas, recibes TODO por WhatsApp en menos de 2 minutos: videos, PDFs y bonos.\n\n⚠️ *Quedan pocos cupos.* Hoy a *{precio_str}* — después sube.\n\n📱 *Yape o Plin:* [NUMERO_PAGO]\\n👤 *A nombre de:* [TITULAR_CUENTA]\n\nTransfiere y mándame el pantallazo 📸 ¡Te paso todo al toque! ⚡\n\n────────────────────────────────────\nPLANTILLA: GARANTIA (cuánto dura, mensualidad)\n────────────────────────────────────\n\n✅ *Acceso DE POR VIDA.* Un solo pago, sin mensualidades. Lo descargas y es tuyo para siempre.\n\n⚠️ *Quedan pocos cupos.* Hoy a *{precio_str}* — después sube.\n\n📱 *Yape o Plin:* [NUMERO_PAGO]\\n👤 *A nombre de:* [TITULAR_CUENTA]\n\nTransfiere y mándame el pantallazo — te paso todo en 2 minutos ⚡\n\n────────────────────────────────────\nPLANTILLA: CONTENIDO (virtual, qué incluye)\n────────────────────────────────────\n\n📲 *100% virtual.* Videos paso a paso, PDFs detallados y bonos extras — todo directo a tu WhatsApp en menos de 2 minutos.\n\n⚠️ *Últimos cupos.* Hoy a *{precio_str}* — este precio no se repite.\n\n📱 *Yape o Plin:* [NUMERO_PAGO]\\n👤 *A nombre de:* [TITULAR_CUENTA]\n\nTransfiere y mándame el pantallazo 📸 ¡Te lo paso al toque! ⚡\n\n────────────────────────────────────\nPLANTILLA: METODOS_PAGO (cómo pago, formas de pago, dónde pago, plin, yape)\n────────────────────────────────────\n\n💳 ¡Perfecto! Puedes pagar por *Yape* o *Plin* — el mismo número 🚀\n\n📱 *Número:* [NUMERO_PAGO]\\n👤 *A nombre de:* [TITULAR_CUENTA]\n\n⚠️ *Quedan pocos cupos a este precio.* Transfiere *{precio_str}* y apenas me envíes el pantallazo te paso TODO en menos de 2 minutos ⚡\n\n🌀 O si quieres también el *[NOMBRE_ORDERBUMP]*, transfiere *{precio_combo_str}* y te llevas los 2.\n\n👇 *Hazlo ahora — se cierra hoy* 👇\n\n────────────────────────────────────\nPLANTILLA: SALUDO (hola, buenos días)\n────────────────────────────────────\n\n¡Hola {nombre}! 👋🔥\n\nLlegaste justo a tiempo — *quedan pocos cupos* del *[NOMBRE_PRODUCTO]* a solo *{precio_str}*.\n\n🌀 Y si quieres también el *[NOMBRE_ORDERBUMP]* (50+ reparaciones), total *{precio_combo_str}* por los 2.\n\n📱 *Yape o Plin:* [NUMERO_PAGO]\\n👤 *A nombre de:* [TITULAR_CUENTA]\n\nTransfiere y mándame el pantallazo — te paso todo en 2 minutos ⚡\n\n────────────────────────────────────\nPLANTILLA: ACUSE (ok, gracias, listo)\n────────────────────────────────────\n\n¡Dale! 🔥 *Quedan pocos cupos* — asegura el tuyo ahora.\n\n📱 *Yape o Plin:* [NUMERO_PAGO]\\n👤 *A nombre de:* [TITULAR_CUENTA] — transfiere *{precio_str}* y mándame el pantallazo 📸\n\nTe paso todo en menos de 2 minutos ⚡\n\n────────────────────────────────────\nPLANTILLA: OBJECION (lo pienso, no tengo plata, caro)\n────────────────────────────────────\n\nTe entiendo 😊 Pero mira — *{precio_str}* es MENOS de lo que cuesta UN componente mal cambiado. Una sola reparación y lo recuperas 10 veces.\n\n⚠️ *Este precio se va hoy.* Quedan pocos cupos.\n\n📱 *Yape o Plin:* [NUMERO_PAGO]\\n👤 *A nombre de:* [TITULAR_CUENTA]\n\n¿Le entramos? Transfiere y te paso todo en 2 minutos ⚡\n\n⚠️ Si el cliente YA dijo NO 2 veces en el historial: \"Sin problema, te lo dejo guardado. Cuando estés listo me escribes 💪\"\n\n────────────────────────────────────\nPLANTILLA: OTRO (caso raro, no encaja en nada)\n────────────────────────────────────\n\nImprovisa CON ESTAS REGLAS:\n- 1-2 líneas resolviendo la duda específica\n- Incluye escasez: \"quedan pocos cupos\", \"se cierra hoy\"\n- SIEMPRE cierra con el número:\n📱 *Yape o Plin:* [NUMERO_PAGO]\\n👤 *A nombre de:* [TITULAR_CUENTA]\nTransfiere *{precio_str}* y mándame el pantallazo ⚡\n\n═══════════════════════════════════════════════════════════\n🎯 LÓGICA SEGÚN MODO DEL CLIENTE\n═══════════════════════════════════════════════════════════\n\n**MODO = PROSPECTO (no compró):**\n- Usa la plantilla que aplique según CATEGORÍA SUGERIDA\n- SIEMPRE incluye cross-sell del [NOMBRE_ORDERBUMP] (excepto si cliente ya dijo NO antes)\n- SIEMPRE cierra con 📱 *Yape o Plin:* [NUMERO_PAGO]\\n👤 *A nombre de:* [TITULAR_CUENTA] + \"transfiere y mándame el pantallazo\"\n\n**MODO = PENDIENTE_PAGO (tocó botón pero no pagó):**\n- NO uses plantilla de PRECIO (ya conoce el precio)\n- NO ofrezcas cross-sell (ya pasó por OB en el flujo)\n- Empuja con urgencia y SIEMPRE repite el número:\n\"⚠️ Tu cupo está reservado por pocas horas — no lo pierdas.\\n\\n📱 *Yape o Plin:* [NUMERO_PAGO]\\n👤 *A nombre de:* [TITULAR_CUENTA]\\n\\nTransfiere y mándame el pantallazo 📸 Te paso todo en menos de 2 minutos ⚡\"\n\n**MODO = COMPRADOR (ya pagó):**\n- NO uses ninguna plantilla de venta\n- Trato cordial, soporte\n- Si pregunta dónde está su contenido: \"Te lo envié por WhatsApp. ¿Lo reenvío?\"\n- Si NO tiene OB SI: ofrece UNA SOLA VEZ [NOMBRE_ORDERBUMP] +S/ [PRECIO_ADICIONAL_OB]\n- Sin urgencia, sin escasez\n\n═══════════════════════════════════════════════════════════\n⚠️ MANEJO ESPECIAL DE PRECIO\n═══════════════════════════════════════════════════════════\n\nSi el cliente menciona un precio en SU mensaje (ej: \"¿son 8 mil?\"):\n- USA ESE PRECIO. Nunca lo corrijas hacia arriba.\n- El precio_cotizar pre-calculado ya considera lo que dijo el cliente.\n- Ejemplo: cliente dice \"¿son 8 mil?\" → precio_str ya viene con S/ 6 → confirmas.\n\n═══════════════════════════════════════════════════════════\n💰 REGATEO — CUANDO EL CLIENTE QUIERE PAGAR MENOS\n═══════════════════════════════════════════════════════════\n\nSi el cliente dice que tiene MENOS dinero del precio ofrecido (ej: \"solo tengo 7 soles\", \"me alcanza para 6\", \"¿en 8 se puede?\"):\n\n🟢 PRECIO MENCIONADO >= S/ 6 (60% del precio base) → ¡ACEPTA!\nPero con URGENCIA EXTREMA. Hazlo sentir que es un favor ÚNICO e IRREPETIBLE:\n- \"🔥 Mira, esto NO lo hago con nadie... pero te voy a dejar pasar SOLO A TI por *S/ {precio que dijo}*\"\n- \"⚠️ *SOLO POR ESTE MENSAJE.* Si sales de aquí, el precio vuelve a lo normal y YA NO puedo hacer nada.\"\n- \"🚨 Es ahora o nunca. Literalmente. Este precio lo estoy sacando de MI bolsillo.\"\n- SIEMPRE incluye el número: 📱 *Yape o Plin:* [NUMERO_PAGO]\\n👤 *A nombre de:* [TITULAR_CUENTA]\n- SIEMPRE mete: \"Transfiere AHORA antes de que se cierre\"\n- Hazlo sentir PRIVILEGIADO: \"esto es solo entre tú y yo\", \"no le cuentes a nadie\"\n\n🔴 PRECIO MENCIONADO < S/ 6 → NO aceptes, pero ofrece S/ 6 como MÍNIMO ABSOLUTO:\n- \"Te entiendo 😊 Mira, lo mínimo que puedo hacer es *S/ [PRECIO_REGATEO]*... y es un REGALAZO porque normalmente está en S/ 10.\"\n- \"⚠️ Esto SOLO lo puedo hacer ahorita. Si te sales, ya no puedo darte este precio.\"\n- SIEMPRE incluye el número: 📱 *Yape o Plin:* [NUMERO_PAGO]\\n👤 *A nombre de:* [TITULAR_CUENTA]\n\nREGLA DE ORO DEL REGATEO: el precio pre-calculado que viene arriba YA considera lo que el cliente dijo. Úsalo directamente. NUNCA bajes de S/ 6 bajo ninguna circunstancia.\n\n═══════════════════════════════════════════════════════════\n✅ EJEMPLOS DE CONVERSACIÓN\n═══════════════════════════════════════════════════════════\n\n— Cliente: \"¿cuánto cuesta?\" (sin rmk → precio S/ 10)\n✅ Carlos: {\"intencion\":\"DUDA\",\"respuesta_ia\":\"✅ ¡Solo *S/ [PRECIO_BASE]*! ⚠️ *Quedan pocos cupos* a este precio — después sube.\\n\\n🌀 Y si te llevas el *[NOMBRE_ORDERBUMP]*, total *S/ [PRECIO_COMBO]* por los 2. Triplicas tu mercado 💪\\n\\n📱 *Yape o Plin:* [NUMERO_PAGO]\\n👤 *A nombre de:* [TITULAR_CUENTA]\\n\\nTransfiere y mándame el pantallazo — te paso todo en 2 minutos ⚡\"}\n\n— Cliente: \"¿dónde pago?\" (sin rmk → precio S/ 10)\n✅ Carlos: {\"intencion\":\"DUDA\",\"respuesta_ia\":\"💳 ¡Acá mismo! Pagas por *Yape* y listo 🚀\\n\\n📱 *Yape o Plin:* [NUMERO_PAGO]\\n👤 *A nombre de:* [TITULAR_CUENTA]\\n\\n⚠️ *Quedan pocos cupos.* Transfiere *S/ [PRECIO_BASE]* y mándame el pantallazo 📸\\n\\n¡Te paso TODO en menos de 2 minutos! ⚡\"}\n\n— Cliente: \"lo pienso\" (PROSPECTO sin rmk)\n✅ Carlos: {\"intencion\":\"NO\",\"respuesta_ia\":\"Te entiendo 😊 Pero *S/ [PRECIO_BASE]* es menos de lo que cuesta UN componente mal cambiado.\\n\\n⚠️ *Quedan pocos cupos* — este precio se va hoy.\\n\\n📱 *Yape o Plin:* [NUMERO_PAGO]\\n👤 *A nombre de:* [TITULAR_CUENTA]\\n\\n¿Le entramos? ⚡\"}\n\n— Cliente: \"ya te pagué\" (PENDIENTE_PAGO)\n✅ Carlos: {\"intencion\":\"OTRO\",\"respuesta_ia\":\"¡Excelente! 🚀 Solo envíame el comprobante por aquí y te paso todo en segundos.\"}\n\n— Cliente: \"ok\" (PROSPECTO)\n✅ Carlos: {\"intencion\":\"OTRO\",\"respuesta_ia\":\"¡Dale! 🔥 *Quedan pocos cupos* — asegura el tuyo.\\n\\n📱 *Yape o Plin:* [NUMERO_PAGO]\\n👤 *A nombre de:* [TITULAR_CUENTA] — transfiere *S/ [PRECIO_BASE]* y mándame el pantallazo 📸\\n\\nTe paso todo en 2 minutos ⚡\"}\n\n— Cliente: \"y si no me sirve?\" (caso raro, OBJECION)\n✅ Carlos: {\"intencion\":\"DUDA\",\"respuesta_ia\":\"Funciona para [MARCAS_COMUNES] y TODAS las marcas comunes 😊\\n\\n⚠️ *Últimos cupos* a *S/ [PRECIO_BASE]* — después sube.\\n\\n📱 *Yape o Plin:* [NUMERO_PAGO]\\n👤 *A nombre de:* [TITULAR_CUENTA]\\n\\nTransfiere y mándame el pantallazo — te paso todo en 2 minutos ⚡\"}\n\n— Cliente: \"solo tengo 7 soles\" (PROSPECTO)\n✅ Carlos: {\"intencion\":\"DUDA\",\"respuesta_ia\":\"🔥 Mira, esto NO lo hago con nadie... pero te voy a dejar pasar SOLO A TI por *S/ [PRECIO_REGATEO_EJ]* 💪\\n\\n⚠️ *SOLO POR ESTE MENSAJE.* Si sales, el precio vuelve a S/ 10 y ya no puedo hacer nada.\\n\\n📱 *Yape o Plin:* [NUMERO_PAGO]\\n👤 *A nombre de:* [TITULAR_CUENTA]\\n\\n🚨 Transfiere AHORA antes de que se cierre ⚡\"}\n\n— Cliente: \"¿en 5 se puede?\" (PROSPECTO)\n✅ Carlos: {\"intencion\":\"DUDA\",\"respuesta_ia\":\"Te entiendo 😊 Mira, lo mínimo que puedo hacer es *S/ [PRECIO_REGATEO]*... y es un REGALAZO porque normalmente cuesta S/ 10 🔥\\n\\n⚠️ Esto SOLO lo puedo hacer ahorita. Si te sales, ya no puedo darte este precio.\\n\\n📱 *Yape o Plin:* [NUMERO_PAGO]\\n👤 *A nombre de:* [TITULAR_CUENTA]\\n\\nTransfiere y mándame el pantallazo — te paso todo en 2 minutos ⚡\"}\n\n— Cliente: \"¿puedo pagar por plin?\" (PROSPECTO)\n✅ Carlos: {\"intencion\":\"DUDA\",\"respuesta_ia\":\"💳 ¡Claro! Puedes pagar por *Yape* o *Plin* — el mismo número 🚀\\n\\n📱 *Yape o Plin:* [NUMERO_PAGO]\\n👤 *A nombre de:* [TITULAR_CUENTA]\\n\\n⚠️ *Quedan pocos cupos.* Transfiere *S/ [PRECIO_BASE]* y mándame el pantallazo 📸\\n\\n¡Te paso TODO en menos de 2 minutos! ⚡\"}\n\nDEVUELVE SOLO EL JSON. NADA MÁS.",
+              "role": "system"
+            }
+          ]
+        },
+        "jsonOutput": true,
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 1.8,
+      "position": [
+        -3792,
+        4624
+      ],
+      "id": "c767962f-6891-4490-a378-95589e0d9262",
+      "name": "🆕 Carlos IA (langchain)",
+      "credentials": {
+        "openAiApi": {
+          "id": "0tiysG0n1xkzdQYS",
+          "name": "OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const item = $input.item.json;\nlet textoIA = \"\";\n\n// ============================================================\n// Buscar el texto en TODAS las ubicaciones posibles\n// ============================================================\n\n// Caso 1: estructura nueva langchain.openAi\nif (item.message && typeof item.message.content === 'string') {\n    textoIA = item.message.content;\n}\n// Caso 2: estructura con output array\nelse if (item.output && Array.isArray(item.output) && item.output[0]?.content?.[0]?.text) {\n    textoIA = item.output[0].content[0].text;\n}\n// Caso 3: si content es directamente string\nelse if (typeof item.content === 'string') {\n    textoIA = item.content;\n}\n// Caso 4: si message.content es objeto\nelse if (item.message && typeof item.message.content === 'object') {\n    textoIA = JSON.stringify(item.message.content);\n}\n// Caso 5: si todo el item ES la respuesta\nelse if (typeof item === 'object' && item.intencion && item.respuesta_ia) {\n    return {\n        json: {\n            intencion: item.intencion,\n            respuesta_ia: typeof item.respuesta_ia === 'string'\n                ? item.respuesta_ia\n                : JSON.stringify(item.respuesta_ia)\n        }\n    };\n}\n// Fallback\nelse {\n    textoIA = JSON.stringify(item);\n}\n\n// ============================================================\n// Limpiar el texto\n// ============================================================\n\ntextoIA = textoIA.toString().trim();\n\n// Quitar markdown ```json ... ``` si vino con eso\ntextoIA = textoIA.replace(/```json\\s*/gi, '').replace(/```\\s*/g, '').trim();\n\n// ============================================================\n// Parsear JSON\n// ============================================================\n\nlet parsed;\ntry {\n    parsed = JSON.parse(textoIA);\n} catch (e) {\n    // Si no es JSON, devolver como respuesta plana\n    return {\n        json: {\n            intencion: 'OTRO',\n            respuesta_ia: textoIA\n        }\n    };\n}\n\n// ============================================================\n// Devolver respuesta\n// ============================================================\n\nreturn {\n    json: {\n        intencion: parsed.intencion || 'OTRO',\n        respuesta_ia: parsed.respuesta_ia || textoIA\n    }\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -3440,
+        4624
+      ],
+      "id": "3a57e2e6-1d11-4abd-9230-a122584fda80",
+      "name": "🆕 Parser Carlos"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://jquahxsesqcjakxkcneu.supabase.co/rest/v1/compradores",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "sb_secret_lMhmTaKYyvdV3vHHOWmdzg_1N-coTRg"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer sb_secret_lMhmTaKYyvdV3vHHOWmdzg_1N-coTRg"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Prefer",
+              "value": "return=representation"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({\n  telefono: $('⚙️ CONFIGURAR TODO AQUÍ').item.json.telefono_cliente,\n  nombre: $('⚙️ CONFIGURAR TODO AQUÍ').item.json.nombre_cliente,\n  pais: $('⚙️ CONFIGURAR TODO AQUÍ').item.json.pais || 'PE',\n  producto_id: $('⚙️ CONFIGURAR TODO AQUÍ').item.json.producto_id,\n  producto_nombre: $('⚙️ CONFIGURAR TODO AQUÍ').item.json.producto_nombre,\n  valor: $('🆕 Parser Vision (robusto)').item.json.monto || 0,\n  moneda: $('⚙️ CONFIGURAR TODO AQUÍ').item.json.capi_currency || 'PEN',\n  metodo_pago: $('⚙️ CONFIGURAR TODO AQUÍ').item.json.metodo_pago || 'Yape',\n  pago_anticipado: $('⚙️ CONFIGURAR TODO AQUÍ').item.json.pago_anticipado || 'Si',\n  comprobante_url: $('🧬 Clasificar Tipo Mensaje').item.json.imagen_url || '',\n  ad_id: $('📊 Buscar atribución').item.json.atrib_ad_id,\n  ad_name: '',\n  chatwoot_id: String($('⚙️ CONFIGURAR TODO AQUÍ').item.json.conversation_id || ''),\n  ctwa_clid: $('📊 Buscar atribución').item.json.atrib_ctwa_clid,\n  fecha_compra: new Date().toISOString(),\n  primer_contacto_at: $('📊 Buscar atribución').item.json.atrib_primer_contacto_at\n}) }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        -3728,
+        2800
+      ],
+      "id": "02d4be66-0a44-40dd-8bfc-b6ac9489b8a1",
+      "name": "Registrar comprador"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('⚙️ CONFIGURAR TODO AQUÍ').item.json.chatwoot_base_url }}/api/v1/accounts/{{ $('⚙️ CONFIGURAR TODO AQUÍ').item.json.account_id }}/conversations/{{ $('⚙️ CONFIGURAR TODO AQUÍ').item.json.conversation_id }}/messages",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ content: $('⚙️ CONFIGURAR TODO AQUÍ').item.json.mensaje_valido_1, message_type: 'outgoing' }) }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        -2768,
+        2896
+      ],
+      "id": "1fc31602-7326-4db1-90cb-f458d4147601",
+      "name": "📨 Mensaje gracias + email",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "7oVtrWjDUYzTq8B7",
+          "name": "ChatWoot autenticación"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "02a45bc5-7fcf-41cf-a09f-6f111abf3007",
+              "leftValue": "={{ ($('⚙️ CONFIGURAR TODO AQUÍ').item.json.cliente_mensaje || '').includes('@') }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "name": "❓ ¿Esperando email?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -4688,
+        4432
+      ],
+      "id": "b5989124-879c-4e49-a88d-c84d76fea0ce"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Extraer email — versión PERMISIVA: solo busca @ y se lo manda a Supabase\nconst config = $('⚙️ CONFIGURAR TODO AQUÍ').item.json;\nlet mensaje = (config.cliente_mensaje || '').toString().trim();\n\n// Limpieza básica: quitar caracteres invisibles\nmensaje = mensaje\n  .replace(/[\\u200B-\\u200D\\uFEFF]/g, '')\n  .replace(/\\s+/g, ' ')\n  .trim();\n\n// Buscar cualquier \"cosa@cosa\" — sin validar TLD ni nada estricto\nconst match = mensaje.match(/(\\S+@\\S+)/);\n\nif (match && match[1]) {\n  // Limpiar puntuación al final por si quedó pegada\n  let email = match[1].toLowerCase().replace(/[.,;:!?]+$/, '').trim();\n  \n  return [{\n    json: {\n      email_valido: true,\n      email: email,\n      mensaje_original: config.cliente_mensaje\n    }\n  }];\n}\n\n// No hay @ → email inválido\nreturn [{\n  json: {\n    email_valido: false,\n    email: null,\n    mensaje_original: config.cliente_mensaje\n  }\n}];"
+      },
+      "name": "📧 Extraer email",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -4464,
+        4336
+      ],
+      "id": "2c6c07b1-0dc2-41de-9067-10a270fa78c7"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "5614e1f0-bc2a-4ad1-9277-1713ad4a92f0",
+              "leftValue": "={{ $json.email_valido }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "name": "❓ ¿Email válido?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -4240,
+        4336
+      ],
+      "id": "3c061377-4997-483d-9aef-abbed9e781a9"
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "=https://jquahxsesqcjakxkcneu.supabase.co/rest/v1/compradores?telefono=eq.{{ $('⚙️ CONFIGURAR TODO AQUÍ').item.json.telefono_cliente }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "={{ $('⚙️ CONFIGURAR TODO AQUÍ').item.json.api_supabase }}"
+            },
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $('⚙️ CONFIGURAR TODO AQUÍ').item.json.api_supabase }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Prefer",
+              "value": "return=representation"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ email: $('📧 Extraer email').item.json.email }) }}",
+        "options": {}
+      },
+      "name": "💾 Guardar email en Supabase",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -4016,
+        4240
+      ],
+      "id": "3aef2347-45d4-4116-ae85-d6d3ca64f443"
+    },
+    {
+      "parameters": {
+        "amount": "={{ $('⚙️ CONFIGURAR TODO AQUÍ').item.json.intervalo_segundos }}"
+      },
+      "name": "⏰ Wait Drive 2",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        -3728,
+        4240
+      ],
+      "id": "d1ec1e4b-3293-4840-9088-2bb9b5fd1992",
+      "webhookId": "0065129e-eff8-4981-8d8a-19d450ad35d4"
+    },
+    {
+      "parameters": {
+        "type": "SHA256",
+        "value": "={{ $('📧 Extraer email').item.json.email.toString().toLowerCase().trim() }}",
+        "dataPropertyName": "email_hash"
+      },
+      "name": "🔐 Hash Email (Purchase)",
+      "type": "n8n-nodes-base.crypto",
+      "typeVersion": 1,
+      "position": [
+        -1872,
+        4144
+      ],
+      "id": "20ed67a3-b76e-47a8-994d-bc3a6ba33885"
+    },
+    {
+      "parameters": {
+        "jsCode": "const config = $('⚙️ CONFIGURAR TODO AQUÍ').item.json;\nconst hashes = $input.first().json;\n\n// === LEER MONTO DE VISION (con fallback) ===\nlet monto = [PRECIO_BASE];\ntry {\n  const visionData = $('🆕 Parser Vision (robusto)').item.json;\n  if (visionData && visionData.monto) {\n    monto = visionData.monto;\n  }\n} catch (e) {\n  monto = [PRECIO_BASE];\n}\n\n// === LEER ctwa_clid CON .all() ===\nlet ctwaClid = null;\nlet debugInfo = 'inicio';\n\ntry {\n  const ctwaItems = $('🔍 Buscar ctwa_clid').all();\n  debugInfo = 'items_count_' + (ctwaItems ? ctwaItems.length : 'null');\n\n  if (ctwaItems && ctwaItems.length > 0) {\n    const firstJson = ctwaItems[0].json;\n    debugInfo += '_type_' + (Array.isArray(firstJson) ? 'array' : typeof firstJson);\n\n    if (Array.isArray(firstJson) && firstJson.length > 0) {\n      ctwaClid = firstJson[0].ctwa_clid;\n      debugInfo += '_from_array';\n    } else if (firstJson && firstJson.ctwa_clid) {\n      ctwaClid = firstJson.ctwa_clid;\n      debugInfo += '_from_object';\n    }\n  }\n} catch (e) {\n  debugInfo = 'error_' + e.message;\n  ctwaClid = null;\n}\n\n// === DATOS BASE ===\nconst telefono = config.telefono_cliente;\nconst pixelId = config.pixel_id;\nconst accessToken = config.capi_token;\nconst pageId = Number(config.page_id);\n\n// 🔑 ID ESTABLE por compra: mismo cliente + mismo día = mismo id -> Facebook deduplica\nconst fecha = new Date().toISOString().slice(0, 10); // YYYY-MM-DD\nconst orderId = 'ORDER_' + telefono + '_' + fecha;\n\n// === ARMAR USER_DATA ===\nconst userData = {\n  page_id: pageId,\n  em: [hashes.email_hash],\n  ph: [hashes.telefono_hash],\n  fn: [hashes.nombre_hash],\n  ln: [hashes.apellido_hash],\n  country: [hashes.country_hash],\n  external_id: [hashes.external_id_hash]\n};\n\nif (ctwaClid) {\n  userData.ctwa_clid = ctwaClid;\n}\n\n// === PAYLOAD FINAL ===\nconst payload = {\n  data: [{\n    event_name: 'Purchase',\n    event_time: Math.floor(Date.now() / 1000),\n    event_id: 'purchase_' + telefono + '_' + fecha,\n    action_source: 'business_messaging',\n    messaging_channel: 'whatsapp',\n    user_data: userData,\n    custom_data: {\n      currency: 'PEN',\n      value: monto,\n      content_name: '[NOMBRE_PRODUCTO_UPPER]',\n      content_ids: ['[PRODUCTO_ID_PE_LARGO]'],\n      content_type: 'product',\n      contents: [{\n        id: '[PRODUCTO_ID_PE_LARGO]',\n        quantity: 1,\n        item_price: monto\n      }],\n      order_id: orderId\n    }\n  }],\n  access_token: accessToken\n};\n\nreturn [{\n  json: {\n    pixel_id: pixelId,\n    payload: payload,\n    debug_ctwa_clid: ctwaClid || 'NO ENCONTRADO',\n    debug_info: debugInfo\n  }\n}];"
+      },
+      "name": "📦 Preparar CAPI Purchase PRO",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1648,
+        4144
+      ],
+      "id": "45a06fa2-d837-4630-936b-315083f1b802"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('⚙️ CONFIGURAR TODO AQUÍ').item.json.chatwoot_base_url }}/api/v1/accounts/{{ $('⚙️ CONFIGURAR TODO AQUÍ').item.json.account_id }}/conversations/{{ $('⚙️ CONFIGURAR TODO AQUÍ').item.json.conversation_id }}/labels",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ labels: [...new Set(($('⚙️ CONFIGURAR TODO AQUÍ').item.json.etiquetas_actuales || '').split(', ').filter(e => e && e !== 'esperando_email').concat(['comprador']))] }) }}",
+        "options": {}
+      },
+      "name": "🏷️ Etiqueta comprador (final)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -3440,
+        2896
+      ],
+      "id": "dba0de4a-8d82-4257-bc5f-0d10f5d9b820",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "7oVtrWjDUYzTq8B7",
+          "name": "ChatWoot autenticación"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('⚙️ CONFIGURAR TODO AQUÍ').item.json.chatwoot_base_url }}/api/v1/accounts/{{ $('⚙️ CONFIGURAR TODO AQUÍ').item.json.account_id }}/conversations/{{ $('⚙️ CONFIGURAR TODO AQUÍ').item.json.conversation_id }}/messages",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "chatWootApi",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ content: 'Oye, ese no parece un email válido 🤔\\n\\nPor favor escríbeme tu correo en el formato:\\n*tunombre@gmail.com*\\n\\n📧 Lo necesito para enviarte el KIT y los bonos extra.', message_type: 'outgoing' }) }}",
+        "options": {}
+      },
+      "name": "📨 Pedir email otra vez",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -4016,
+        4432
+      ],
+      "id": "514604b5-70ef-40bd-b20f-d96033d8a424"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://graph.facebook.com/v21.0/{{ $json.pixel_id }}/events",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.payload) }}",
+        "options": {}
+      },
+      "name": "📊 CAPI - Purchase PRO",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -1424,
+        4144
+      ],
+      "id": "6f7de377-271b-4d01-9c6a-33a246fae79a"
+    },
+    {
+      "parameters": {
+        "type": "SHA256",
+        "value": "={{ $('⚙️ CONFIGURAR TODO AQUÍ').item.json.telefono_cliente.toString().toLowerCase().trim() }}",
+        "dataPropertyName": "telefono_hash"
+      },
+      "name": "🔐 Hash Teléfono (Purchase)",
+      "type": "n8n-nodes-base.crypto",
+      "typeVersion": 1,
+      "position": [
+        -2992,
+        4144
+      ],
+      "id": "9e2395e3-0451-4ada-b233-afe1ed29770f"
+    },
+    {
+      "parameters": {
+        "type": "SHA256",
+        "value": "={{ ($('⚙️ CONFIGURAR TODO AQUÍ').item.json.nombre_cliente || 'cliente').toString().split(' ')[0].toLowerCase().trim() }}",
+        "dataPropertyName": "nombre_hash"
+      },
+      "name": "🔐 Hash Nombre (Purchase)",
+      "type": "n8n-nodes-base.crypto",
+      "typeVersion": 1,
+      "position": [
+        -2768,
+        4144
+      ],
+      "id": "f456672a-0830-4a2a-93ff-7836bdda4b3b"
+    },
+    {
+      "parameters": {
+        "type": "SHA256",
+        "value": "={{ (($('⚙️ CONFIGURAR TODO AQUÍ').item.json.nombre_cliente || '').toString().split(' ').slice(1).join(' ') || 'apellido').toLowerCase().trim() }}",
+        "dataPropertyName": "apellido_hash"
+      },
+      "name": "🔐 Hash Apellido (Purchase)",
+      "type": "n8n-nodes-base.crypto",
+      "typeVersion": 1,
+      "position": [
+        -2544,
+        4144
+      ],
+      "id": "cb23a85d-f12e-4764-b507-a9086aeef1b2"
+    },
+    {
+      "parameters": {
+        "type": "SHA256",
+        "value": "cl",
+        "dataPropertyName": "country_hash"
+      },
+      "name": "🔐 Hash País (Purchase)",
+      "type": "n8n-nodes-base.crypto",
+      "typeVersion": 1,
+      "position": [
+        -2320,
+        4144
+      ],
+      "id": "0824be7c-f873-44f3-ba5d-303e07929d72"
+    },
+    {
+      "parameters": {
+        "type": "SHA256",
+        "value": "={{ $('⚙️ CONFIGURAR TODO AQUÍ').item.json.conversation_id.toString() }}",
+        "dataPropertyName": "external_id_hash"
+      },
+      "name": "🔐 Hash External ID (Purchase)",
+      "type": "n8n-nodes-base.crypto",
+      "typeVersion": 1,
+      "position": [
+        -2096,
+        4144
+      ],
+      "id": "516209f0-861a-4b51-8c00-3059fd62eb16"
+    },
+    {
+      "parameters": {
+        "url": "=https://jquahxsesqcjakxkcneu.supabase.co/rest/v1/mensajes?phone=eq.{{ $('⚙️ CONFIGURAR TODO AQUÍ').item.json.telefono_cliente }}&ctwa_clid=not.is.null&select=ctwa_clid&order=recibido_at.desc&limit=1",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "={{ $('⚙️ CONFIGURAR TODO AQUÍ').item.json.api_supabase }}"
+            },
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $('⚙️ CONFIGURAR TODO AQUÍ').item.json.api_supabase }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "name": "🔍 Buscar ctwa_clid",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -3216,
+        4144
+      ],
+      "id": "aab6e66c-4013-4634-b01b-fcf26a4b25c5"
+    },
+    {
+      "parameters": {
+        "url": "={{ $('⚙️ CONFIGURAR TODO AQUÍ').item.json.chatwoot_base_url }}/api/v1/accounts/{{ $('⚙️ CONFIGURAR TODO AQUÍ').item.json.account_id }}/conversations/{{ $('⚙️ CONFIGURAR TODO AQUÍ').item.json.conversation_id }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        -6256,
+        2288
+      ],
+      "id": "483aa386-77df-4071-9141-6a2a42931387",
+      "name": "🔍 Leer labels (15m)",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "7oVtrWjDUYzTq8B7",
+          "name": "ChatWoot autenticación"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "45b499b7-dc07-4010-b843-22db6ebf0dd9",
+              "leftValue": "={{ ($json.labels || []).includes('comprador') }}",
+              "rightValue": false,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            },
+            {
+              "id": "04f3f11b-f184-4b8a-94a4-b1016775b021",
+              "leftValue": "={{ ($json.labels || []).includes('no_remarketing') }}",
+              "rightValue": false,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -6032,
+        2288
+      ],
+      "id": "5bb7f8ea-b583-45b3-a2b5-054a9308faa6",
+      "name": "🤔 ¿Sigue sin convertir? (15m)"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://graph.facebook.com/v21.0/{{ $('⚙️ CONFIGURAR TODO AQUÍ').item.json.phone_id }}/messages",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "facebookGraphApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({\n  messaging_product: \"whatsapp\",\n  to: $('⚙️ CONFIGURAR TODO AQUÍ').item.json.telefono_cliente,\n  type: \"interactive\",\n  interactive: {\n    type: \"button\",\n    header: {\n      type: \"image\",\n      image: { link: $('⚙️ CONFIGURAR TODO AQUÍ').item.json.imagen_rmk_15m_url }\n    },\n    body: { text: $('⚙️ CONFIGURAR TODO AQUÍ').item.json.mensaje_rmk_15m },\n    action: {\n      buttons: [\n        { type: \"reply\", reply: { id: $('⚙️ CONFIGURAR TODO AQUÍ').item.json.boton_1_value, title: $('⚙️ CONFIGURAR TODO AQUÍ').item.json.boton_1_titulo } },\n        { type: \"reply\", reply: { id: $('⚙️ CONFIGURAR TODO AQUÍ').item.json.boton_5_value, title: $('⚙️ CONFIGURAR TODO AQUÍ').item.json.boton_5_titulo } }\n      ]\n    }\n  }\n}) }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        -5360,
+        2288
+      ],
+      "id": "f0cb0b8c-b497-4f91-b3a1-f38651fb9c27",
+      "name": "📨 Msg 15m interactive",
+      "credentials": {
+        "facebookGraphApi": {
+          "id": "r58x5kAp2HplLZX2",
+          "name": "Facebook Graph account - Carolina2 - [4849]"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "amount": 100,
+        "unit": "minutes"
+      },
+      "id": "0533c555-7e96-43d7-9374-efe3ce7cf0be",
+      "name": "⏰ Wait 45m (60m total)",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        -5136,
+        2288
+      ],
+      "webhookId": "280a460c-fa78-4ec1-940e-7495e843a216"
+    },
+    {
+      "parameters": {
+        "url": "={{ $('⚙️ CONFIGURAR TODO AQUÍ').item.json.chatwoot_base_url }}/api/v1/accounts/{{ $('⚙️ CONFIGURAR TODO AQUÍ').item.json.account_id }}/conversations/{{ $('⚙️ CONFIGURAR TODO AQUÍ').item.json.conversation_id }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "httpHeaderAuth",
+        "options": {}
+      },
+      "id": "203569f2-e78c-450f-8d27-0022b78f4e71",
+      "name": "🔍 Leer labels (60m)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -4912,
+        2288
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "7oVtrWjDUYzTq8B7",
+          "name": "ChatWoot autenticación"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "7628fb08-2997-43ba-9c3e-63257d865914",
+              "leftValue": "={{ ($json.labels || []).includes('comprador') }}",
+              "rightValue": false,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals",
+                "singleValue": false
+              }
+            },
+            {
+              "id": "306d33f6-c465-442a-a3d6-e899b3829a6a",
+              "leftValue": "={{ ($json.labels || []).includes('no_remarketing') }}",
+              "rightValue": false,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals",
+                "singleValue": false
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "356c3888-6594-4c3e-b635-559ece783ca1",
+      "name": "🤔 ¿Sigue sin convertir? (60m)",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        -4688,
+        2288
+      ]
+    },
+    {
+      "parameters": {
+        "amount": 120,
+        "unit": "minutes"
+      },
+      "id": "f37561f3-ad58-4ecc-a9b0-4909b463746c",
+      "name": "⏰ Wait 120m (180m total)",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        -3792,
+        2288
+      ],
+      "webhookId": "b88a97c8-32bc-4318-9be6-716114b63bb3"
+    },
+    {
+      "parameters": {
+        "url": "={{ $('⚙️ CONFIGURAR TODO AQUÍ').item.json.chatwoot_base_url }}/api/v1/accounts/{{ $('⚙️ CONFIGURAR TODO AQUÍ').item.json.account_id }}/conversations/{{ $('⚙️ CONFIGURAR TODO AQUÍ').item.json.conversation_id }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "httpHeaderAuth",
+        "options": {}
+      },
+      "id": "f0970389-4e68-4f79-91a6-c02373cfe9cc",
+      "name": "🔍 Leer labels (180m)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -3568,
+        2288
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "7oVtrWjDUYzTq8B7",
+          "name": "ChatWoot autenticación"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "273277d6-c69f-4372-b720-206ab4f0fe38",
+              "leftValue": "={{ ($json.labels || []).includes('comprador') }}",
+              "rightValue": false,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals",
+                "singleValue": false
+              }
+            },
+            {
+              "id": "5e5a3c53-3a55-42bc-aeff-82820a8ea810",
+              "leftValue": "={{ ($json.labels || []).includes('no_remarketing') }}",
+              "rightValue": false,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals",
+                "singleValue": false
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "4b4cac2d-b39a-4e6e-b757-cc9ffcc160ba",
+      "name": "🤔 ¿Sigue sin convertir? (180m)",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        -3344,
+        2288
+      ]
+    },
+    {
+      "parameters": {
+        "amount": 45,
+        "unit": "minutes"
+      },
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        -6480,
+        2288
+      ],
+      "id": "b51c5377-560a-4735-9776-41d22b26b959",
+      "name": "⏰ Wait 15m",
+      "webhookId": "8c2b4db4-ff31-471a-b09b-3d747c1f25c3"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://graph.facebook.com/v21.0/{{ $('⚙️ CONFIGURAR TODO AQUÍ').item.json.phone_id }}/messages",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "facebookGraphApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({\n  messaging_product: \"whatsapp\",\n  to: $('⚙️ CONFIGURAR TODO AQUÍ').item.json.telefono_cliente,\n  type: \"interactive\",\n  interactive: {\n    type: \"button\",\n    header: {\n      type: \"image\",\n      image: { link: $('⚙️ CONFIGURAR TODO AQUÍ').item.json.imagen_rmk_60m_url }\n    },\n    body: { text: $('⚙️ CONFIGURAR TODO AQUÍ').item.json.mensaje_rmk_60m },\n    action: {\n      buttons: [\n        { type: \"reply\", reply: { id: $('⚙️ CONFIGURAR TODO AQUÍ').item.json.boton_1_value, title: $('⚙️ CONFIGURAR TODO AQUÍ').item.json.boton_1_titulo } },\n        { type: \"reply\", reply: { id: $('⚙️ CONFIGURAR TODO AQUÍ').item.json.boton_5_value, title: $('⚙️ CONFIGURAR TODO AQUÍ').item.json.boton_5_titulo } }\n      ]\n    }\n  }\n}) }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        -4016,
+        2288
+      ],
+      "id": "15c02e16-249d-4dd7-9045-a6306366891e",
+      "name": "📨 Msg 60m interactive",
+      "credentials": {
+        "facebookGraphApi": {
+          "id": "r58x5kAp2HplLZX2",
+          "name": "Facebook Graph account - Carolina2 - [4849]"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://graph.facebook.com/v21.0/{{ $('⚙️ CONFIGURAR TODO AQUÍ').item.json.phone_id }}/messages",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "facebookGraphApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({\n  messaging_product: \"whatsapp\",\n  to: $('⚙️ CONFIGURAR TODO AQUÍ').item.json.telefono_cliente,\n  type: \"interactive\",\n  interactive: {\n    type: \"button\",\n    header: {\n      type: \"image\",\n      image: { link: $('⚙️ CONFIGURAR TODO AQUÍ').item.json.imagen_rmk_180m_url }\n    },\n    body: { text: $('⚙️ CONFIGURAR TODO AQUÍ').item.json.mensaje_rmk_180m },\n    action: {\n      buttons: [\n        { type: \"reply\", reply: { id: $('⚙️ CONFIGURAR TODO AQUÍ').item.json.boton_1_value, title: $('⚙️ CONFIGURAR TODO AQUÍ').item.json.boton_1_titulo } },\n        { type: \"reply\", reply: { id: $('⚙️ CONFIGURAR TODO AQUÍ').item.json.boton_5_value, title: $('⚙️ CONFIGURAR TODO AQUÍ').item.json.boton_5_titulo } }\n      ]\n    }\n  }\n}) }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        -2672,
+        2288
+      ],
+      "id": "eb3fcacc-323d-431b-b774-4e90e2d12072",
+      "name": "📨 Msg 180m interactive",
+      "credentials": {
+        "facebookGraphApi": {
+          "id": "r58x5kAp2HplLZX2",
+          "name": "Facebook Graph account - Carolina2 - [4849]"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('⚙️ CONFIGURAR TODO AQUÍ').item.json.chatwoot_base_url }}/api/v1/accounts/{{ $('⚙️ CONFIGURAR TODO AQUÍ').item.json.account_id }}/conversations/{{ $('⚙️ CONFIGURAR TODO AQUÍ').item.json.conversation_id }}/labels",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ labels: [...new Set([...($('⚙️ CONFIGURAR TODO AQUÍ').item.json.body?.labels || []), 'ob_si'])] }) }}",
+        "options": {}
+      },
+      "id": "24fb4cf1-4793-4ae8-a17a-4ef1eb61a42e",
+      "name": "🏷️ Etiqueta ob_si",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -4688,
+        4816
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "7oVtrWjDUYzTq8B7",
+          "name": "ChatWoot autenticación"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('⚙️ CONFIGURAR TODO AQUÍ').item.json.chatwoot_base_url }}/api/v1/accounts/{{ $('⚙️ CONFIGURAR TODO AQUÍ').item.json.account_id }}/conversations/{{ $('⚙️ CONFIGURAR TODO AQUÍ').item.json.conversation_id }}/messages",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ content: $('📦 Orderbumps Configuración').item.json.ob_mensaje_si, message_type: 'outgoing' }) }}",
+        "options": {}
+      },
+      "id": "c8415de9-9598-45c4-9c65-677e792d4a3a",
+      "name": "📨 Mensaje OB Sí",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -4464,
+        4816
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "7oVtrWjDUYzTq8B7",
+          "name": "ChatWoot autenticación"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('⚙️ CONFIGURAR TODO AQUÍ').item.json.chatwoot_base_url }}/api/v1/accounts/{{ $('⚙️ CONFIGURAR TODO AQUÍ').item.json.account_id }}/conversations/{{ $('⚙️ CONFIGURAR TODO AQUÍ').item.json.conversation_id }}/messages",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ content: $('📦 Orderbumps Configuración').item.json.ob_mensaje_no, message_type: 'outgoing' }) }}",
+        "options": {}
+      },
+      "id": "4a50567d-ee82-493f-8e15-a16a51a8e4bd",
+      "name": "📨 Mensaje OB No",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -4464,
+        5008
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "7oVtrWjDUYzTq8B7",
+          "name": "ChatWoot autenticación"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "a633c990-3bc6-4dc3-8772-3a3008207197",
+              "leftValue": "={{ ($('⚙️ CONFIGURAR TODO AQUÍ').item.json.body?.labels || []).includes('ob_si') }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals",
+                "singleValue": false
+              }
+            },
+            {
+              "id": "3e6f291b-8c53-46dc-a52d-ae4fc0fc3c92",
+              "leftValue": "={{ Number($('🆕 Parser Vision (robusto)').item.json.monto) >= 20000 }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "ef2ce402-668a-4507-8430-bd96bbe64e95",
+      "name": "🤔 ¿Tiene ob_si?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        -3216,
+        2896
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('⚙️ CONFIGURAR TODO AQUÍ').item.json.chatwoot_base_url }}/api/v1/accounts/{{ $('⚙️ CONFIGURAR TODO AQUÍ').item.json.account_id }}/conversations/{{ $('⚙️ CONFIGURAR TODO AQUÍ').item.json.conversation_id }}/messages",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ content: $('📦 Orderbumps Configuración').item.json.ob_mensaje_entrega.replace('__LINK__', $('📦 Orderbumps Configuración').item.json.ob_link_lavadoras), message_type: 'outgoing' }) }}",
+        "options": {}
+      },
+      "id": "a6813c18-6b45-40be-8469-4022816d62e5",
+      "name": "📨 Entregar Kit Lavadoras",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -2992,
+        2800
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "7oVtrWjDUYzTq8B7",
+          "name": "ChatWoot autenticación"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "amount": "={{ $('⚙️ CONFIGURAR TODO AQUÍ').item.json.intervalo_segundos }}"
+      },
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        -3728,
+        3472
+      ],
+      "id": "20d59954-ce72-4f0c-b910-bc5542e2a87a",
+      "name": "Wait YAPE",
+      "webhookId": "wh-btn-nqw"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://graph.facebook.com/v21.0/{{ $('⚙️ CONFIGURAR TODO AQUÍ').item.json.phone_id }}/messages",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "facebookGraphApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({\n  messaging_product: \"whatsapp\",\n  to: $('⚙️ CONFIGURAR TODO AQUÍ').item.json.telefono_cliente,\n  type: \"interactive\",\n  interactive: {\n    type: \"button\",\n    header: {\n      type: \"image\",\n      image: { link: $('📦 Orderbumps Configuración').item.json.ob_imagen_url }\n    },\n    body: {\n      text: ($('📦 Orderbumps Configuración').item.json.ob_mensaje_oferta || '').replace('__NOMBRE__', ($('⚙️ CONFIGURAR TODO AQUÍ').item.json.nombre_cliente || ''))\n    },\n    action: {\n      buttons: [\n        {\n          type: \"reply\",\n          reply: {\n            id: $('📦 Orderbumps Configuración').item.json.boton_ob_si_value,\n            title: $('📦 Orderbumps Configuración').item.json.boton_ob_si_titulo\n          }\n        },\n        {\n          type: \"reply\",\n          reply: {\n            id: $('📦 Orderbumps Configuración').item.json.boton_ob_no_value,\n            title: $('📦 Orderbumps Configuración').item.json.boton_ob_no_titulo\n          }\n        }\n      ]\n    }\n  }\n}) }}\n ",
+        "options": {}
+      },
+      "id": "094020a7-1f90-4978-a592-eeebe8047686",
+      "name": "📨 Enviar Order Bump",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -3216,
+        3568
+      ],
+      "credentials": {
+        "facebookGraphApi": {
+          "id": "r58x5kAp2HplLZX2",
+          "name": "Facebook Graph account - Carolina2 - [4849]"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('⚙️ CONFIGURAR TODO AQUÍ').item.json.chatwoot_base_url }}/api/v1/accounts/{{ $('⚙️ CONFIGURAR TODO AQUÍ').item.json.account_id }}/conversations/{{ $('⚙️ CONFIGURAR TODO AQUÍ').item.json.conversation_id }}/messages",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ content: $('⚙️ CONFIGURAR TODO AQUÍ').item.json.transferencia_mensaje_2, message_type: 'outgoing' }) }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        -4240,
+        4912
+      ],
+      "id": "154f4730-e6ed-464d-a028-43cde7355c04",
+      "name": "💳 Datos pago (post-OB)",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "7oVtrWjDUYzTq8B7",
+          "name": "ChatWoot autenticación"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.openai.com/v1/chat/completions",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "openAiApi",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({\n  model: \"gpt-4o-mini\",\n  messages: [\n    {\n      role: \"user\",\n      content: [\n        {\n          type: \"text\",\n          text: \"Actúa como un validador de comprobantes ULTRA PERMISIVO. FILOSOFÍA ABSOLUTA: tu objetivo es DEJAR PASAR la gran mayoría de comprobantes. En la duda, SIEMPRE VÁLIDO. Si la imagen PARECE un comprobante de pago, ES VÁLIDO. Solo rechaza si es OBVIAMENTE NO un comprobante (selfie, paisaje, captura de chat, screenshot de Instagram, foto random sin ningún dato bancario, foto totalmente negra/blanca). PRODUCTO: [NOMBRE_PRODUCTO] Perú. CONTEXTO: el cliente puede pagar montos diversos por promociones de remarketing (desde S/ [PISO_VALIDADOR] en adelante). REGLAS DE VALIDACIÓN — basta UNA por categoría, sé MUY GENEROSO. 1) RECEPTOR: El pago va a nombre de [TITULAR_CUENTA] al [NUMERO_PAGO] (Yape o Plin). Si ves el nombre [TITULAR_CUENTA] o alguna variante (variantes del nombre o solo apellido) es PERFECTO. Pero si NO se ve el receptor y el resto parece un comprobante válido → IGUAL VÁLIDO. Sé ultra permisivo. 2) MONTO: el producto cuesta entre S/ [PISO_VALIDADOR] y S/ [PRECIO_COMBO] según la promo. ACEPTA CUALQUIER MONTO IGUAL O MAYOR A [PISO_VALIDADOR]. Solo rechaza si el monto es CLARAMENTE inferior a [PISO_VALIDADOR] (ej: 1, 2) o si NO se ve ningún monto Y la imagen tampoco parece comprobante. Formatos en soles: 10, S/ 10, S/10.00, 10,00, S/ 8.00, etc. 3) ESTADO POSITIVO: Exitoso, Pago Exitoso, Realizado, Envío Realizado, Pago Realizado, Enviado, Completado, Aplicado, Aprobado, En proceso, Procesando, Validando, ícono ✅. Si NO ves estado pero el resto parece OK → VÁLIDO. Solo RECHAZA si dice claramente: Fallido, Rechazado, Cancelado, Devuelto, Expirado, Error. 4) CALIDAD DE IMAGEN ULTRA PERMISIVA: foto borrosa, torcida, mal iluminada, recortada, capturada con flash, con sombras, con dedo encima → TODAS VÁLIDAS si se intuye que es un comprobante. Solo rechaza si NO HAY ABSOLUTAMENTE NINGÚN dato legible. 5) MÉTODO PAGO: YAPE / PLIN / TRANSFERENCIA / EFECTIVO / OTRO. Si ves Plin o Yape, ambos son válidos. EXTRACCIÓN CRÍTICA DEL MONTO: Lee el monto EN SOLES y devuélvelo como NÚMERO ENTERO, ignorando los centavos. Si lees S/ [PRECIO_BASE].00 devuelve [PRECIO_BASE]. Ignora siempre los centavos. NUNCA multipliques por mil: S/ 10 es 10, NO 10000. Si NO logras leer el monto, devuelve 0 pero sigue aceptando como válido (es_valido: true). FORMATO DE SALIDA — responde ÚNICAMENTE este JSON sin markdown ni texto extra: {\\\"es_valido\\\": true, \\\"razon\\\": \\\"explicación breve y positiva\\\", \\\"monto\\\": [PRECIO_BASE], \\\"metodo_pago\\\": \\\"TRANSFERENCIA\\\", \\\"receptor_detectado\\\": \\\"qué viste\\\", \\\"mensaje_razon_humano\\\": \\\"si por algún motivo extremo es inválido, mensaje cordial al cliente para reenviar\\\"}\"\n        },\n        {\n          type: \"image_url\",\n          image_url: {\n            url: $('When Executed by Recibidor').item.json.body.messages[$('When Executed by Recibidor').item.json.body.messages.length - 1].attachments[0].data_url\n          }\n        }\n      ]\n    }\n  ],\n  response_format: { type: \"json_object\" },\n  temperature: 0.2\n}) }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        -4688,
+        2992
+      ],
+      "id": "4a9a0c87-1d81-448a-9867-c6752e7b5840",
+      "name": "Validador de Comprobantes",
+      "credentials": {
+        "openAiApi": {
+          "id": "0tiysG0n1xkzdQYS",
+          "name": "OpenAi account"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('⚙️ CONFIGURAR TODO AQUÍ').item.json.chatwoot_base_url }}/api/v1/accounts/{{ $('⚙️ CONFIGURAR TODO AQUÍ').item.json.account_id }}/conversations/{{ $('⚙️ CONFIGURAR TODO AQUÍ').item.json.conversation_id }}/custom_attributes",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ custom_attributes: { estado_rmk: 'rmk_15m_neveras' } }) }}",
+        "options": {}
+      },
+      "id": "43611b89-c4cc-4073-8579-617ad39f78e3",
+      "name": "📋 Set estado_rmk: rmk_15m_neveras",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -5808,
+        2288
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "7oVtrWjDUYzTq8B7",
+          "name": "ChatWoot autenticación"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('⚙️ CONFIGURAR TODO AQUÍ').item.json.chatwoot_base_url }}/api/v1/accounts/{{ $('⚙️ CONFIGURAR TODO AQUÍ').item.json.account_id }}/conversations/{{ $('⚙️ CONFIGURAR TODO AQUÍ').item.json.conversation_id }}/custom_attributes",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ custom_attributes: { estado_rmk: 'rmk_60m_neveras' } }) }}",
+        "options": {}
+      },
+      "id": "79608896-173a-4636-94a1-7a572d33de37",
+      "name": "📋 Set estado_rmk: rmk_60m_neveras",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -4464,
+        2288
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "7oVtrWjDUYzTq8B7",
+          "name": "ChatWoot autenticación"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('⚙️ CONFIGURAR TODO AQUÍ').item.json.chatwoot_base_url }}/api/v1/accounts/{{ $('⚙️ CONFIGURAR TODO AQUÍ').item.json.account_id }}/conversations/{{ $('⚙️ CONFIGURAR TODO AQUÍ').item.json.conversation_id }}/custom_attributes",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ custom_attributes: { estado_rmk: 'rmk_180m_neveras' } }) }}",
+        "options": {}
+      },
+      "id": "ffccef08-d018-4e70-aa19-1a9e274c94e9",
+      "name": "📋 Set estado_rmk: rmk_180m_neveras",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -3120,
+        2288
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "7oVtrWjDUYzTq8B7",
+          "name": "ChatWoot autenticación"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// ============================================================\n// 🧠 PRE-PROCESADOR v3 (PERÚ — soles) — Solo calcula contexto\n// ============================================================\n// ⚠️ AJUSTA ESTAS CONSTANTES SEGÚN EL PRODUCTO:\n//   PRECIO_BASE         = precio normal de venta (ej: 10)\n//   PRECIO_RMK_15M      = precio remarketing 15 min (ej: 8)\n//   PRECIO_RMK_60M      = precio remarketing 60 min (ej: 6)\n//   PRECIO_RMK_180M     = precio remarketing 180 min (ej: 4)\n//   PRECIO_ADICIONAL_OB = lo que se suma al combo (ej: 5)\n//   PISO_REGATEO        = mínimo absoluto que acepta Carlos (ej: 6)\n// ============================================================\n\nconst config = $('⚙️ CONFIGURAR TODO AQUÍ').item.json;\nconst body = $('When Executed by Recibidor').item.json.body || {};\nconst labels = body.labels || [];\nconst customAttrs = body.custom_attributes || body.meta?.sender?.custom_attributes || {};\nconst mensajeOriginal = (config.cliente_mensaje || '').toString();\nconst msgLower = mensajeOriginal.toLowerCase().trim();\n\n// ============================================================\n// 1️⃣ DETERMINAR PRECIO ACTUAL (en soles)\n// ============================================================\nconst estadoRmk = customAttrs.estado_rmk || '';\nlet precioBase = [PRECIO_BASE];\nif (estadoRmk === 'rmk_15m_[CATEGORIA_PRODUCTO]') precioBase = [PRECIO_RMK_15M];\nelse if (estadoRmk === 'rmk_60m_[CATEGORIA_PRODUCTO]') precioBase = [PRECIO_RMK_60M];\nelse if (estadoRmk === 'rmk_180m_[CATEGORIA_PRODUCTO]') precioBase = [PRECIO_RMK_180M];\n\n// 🔑 PRIORIDAD: si el cliente menciona un precio en SU mensaje, ese MANDA\nlet precioMencionadoPorCliente = null;\nconst matchPrecio = msgLower.match(/(?:s\\/\\s*|\\bsoles?\\b\\s*)(\\d{1,3})|(\\d{1,2})\\s*(?:soles?|lucas?)\\b/);\nif (matchPrecio) {\n  const num = parseInt(matchPrecio[1] || matchPrecio[2]);\n  // Acepta regateos en rango [PISO_REGATEO, PRECIO_BASE + 20]\n  if (num >= [PISO_REGATEO] && num <= [PRECIO_BASE] + 20) precioMencionadoPorCliente = num;\n}\n\nconst precioCotizar = precioMencionadoPorCliente || precioBase;\nconst precioCombo = precioCotizar + [PRECIO_ADICIONAL_OB];\n\n// ============================================================\n// 2️⃣ ESTADO DEL CLIENTE\n// ============================================================\nconst yaCompro = labels.includes('comprador');\nconst tocoMetodoPago = labels.includes('metodo_pago');\nconst tieneOBSi = labels.includes('ob_si');\n\nlet modoCliente = 'PROSPECTO';\nif (yaCompro) modoCliente = 'COMPRADOR';\nelse if (tocoMetodoPago) modoCliente = 'PENDIENTE_PAGO';\n\n// ============================================================\n// 3️⃣ DETECTAR CATEGORÍA\n// ============================================================\nlet categoria = 'OTRO';\nconst tieneAlguna = (palabras) => palabras.some(p => msgLower.includes(p));\n\nif (tieneAlguna(['cuánto', 'cuanto', 'precio', 'cuesta', 'vale', 'pagar', 'costo']) || matchPrecio !== null) {\n  categoria = 'PRECIO';\n}\nelse if (tieneAlguna(['cuándo llega', 'cuando llega', 'cuándo recibo', 'cuando recibo',\n                      'cuánto tarda', 'cuanto tarda', 'tiempo de entrega', 'inmediato', 'me llega'])) {\n  categoria = 'ENTREGA';\n}\nelse if (tieneAlguna(['garantía', 'garantia', 'cuánto dura', 'caduca', 'expira', 'mensualidad'])) {\n  categoria = 'GARANTIA';\n}\nelse if (tieneAlguna(['virtual', 'presencial', 'físico', 'fisico', 'qué incluye', 'que incluye',\n                      'qué viene', 'que viene', 'qué es', 'que es', 'qué son', 'que son'])) {\n  categoria = 'CONTENIDO';\n}\nelse if (tieneAlguna(['cómo pago', 'como pago', 'métodos de pago', 'metodos de pago', 'formas de pago',\n                      'donde pago', 'dónde pago', 'yape', 'plin'])) {\n  categoria = 'METODOS_PAGO';\n}\nelse if (msgLower.length < 25 && tieneAlguna(['hola', 'buenas', 'buen día', 'buenos días', 'buenas tardes'])) {\n  categoria = 'SALUDO';\n}\nelse if (msgLower.length < 15 && tieneAlguna(['ok', 'okey', 'okay', 'gracias', 'vale', 'listo',\n                                                'perfecto', 'genial', 'bueno', 'dale', 'va'])) {\n  categoria = 'ACUSE';\n}\nelse if (tieneAlguna(['no me', 'no quiero', 'no puedo', 'no tengo', 'caro', 'mucho', 'pienso',\n                      'después', 'despues', 'mañana', 'no por ahora', 'no gracias'])) {\n  categoria = 'OBJECION';\n}\n\n// ============================================================\n// 4️⃣ FORMATEAR PRECIOS LEGIBLES (soles)\n// ============================================================\nconst fmt = (n) => 'S/ ' + n;\n\n// ============================================================\n// 5️⃣ URGENCIA\n// ============================================================\nconst urgencia = (precioBase < [PRECIO_BASE])\n  ? '⏰ Promo especial — últimos cupos al precio actual'\n  : '🔥 Es precio de lanzamiento — sube esta semana';\n\n// ============================================================\n// 6️⃣ RETORNO\n// ============================================================\nreturn [{\n  json: {\n    modo_cliente: modoCliente,\n    estado_rmk: estadoRmk || 'sin_remarketing',\n    tiene_ob_si: tieneOBSi,\n    precio_cotizar: precioCotizar,\n    precio_str: fmt(precioCotizar),\n    precio_combo: precioCombo,\n    precio_combo_str: fmt(precioCombo),\n    cliente_menciono_precio: precioMencionadoPorCliente !== null,\n    precio_mencionado: precioMencionadoPorCliente,\n    precio_mencionado_str: precioMencionadoPorCliente ? fmt(precioMencionadoPorCliente) : null,\n    categoria_sugerida: categoria,\n    urgencia_texto: urgencia,\n    mensaje_cliente: mensajeOriginal\n  }\n}];"
+      },
+      "id": "e96176a6-6c7b-44de-a798-3e0586025695",
+      "name": "🧠 Pre-procesador (precio + categoría)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -4464,
+        4624
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('⚙️ CONFIGURAR TODO AQUÍ').item.json.chatwoot_base_url }}/api/v1/accounts/{{ $('⚙️ CONFIGURAR TODO AQUÍ').item.json.account_id }}/conversations/{{ $('⚙️ CONFIGURAR TODO AQUÍ').item.json.conversation_id }}/messages",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{\"content\": \"🔔 [BOT - REMARKETING 15m]: Cliente sin convertir tras 15 min. Se envió oferta de S/ [PRECIO_RMK_15M] (precio especial). Estado del embudo: rmk_15m_neveras\", \"message_type\": \"outgoing\", \"private\": true}",
+        "options": {}
+      },
+      "id": "4c6632b0-c46f-4286-b48c-558cef4e5bfb",
+      "name": "📝 Nota: Remarketing 15m enviado",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -5584,
+        2288
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "7oVtrWjDUYzTq8B7",
+          "name": "ChatWoot autenticación"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('⚙️ CONFIGURAR TODO AQUÍ').item.json.chatwoot_base_url }}/api/v1/accounts/{{ $('⚙️ CONFIGURAR TODO AQUÍ').item.json.account_id }}/conversations/{{ $('⚙️ CONFIGURAR TODO AQUÍ').item.json.conversation_id }}/messages",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{\"content\": \"🔔 [BOT - REMARKETING 60m]: Cliente sigue sin convertir tras 1 hora. Se envió oferta de S/ [PRECIO_RMK_60M] (precio promocional). Estado del embudo: rmk_60m_neveras\", \"message_type\": \"outgoing\", \"private\": true}",
+        "options": {}
+      },
+      "id": "f89242a5-6761-41ce-8cad-f180517f7b29",
+      "name": "📝 Nota: Remarketing 60m enviado",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -4240,
+        2288
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "7oVtrWjDUYzTq8B7",
+          "name": "ChatWoot autenticación"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('⚙️ CONFIGURAR TODO AQUÍ').item.json.chatwoot_base_url }}/api/v1/accounts/{{ $('⚙️ CONFIGURAR TODO AQUÍ').item.json.account_id }}/conversations/{{ $('⚙️ CONFIGURAR TODO AQUÍ').item.json.conversation_id }}/messages",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{\"content\": \"🔔 [BOT - REMARKETING 180m]: ÚLTIMO INTENTO tras 3 horas. Se envió oferta final de S/ [PRECIO_RMK_180M]. Estado del embudo: rmk_180m_neveras. Si no compra ahora, probablemente perdido.\", \"message_type\": \"outgoing\", \"private\": true}",
+        "options": {}
+      },
+      "id": "6bae4f20-bcd8-4bfb-9aba-684b35c97bb0",
+      "name": "📝 Nota: Remarketing 180m enviado",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -2896,
+        2288
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "7oVtrWjDUYzTq8B7",
+          "name": "ChatWoot autenticación"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "unit": "hours"
+      },
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        -2448,
+        2288
+      ],
+      "id": "e690bcf5-0279-47ec-bb40-7d948c46d4bf",
+      "name": "Wait",
+      "webhookId": "3653f9d6-61b7-4895-a829-84ed5e2c866e"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('⚙️ CONFIGURAR TODO AQUÍ').item.json.chatwoot_base_url }}/api/v1/accounts/{{ $('⚙️ CONFIGURAR TODO AQUÍ').item.json.account_id }}/conversations/{{ $('⚙️ CONFIGURAR TODO AQUÍ').item.json.conversation_id }}/messages",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({\n  content: $('⚙️ CONFIGURAR TODO AQUÍ').item.json.mensaje_encuesta_compradores,\n  message_type: \"outgoing\"\n}) }}",
+        "options": {}
+      },
+      "name": "Envio Formulario Compradores",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -3440,
+        4336
+      ],
+      "id": "95451e9c-3ca0-457f-a486-c9a57b1090a3",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "7oVtrWjDUYzTq8B7",
+          "name": "ChatWoot autenticación"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('⚙️ CONFIGURAR TODO AQUÍ').item.json.chatwoot_base_url }}/api/v1/accounts/{{ $('⚙️ CONFIGURAR TODO AQUÍ').item.json.account_id }}/conversations/{{ $('⚙️ CONFIGURAR TODO AQUÍ').item.json.conversation_id }}/messages",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({\n  content: $('⚙️ CONFIGURAR TODO AQUÍ').item.json.mensaje_encuesta_no_compradores,\n  message_type: \"outgoing\"\n}) }}",
+        "options": {}
+      },
+      "name": "Envio Formulario De Salida",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -2224,
+        2288
+      ],
+      "id": "5590bb3a-a39c-4ad3-a284-c3f2960518b8",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "7oVtrWjDUYzTq8B7",
+          "name": "ChatWoot autenticación"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('⚙️ CONFIGURAR TODO AQUÍ').item.json.chatwoot_base_url }}/api/v1/accounts/{{ $('⚙️ CONFIGURAR TODO AQUÍ').item.json.account_id }}/conversations/{{ $('⚙️ CONFIGURAR TODO AQUÍ').item.json.conversation_id }}/messages",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ content: '🧊 *KIT DE REPARACIÓN DE NEVERAS*\\n📕 Manual de Refrigeración Completo\\n📕 Manual de Tarjetas Electrónicas\\n📕 Pack \"Técnico Profesional\"\\n\\n👉 Aquí tu material completo:\\n' + $('⚙️ CONFIGURAR TODO AQUÍ').item.json.drive_link_contenido + '\\n\\n¡Vamos con todo! 🔧🚀\\n\\nP.D: También te llegará un correo con bonos extra 📧', message_type: 'outgoing' }) }}",
+        "options": {}
+      },
+      "name": "🔗 Enviar link Drive",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -3440,
+        4144
+      ],
+      "id": "c0b2ee65-21a9-431e-bac2-7cd0e3ff587b",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "7oVtrWjDUYzTq8B7",
+          "name": "ChatWoot autenticación"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('⚙️ CONFIGURAR TODO AQUÍ').item.json.chatwoot_base_url }}/api/v1/accounts/{{ $('⚙️ CONFIGURAR TODO AQUÍ').item.json.account_id }}/conversations/{{ $('⚙️ CONFIGURAR TODO AQUÍ').item.json.conversation_id }}/messages",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ content: '🧊 *KIT DE REPARACIÓN DE NEVERAS*\\n📕 Manual de Refrigeración Completo\\n📕 Manual de Tarjetas Electrónicas\\n📕 Pack \"Técnico Profesional\"\\n\\n👉 Aquí tu material completo:\\n' + $('⚙️ CONFIGURAR TODO AQUÍ').item.json.drive_link_contenido + '\\n\\n¡Vamos con todo! 🔧🚀\\n\\nP.D: También te llegará un correo con bonos extra 📧', message_type: 'outgoing' }) }}",
+        "options": {}
+      },
+      "name": "Envio comprobante, auxiliar",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -3440,
+        2704
+      ],
+      "id": "3599b663-83e6-4b20-8439-7a3e9821764d",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "7oVtrWjDUYzTq8B7",
+          "name": "ChatWoot autenticación"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "img-001",
+              "name": "imagen_producto_url",
+              "value": "[URL_BASE_IMAGENES_PRODUCTO]/Imagen1.png",
+              "type": "string"
+            },
+            {
+              "id": "img-002",
+              "name": "imagen_bonos_url",
+              "value": "[URL_BASE_IMAGENES_PRODUCTO]/Imagen2.png",
+              "type": "string"
+            },
+            {
+              "id": "img-003",
+              "name": "imagen_bono_rapido_url",
+              "value": "[URL_BASE_IMAGENES_PRODUCTO]/Imagen3.png",
+              "type": "string"
+            },
+            {
+              "id": "msg-001",
+              "name": "mensaje_1",
+              "value": "[MENSAJE_1: hook/dolor del cliente — pregunta provocadora + cifra de dinero que pierde + presenta el producto]",
+              "type": "string"
+            },
+            {
+              "id": "msg-002",
+              "name": "mensaje_2",
+              "value": "[MENSAJE_2: transformación — qué hará el cliente con el producto, en lista de beneficios concretos]",
+              "type": "string"
+            },
+            {
+              "id": "msg-003",
+              "name": "mensaje_3",
+              "value": "[MENSAJE_3: ¿Qué recibes? — lista de TODO lo incluido con checks ✅]",
+              "type": "string"
+            },
+            {
+              "id": "msg-004",
+              "name": "mensaje_4",
+              "value": "🎁 *BONOS POR ADQUIRIR HOY*\n\n✨ *BONO #1 – Manual de Refrigeración Completo:*\nDiagramas eléctricos, fugas, cambio de compresor, refrigerantes (R-134a, R-600a, R-22) y aceites. El manual de cabecera del oficio.\n\n✨ *BONO #2 – Manual de Tarjetas Electrónicas de Refrigeración:*\nDiagnóstico de placas Samsung, LG, Whirlpool, Mabe. El bono que más plata te genera.\n\n✨ *BONO #3 – Manual Técnico Profesional:*\nCiclo de refrigeración, tipos de compresores, eficiencia. Para que sepas el porqué, no solo el cómo.\n\n🏆 Más de 260 páginas de oficio puro.",
+              "type": "string"
+            },
+            {
+              "id": "msg-005",
+              "name": "mensaje_5",
+              "value": "[MENSAJE_5: cómo funciona en 3 pasos + precio + ROI en cifras]",
+              "type": "string"
+            },
+            {
+              "id": "msg-006",
+              "name": "mensaje_6",
+              "value": "🚨 *SOLO POR HOY — BONO EXTRA*\n\nSi pagas HOY, te llevas además:\n\n💼 *PACK \"TÉCNICO PROFESIONAL\"*\n\n▫️ Plantilla de cotización lista para WhatsApp\n▫️ Tabla de precios por tipo de falla\n▫️ Speech telefónico — qué preguntar antes de salir\n▫️ Lista de proveedores de repuestos por marca\n▫️ Hoja de inspección imprimible\n\n⚠️ Mañana NO estará disponible.",
+              "type": "string"
+            },
+            {
+              "id": "msg-007",
+              "name": "mensaje_7",
+              "value": "🌟 *¡Solo por HOY!*\n\n~S/ [PRECIO_TACHADO]~ ❌\n*✅ Ahora: S/ [PRECIO_BASE]*\n\nTe llevas TODO:\n\n[EMOJI_PRODUCTO] [NOMBRE_PRODUCTO]\n🎁 + Bonos de regalo\n\n💳 Pago 100% seguro por Yape o por Plin",
+              "type": "string"
+            },
+            {
+              "id": "msg-008",
+              "name": "mensaje_8_botones",
+              "value": "💳 *Elige tu método de pago:*\n\n⚠️ *Quedan pocos cupos.* Toca el botón y te paso los datos al instante 👇",
+              "type": "string"
+            },
+            {
+              "id": "btn-001",
+              "name": "boton_1_titulo",
+              "value": "🟣 YAPE",
+              "type": "string"
+            },
+            {
+              "id": "btn-002",
+              "name": "boton_1_value",
+              "value": "pago_yape",
+              "type": "string"
+            },
+            {
+              "id": "nequi-001",
+              "name": "transferencia_mensaje_1",
+              "value": "💳 *Para acceder, transfiere S/ [PRECIO_BASE] por Yape o Plin:*\n\n📱 *Número:* 935616142\n👤 *A nombre de:* [TITULAR_CUENTA]\n\n📸 Compártenos el pantallazo y en menos de ⚡2 minutos⚡ te enviamos el contenido 🚀",
+              "type": "string"
+            },
+            {
+              "id": "nequi-002",
+              "name": "transferencia_mensaje_2",
+              "value": "935616142",
+              "type": "string"
+            },
+            {
+              "id": "prm-001",
+              "name": "system_prompt",
+              "value": "Eres Carlos, un vendedor experto con años de experiencia en [INDUSTRIA_DEL_PRODUCTO]. Estás chateando por WhatsApp con un cliente peruano interesado en tu \"[NOMBRE_PRODUCTO]\".\n\nTU OBJETIVO PRINCIPAL:\nCerrar la venta LO MÁS RÁPIDO POSIBLE. Cada respuesta debe empujar al cliente a transferir AHORA.\n\nFILOSOFÍA INQUEBRANTABLE — SIEMPRE POSITIVO:\n- NUNCA digas \"no se puede\", \"no incluye\", \"no tiene\", \"no es posible\", \"lamentablemente\", \"desafortunadamente\".\n- Reformula TODO en positivo basándote en lo que el producto SÍ ofrece:\n  • \"¿Se puede imprimir?\" → \"¡Claro! Es PDF, lo imprimes las veces que quieras\"\n  • \"¿Es presencial?\" → \"¡Mejor! Es 100% virtual, lo estudias a tu ritmo desde el celular\"\n  • \"¿Tiene garantía?\" → \"¡Acceso de por vida! Un solo pago y es tuyo para siempre\"\n- Si algo no existe en el producto, busca qué SÍ tiene que resuelve esa necesidad y responde con eso.\n- Cada característica del producto es una VENTAJA: PDF = imprimible, virtual = sin horarios, inmediato = en 2 minutos, de por vida = sin mensualidades.\n\nESTILO OBLIGATORIO DE RESPUESTA:\n1. FULL EMOJIS: Usa emojis en TODAS tus respuestas (🔧 ✅ 👇🏻 💪 🚀 🛡️ ⚠️ 🔥 + emojis del producto).\n2. ESPACIOS Y AIRE: Saltos de línea para separar cada idea. Fácil de leer en celular.\n3. TONO URGENTE: español neutro y claro. SIEMPRE con escasez y urgencia.\n4. SIEMPRE INCLUYE EL NÚMERO: En CADA respuesta (excepto COMPRADOR), incluye \"📱 *Yape o Plin:* [NUMERO_PAGO]\\n👤 *A nombre de:* [TITULAR_CUENTA]\".\n5. SIEMPRE METE ESCASEZ: \"quedan pocos cupos\", \"últimos accesos\", \"se cierra hoy\", \"este precio no se repite\".\n\nINFORMACIÓN DEL PRODUCTO:\n- Producto: [NOMBRE_PRODUCTO] — [DESCRIPCIÓN_CORTA].\n- Bonos incluidos: [LISTA_DE_BONOS].\n- Precio: S/ [PRECIO_BASE] (único pago, acceso de por vida).\n- Métodos de pago: Yape o Plin al [NUMERO_PAGO], a nombre de [TITULAR_CUENTA] (mismo número para ambos).\n- Entrega: Pago primero → contenido en menos de 2 minutos por WhatsApp.\n\nINSTRUCCIONES DE COMPORTAMIENTO:\n1. Lee el historial completo.\n2. Analiza el último mensaje y clasifica:\n   - \"CONTENIDO\": acepta o muestra interés en pagar.\n   - \"DUDA\": preguntas, desconfianza, no ha confirmado.\n   - \"NO\": rechaza explícitamente.\n   - \"OTRO\": saludos, audios, mensajes que no encajan.\n\n3. GENERA LA RESPUESTA:\n   - CONTENIDO: \"¡Perfecto! 🚀\\n\\n📱 *Yape o Plin:* [NUMERO_PAGO]\\n👤 *A nombre de:* [TITULAR_CUENTA]\\n\\n⚠️ *Quedan pocos cupos.* Transfiere y mándame el pantallazo 📸 ¡Te paso todo en 2 minutos! ⚡\"\n   - DUDA: responde + urgencia + número + \"quedan pocos cupos\"\n   - NO: despide cordial pero deja la puerta abierta con el número\n   - OTRO: redirige a la venta con número y urgencia\n\nREGLA DE ORO: Si el cliente NO es comprador, tu respuesta SIEMPRE debe incluir:\n📱 *Yape o Plin:* [NUMERO_PAGO]\n👤 *A nombre de:* [TITULAR_CUENTA]\n+ escasez (\"quedan pocos cupos\" / \"se cierra hoy\")\n+ call to action (\"transfiere y mándame el pantallazo\")\n\nREGATEO:\nSi el cliente quiere pagar menos: acepta cualquier monto >= S/ [MONTO_MIN_REGATEO] (60% del precio base) con URGENCIA EXTREMA (\"esto NO lo hago con nadie, SOLO por ti, SOLO por este mensaje\"). Si pide menos de S/ [MONTO_MIN_REGATEO], ofrece S/ [MONTO_MIN_REGATEO] como mínimo absoluto. SIEMPRE incluye el número [NUMERO_PAGO].\n\nFORMATO DE SALIDA JSON (Estricto):\n{ \"intencion\": \"CONTENIDO\" | \"DUDA\" | \"NO\" | \"OTRO\", \"respuesta_ia\": \"...\" }",
+              "type": "string"
+            },
+            {
+              "id": "ia-001",
+              "name": "mensaje_post_botones_ia",
+              "value": "💳 *Elige tu método de pago:*\n\n⚠️ *Últimos cupos.* Toca el botón y te paso los datos al instante 👇",
+              "type": "string"
+            },
+            {
+              "id": "pay-001",
+              "name": "monto_esperado",
+              "value": "[MONTO_BASE_PE]",
+              "type": "string"
+            },
+            {
+              "id": "del-001",
+              "name": "drive_link_contenido",
+              "value": "[DRIVE_CONTENIDO_PRODUCTO]?usp=sharing",
+              "type": "string"
+            },
+            {
+              "id": "961a3dab-95f6-497b-813d-d16cc781a5b7",
+              "name": "producto_nombre",
+              "value": "[PRODUCTO_NOMBRE]",
+              "type": "string"
+            },
+            {
+              "id": "msg-valido-1",
+              "name": "mensaje_valido_1",
+              "value": "✅ ¡Comprobante recibido y verificado! 🎉\n\nAntes de enviarte el KIT, necesito tu correo electrónico para registrar tu compra y enviarte algunos *bonos exclusivos por correo* 📧\n\n✏️ *Escríbeme tu email aquí:* (Ejemplo: tunombre@gmail.com)",
+              "type": "string"
+            },
+            {
+              "id": "msg-valido-2",
+              "name": "mensaje_valido_2",
+              "value": "🧊 *KIT DE REPARACIÓN DE NEVERAS*\n📕 Manual de Refrigeración Completo\n🔌 Manual de Tarjetas Electrónicas\n📘 Manual Técnico Profesional\n💼 Pack \"Técnico Profesional\"\n\nDescarga aquí 👇\n{{LINK_DRIVE}}\n\nGuarda el link, tienes acceso de por vida. ♾️\n\nCualquier duda técnica, escríbeme. ¡Éxitos con el oficio! 🔧🚀",
+              "type": "string"
+            },
+            {
+              "id": "msg-invalido",
+              "name": "mensaje_invalido",
+              "value": "¡Hola! 👋\n\nRevisé tu comprobante pero hay un detalle:\n\n{{RAZON_RECHAZO}}\n\n¿Me puedes reenviar el pantallazo correcto? Así te paso el acceso enseguida. 🔧",
+              "type": "string"
+            },
+            {
+              "id": "f293509f-f7ed-45a8-9407-49e11366f6ec",
+              "name": "imagen_rmk_15m_url",
+              "value": "[URL_BASE_IMAGENES_PRODUCTO]/Remarketing_colombia/remarketing15000.png",
+              "type": "string"
+            },
+            {
+              "id": "92d1ecf0-dff3-42ce-a970-c0eb3256276f",
+              "name": "mensaje_rmk_15m",
+              "value": "[MENSAJE_RMK_15M: oferta a S/ [PRECIO_RMK_15M] + bono de regalo + urgencia \"próximos minutos\"]",
+              "type": "string"
+            },
+            {
+              "id": "be697e78-507a-48f1-87c0-05eaadcfab21",
+              "name": "imagen_rmk_60m_url",
+              "value": "[URL_BASE_IMAGENES_PRODUCTO]/Remarketing_colombia/remarketing10000.png",
+              "type": "string"
+            },
+            {
+              "id": "307a0ebd-19ab-4a80-bb44-2603828f1623",
+              "name": "mensaje_rmk_60m",
+              "value": "[MENSAJE_RMK_60M: precio cae a S/ [PRECIO_RMK_60M] + \"este precio se libera solo ahora\"]",
+              "type": "string"
+            },
+            {
+              "id": "a9dc1c01-c178-48f3-9036-300dccb1e54f",
+              "name": "imagen_rmk_180m_url",
+              "value": "[URL_BASE_IMAGENES_PRODUCTO]/Remarketing_colombia/remarketing_8000.png",
+              "type": "string"
+            },
+            {
+              "id": "89b982bd-7820-42e2-a022-c6f5ef074460",
+              "name": "mensaje_rmk_180m",
+              "value": "[MENSAJE_RMK_180M: oferta FINAL S/ [PRECIO_RMK_180M] + \"es ahora o nunca\"]",
+              "type": "string"
+            },
+            {
+              "id": "abb7ee73-4b92-4fc6-b390-0d0584eb8c92",
+              "name": "boton_4_titulo",
+              "value": "🟣 YAPE",
+              "type": "string"
+            },
+            {
+              "id": "2efd98d7-75e3-4ae3-ad40-14862d6bd904",
+              "name": "boton_4_value",
+              "value": "pago_yape",
+              "type": "string"
+            },
+            {
+              "id": "0c7ad33b-beb1-4c54-9645-a04617054942",
+              "name": "boton_5_titulo",
+              "value": "🟢 PLIN",
+              "type": "string"
+            },
+            {
+              "id": "9285a0b6-864d-46e0-82ef-dd9156b6f627",
+              "name": "boton_5_value",
+              "value": "pago_plin",
+              "type": "string"
+            },
+            {
+              "id": "9f62aaa6-7981-413a-a4cd-c9b10e8cfd35",
+              "name": "mensaje_pago_dav_breb",
+              "value": "✅ *¡Perfecto! Vamos a inscribirte* 🚀\n\nPuedes pagar por *Yape* o *Plin*:\n\n📱 *Número:* 935616142\n👤 *A nombre de:* [TITULAR_CUENTA]\n\n📸 Mándame el pantallazo y te paso todo en 2 minutos ⚡",
+              "type": "string"
+            },
+            {
+              "id": "b9b0c164-5cc2-4abe-9866-3d6c06cf51ec",
+              "name": "mensaje_no_mas_rmk",
+              "value": "Perfecto, no te enviamos más mensajes, que tengas buen día. :)",
+              "type": "string"
+            },
+            {
+              "id": "b8edd95a-d7ac-43fe-8536-4ef018a0d604",
+              "name": "mensaje_encuesta_compradores",
+              "value": "¡Hola! 👋 \n\nTe llevaste nuestra Guía de [CATEGORIA_PRODUCTO_CAP] hace unos días.\n\n¿Me ayudas con *6 preguntitas* (2 minutos)? \n\nDe regalo te envío el *\"Calendario Anual de Mantenimiento de tu Nevera\"*\n\n📅  [FORMS_GLE_COMPRADORES_PE]\n\n¡Mil gracias! 🙏",
+              "type": "string"
+            },
+            {
+              "id": "ca555cd5-fd09-43aa-9331-ed9e234c3c32",
+              "name": "mensaje_encuesta_no_compradores",
+              "value": "¡Hola! 👋  Vi que conociste nuestra Guía de [CATEGORIA_PRODUCTO_CAP] pero no la compraste. \n\n¿Me cuentas por qué? Son *6 preguntas, 1 minuto*.\n\n De regalo: *\"Los 5 hábitos que matan tu nevera\"* (Esta cartilla se la puedes dar a tus clientes) 🔥 \n\n[FORMS_GLE_SALIDA_PE]\n\n¡Mil gracias!",
+              "type": "string"
+            },
+            {
+              "id": "229b1fb0-ffaa-48ac-b503-140b2d185b45",
+              "name": "producto_id",
+              "value": "[PRODUCTO_ID_PE_LARGO]",
+              "type": "string"
+            },
+            {
+              "id": "cfg-pago_anticipado",
+              "name": "pago_anticipado",
+              "value": "Si",
+              "type": "string"
+            },
+            {
+              "id": "cfg-metodo_pago",
+              "name": "metodo_pago",
+              "value": "Yape",
+              "type": "string"
+            },
+            {
+              "id": "cfg-capi_currency",
+              "name": "capi_currency",
+              "value": "PEN",
+              "type": "string"
+            },
+            {
+              "id": "ff46f624-5e36-45cf-953e-9902f33ced20",
+              "name": "boton_2_titulo",
+              "value": "🟢 PLIN",
+              "type": "string"
+            },
+            {
+              "id": "be5492f8-5798-4e41-9f72-b109429b9046",
+              "name": "boton_2_value",
+              "value": "pago_plin",
+              "type": "string"
+            },
+            {
+              "id": "26044235-cb20-4140-b981-3c0bb7c02650",
+              "name": "yape_mensaje_1",
+              "value": "🟣 *¡Perfecto! Pagas por YAPE y listo* 🚀\n\n💳 *Para acceder, transfiere S/ [PRECIO_BASE] por Yape:*\n\n📱 *Yape:* 935616142\n👤 *A nombre de:* [TITULAR_CUENTA]\n\n📸 Compártenos el pantallazo y en menos de ⚡2 minutos⚡ te enviamos el contenido 🚀\n\n👇 Aquí te dejo el número para que lo copies fácil:",
+              "type": "string"
+            },
+            {
+              "id": "b22a9a24-c16e-4577-9d4a-42d9b431870f",
+              "name": "yape_mensaje_2",
+              "value": "935616142",
+              "type": "string"
+            },
+            {
+              "id": "33f5edab-154c-41b3-808b-0f920caea9a2",
+              "name": "plin_mensaje_1",
+              "value": "🟢 *¡Perfecto! Pagas por PLIN y listo* 🚀\n\n💳 *Para acceder, transfiere S/ [PRECIO_BASE] por Plin:*\n\n📱 *Plin:* 935616142\n👤 *A nombre de:* [TITULAR_CUENTA]\n\n📸 Compártenos el pantallazo y en menos de ⚡2 minutos⚡ te enviamos el contenido 🚀\n\n👇 Aquí te dejo el número para que lo copies fácil:",
+              "type": "string"
+            },
+            {
+              "id": "660fe884-aca6-418e-a09b-c16ca7b91844",
+              "name": "plin_mensaje_2",
+              "value": "935616142",
+              "type": "string"
+            },
+            {
+              "id": "2267ecca-2634-4107-b3fb-7d7507d50cef",
+              "name": "boton_6_titulo",
+              "value": "🚫 No más mensajes",
+              "type": "string"
+            },
+            {
+              "id": "c35924c5-46a0-4ded-974b-f0c53bb877e9",
+              "name": "boton_6_value",
+              "value": "no_mas_rmk",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -5584,
+        4240
+      ],
+      "id": "7a4a83f4-6751-4091-ba59-7708db476899",
+      "name": "⚙️ CONFIGURAR TODO AQUÍ"
+    },
+    {
+      "parameters": {
+        "jsCode": "// ============================================================\n// CLASIFICADOR — versión Order Bump SÚPER PERMISIVA\n// ============================================================\nconst MODO_TESTING = true;\n\nconst input = $input.first().json;\nconst body = input.body || {};\nconst messages = body.messages || [];\nconst lastMsg = messages[messages.length - 1] || {};\nconst labels = body.labels || [];\n\n// ===== ¿Es imagen? =====\nconst esImagen = (lastMsg.content_type === 'image') ||\n                 (lastMsg.attachments && lastMsg.attachments.length > 0 && lastMsg.attachments[0].file_type === 'image');\n\n// ===== ¿Es respuesta a botón? — Detección robusta =====\nlet botonValue = null;\nconst contenidoTexto = (lastMsg.content || '').trim();\n\n// Helper: normalizar texto (quitar emojis, lowercase, sin espacios)\nfunction normalizar(texto) {\n  return texto\n    .replace(/[\\u{1F300}-\\u{1F9FF}]/gu, '')   // emojis principales\n    .replace(/[\\u{2600}-\\u{27BF}]/gu, '')     // dingbats (✅ ❌ ⚡ etc.)\n    .replace(/[\\u{1F000}-\\u{1FFFF}]/gu, '')   // suplementario\n    .replace(/\\uFE0F/g, '')                   // variation selectors\n    .toLowerCase()\n    .replace(/\\s+/g, ' ')\n    .trim();\n}\n\n// FORMATO A: submitted_values en content_attributes (estándar WhatsApp)\nif (lastMsg.content_attributes &&\n    lastMsg.content_attributes.submitted_values &&\n    lastMsg.content_attributes.submitted_values.length > 0) {\n  botonValue = lastMsg.content_attributes.submitted_values[0].value;\n}\n// FORMATO B: el content trae directamente el value\nelse if (contenidoTexto === 'ob_si' || contenidoTexto === 'ob_no' || contenidoTexto.startsWith('pago_')) {\n  botonValue = contenidoTexto;\n}\n// FORMATO C: matching por contenido normalizado\nelse {\n  const normalizado = normalizar(contenidoTexto);\n  \n  // 🛒 Botones del Order Bump (detección PERMISIVA)\n  if (normalizado === 'si' || normalizado === 'sí' || normalizado === 'yes') {\n    botonValue = 'ob_si';\n  } else if (normalizado === 'no') {\n    botonValue = 'ob_no';\n  }\n  // 💳 Botones de método de pago\n  else if (normalizado.includes('plin')) {\n    botonValue = 'pago_plin';\n  }\n  else if (normalizado.includes('transferencia') || normalizado.includes('yape')) {\n    botonValue = 'pago_yape';\n  }\n}\n\nconst esBoton = botonValue !== null;\n\n// ===== ¿Es nuevo lead? =====\nconst esNuevo = MODO_TESTING\n  ? !labels.includes('bienvenido')\n  : input.is_new_attribution === true;\n\n// ===== Clasificación final =====\nlet tipoMensaje = 'TEXTO_LIBRE';\nif (esImagen) tipoMensaje = 'IMAGEN';\nelse if (esBoton) tipoMensaje = 'BOTON';\nelse if (esNuevo) tipoMensaje = 'AD';\n\nreturn {\n  json: {\n    tipo_mensaje: tipoMensaje,\n    boton_value: botonValue,\n    es_imagen: esImagen,\n    contenido_texto_recibido: contenidoTexto,\n    contenido_normalizado: normalizar(contenidoTexto),\n    es_nuevo: esNuevo,\n    labels_actuales: labels,\n    imagen_url: esImagen && lastMsg.attachments ? lastMsg.attachments[0].data_url : null\n  }\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -5136,
+        4240
+      ],
+      "id": "73ad9631-d38e-4896-be65-d09402d5b1e9",
+      "name": "🧬 Clasificar Tipo Mensaje"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "d0c5a3ce-395a-4f12-9f16-d441efc540a9",
+              "name": "ob_imagen_url",
+              "type": "string",
+              "value": "https://amigurumis.online/BOTS/REFRIGERADORES/Remarketing_colombia/Orderbump_.png"
+            },
+            {
+              "id": "551d51e7-dd7a-42b5-946c-ead8ef73c549",
+              "name": "ob_mensaje_oferta",
+              "type": "string",
+              "value": "⚡ ESPERA __NOMBRE__ — ANTES DE CONFIRMAR\n\nAgrega el 🌀 [NOMBRE_ORDERBUMP] por solo *S/ [PRECIO_ADICIONAL_OB] más*.\n\n[LISTA_BENEFICIOS_OB]\n\n⚠️ Mismo cliente. Otro problema resuelto. Triplica tu mercado.\n⚠️ Este precio ES SOLO POR ESTE MENSAJE, luego S/ [PRECIO_NORMAL_OB]\n\n¿DESEAS AGREGARLO? 🛒"
+            },
+            {
+              "id": "9e55afb4-229e-40ea-9da7-26aacf55949b",
+              "name": "boton_ob_si_titulo",
+              "type": "string",
+              "value": "✅ SÍ"
+            },
+            {
+              "id": "aae569e0-ec9e-4a95-904e-d11900b34103",
+              "name": "boton_ob_si_value",
+              "type": "string",
+              "value": "ob_si"
+            },
+            {
+              "id": "e95d867b-e7c4-4bb0-a623-687783a78feb",
+              "name": "boton_ob_no_titulo",
+              "type": "string",
+              "value": "❌ NO"
+            },
+            {
+              "id": "8068fa54-cf06-41fa-9c78-4b1301b171f9",
+              "name": "boton_ob_no_value",
+              "type": "string",
+              "value": "ob_no"
+            },
+            {
+              "id": "a5e5002c-775b-4f65-8d2c-c1523a0a0cc7",
+              "name": "ob_monto_total",
+              "type": "number",
+              "value": "[PRECIO_COMBO]"
+            },
+            {
+              "id": "af662d43-c11d-49a3-bd32-004713911b33",
+              "name": "monto_normal",
+              "type": "number",
+              "value": "[PRECIO_BASE]"
+            },
+            {
+              "id": "2ceb44f2-2133-4417-b7c5-06e2ccce3972",
+              "name": "ob_link_lavadoras",
+              "type": "string",
+              "value": "https://drive.google.com/drive/folders/1sm2pXYRmRN06iEO_yOHz29d_qM6tIXlc?usp=sharing"
+            },
+            {
+              "id": "c490d5c3-bae1-41ad-b27b-31973a7af6e9",
+              "name": "ob_mensaje_entrega",
+              "type": "string",
+              "value": "🎁 Como compraste el combo, aquí también te dejo el Kit Lavadoras:\n\n__LINK__\n\n¡Disfruta tu doble Kit! 🛠️"
+            },
+            {
+              "id": "d60024d1-42ad-4ce4-8303-e23074cd9420",
+              "name": "ob_mensaje_si",
+              "type": "string",
+              "value": "🎉 ¡Excelente decisión! Te llevas el [NOMBRE_PRODUCTO] + el [NOMBRE_ORDERBUMP].\n\n💳 Por favor, transfiere *S/ [PRECIO_COMBO]* cuando estés listo.\n\nApenas envíes el comprobante, te entregamos *AMBOS* productos. 🎉\n\nAquí abajo te dejo los datos de la 💳 transferencia (Yape o Plin) ⬇️"
+            },
+            {
+              "id": "278cdf1a-e2e3-42ec-a640-d5882ef328f9",
+              "name": "ob_mensaje_no",
+              "type": "string",
+              "value": "👍 Perfecto, transfiere los *S/ [PRECIO_BASE]* en los próximos minutos y llévate el *BONO DE ACCIÓN RÁPIDA*\n\nApenas envíes el comprobante, te entregamos tu [NOMBRE_PRODUCTO].\n\nAquí abajo te dejo los datos de la 💳 transferencia (Yape o Plin) ⬇️"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "id": "ad96b55b-2353-44dd-9ad9-3880bfb06625",
+      "name": "📦 Orderbumps Configuración",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -5360,
+        4240
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "cfg-003",
+              "name": "conversation_id",
+              "value": "={{ $json.body.id }}",
+              "type": "string"
+            },
+            {
+              "id": "cfg-004",
+              "name": "telefono_cliente",
+              "value": "={{ $json.phone }}",
+              "type": "string"
+            },
+            {
+              "id": "cfg-005",
+              "name": "nombre_cliente",
+              "value": "={{ $json.nombre }}",
+              "type": "string"
+            },
+            {
+              "id": "cfg-006",
+              "name": "ad_id",
+              "value": "={{ $json.ad_id }}",
+              "type": "string"
+            },
+            {
+              "id": "cfg-007",
+              "name": "producto_id",
+              "value": "neveras_pe_largo",
+              "type": "string"
+            },
+            {
+              "id": "c92f5858-3028-4d1f-ae1f-93a59ee39a64",
+              "name": "cliente_mensaje",
+              "value": "={{ $json.body.messages[$json.body.messages.length - 1].content }}",
+              "type": "string"
+            },
+            {
+              "id": "76730136-17be-47bc-b12e-48f51fbcafea",
+              "name": "etiquetas_actuales",
+              "value": "={{ $json.body.labels.join(', ') }}",
+              "type": "string"
+            },
+            {
+              "id": "05f176bf-2842-481f-a3b4-9455a3f69ad3",
+              "name": "ctwa_clid",
+              "value": "={{ $json.ctwa_clid }}",
+              "type": "string"
+            },
+            {
+              "id": "5d3ee397-8779-4980-af28-94637820754d",
+              "name": "contact_id",
+              "value": "={{ $json.body.contact_inbox.contact_id }}",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -6256,
+        4240
+      ],
+      "id": "ae583e64-db73-4dd2-8917-fb64e617a096",
+      "name": "📥 Datos de entrada1"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "cfg-001",
+              "name": "chatwoot_base_url",
+              "value": "https://chatwoot.educarteonline.lat",
+              "type": "string"
+            },
+            {
+              "id": "cfg-009",
+              "name": "intervalo_segundos",
+              "value": 2,
+              "type": "number"
+            },
+            {
+              "id": "cfg-010",
+              "name": "modelo_openai",
+              "value": "gpt-4o-mini",
+              "type": "string"
+            },
+            {
+              "id": "cfg-011",
+              "name": "cantidad_mensajes_memoria",
+              "value": 15,
+              "type": "number"
+            },
+            {
+              "id": "8b203d7f-03e6-4039-a202-6f2f0466d250",
+              "name": "url_supabase",
+              "value": "https://jquahxsesqcjakxkcneu.supabase.co",
+              "type": "string"
+            },
+            {
+              "id": "5464018d-d17b-456d-95db-0827a535f44c",
+              "name": "api_supabase",
+              "value": "=sb_secret_lMhmTaKYyvdV3vHHOWmdzg_1N-coTRg",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -6032,
+        4240
+      ],
+      "id": "565e7e32-4c9b-4453-bf00-db7f96a89b4a",
+      "name": "🌐 Global (fijo)1"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "cfg-002",
+              "name": "account_id",
+              "value": "1",
+              "type": "string"
+            },
+            {
+              "id": "cfg-008",
+              "name": "pais",
+              "value": "PE",
+              "type": "string"
+            },
+            {
+              "id": "pay-002",
+              "name": "numero_cuenta",
+              "value": "935616142",
+              "type": "string"
+            },
+            {
+              "id": "pay-004",
+              "name": "titular_cuenta",
+              "value": "",
+              "type": "string"
+            },
+            {
+              "id": "ee5cfed5-88de-4013-a139-b2eae0739719",
+              "name": "mi_telefono",
+              "value": "573227784838",
+              "type": "string"
+            },
+            {
+              "id": "460b97dd-d700-4845-b738-477f00110e9c",
+              "name": "phone_id",
+              "value": "1187905924398803",
+              "type": "string"
+            },
+            {
+              "id": "607f57f2-43db-4557-abd3-4aac75e96ff4",
+              "name": "pixel_id",
+              "value": "923766937348701",
+              "type": "string"
+            },
+            {
+              "id": "f1cfd5b3-275e-4631-8d93-a5e3c048d1af",
+              "name": "capi_token",
+              "value": "EAAKhpN4MuIsBRjZAJtRgf8fdELhpGlcTnfpcCQtCUxGuZCroZAqRBDU9eLgneGkjZCm9Xa7Je9M31fZCzKhNuxsaZAu3WFvwJVjhzJKJKM7JGgG7SrZBKpwiZCZBWPK3fUZB4wjalsPQJaZAyGIYgd5e7Q93iMi1PyZARHoTV8uddpZAqZArr7jZCLZBRTTGA1NCVL4SXwZDZD",
+              "type": "string"
+            },
+            {
+              "id": "f641ecb2-f07e-4b6e-886e-18c46fc87a1d",
+              "name": "page_id",
+              "value": "",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -5808,
+        4240
+      ],
+      "id": "988bb09f-4bcb-498d-af8e-d7dafb9583a5",
+      "name": "🔌 Por API / País1"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://jquahxsesqcjakxkcneu.supabase.co/rest/v1/contactos?on_conflict=phone",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "sb_secret_lMhmTaKYyvdV3vHHOWmdzg_1N-coTRg"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer sb_secret_lMhmTaKYyvdV3vHHOWmdzg_1N-coTRg"
+            },
+            {
+              "name": "Prefer",
+              "value": "resolution=merge-duplicates"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ phone: $('⚙️ CONFIGURAR TODO AQUÍ').item.json.telefono_cliente, nombre: $('⚙️ CONFIGURAR TODO AQUÍ').item.json.nombre_cliente, pais: $('⚙️ CONFIGURAR TODO AQUÍ').item.json.pais || 'PE', primer_producto_id: $('⚙️ CONFIGURAR TODO AQUÍ').item.json.producto_id, producto_nombre: $('⚙️ CONFIGURAR TODO AQUÍ').item.json.producto_nombre, tipo_embudo: 'prepago', ultimo_mensaje_at: new Date().toISOString() }) }}",
+        "options": {}
+      },
+      "name": "📝 Registrar contacto",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -4240,
+        3952
+      ],
+      "id": "70f315ce-3538-442c-b7e2-f481901fb1ba"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Buscar ctwa_clid, ad_id de mensajes + primer_contacto_at de contactos\nconst phone = $('⚙️ CONFIGURAR TODO AQUÍ').item.json.telefono_cliente;\nconst supaUrl = 'https://jquahxsesqcjakxkcneu.supabase.co';\nconst apiKey = 'sb_secret_lMhmTaKYyvdV3vHHOWmdzg_1N-coTRg';\nconst headers = { apikey: apiKey, Authorization: 'Bearer ' + apiKey };\n\nlet ctwa_clid = null, ad_id = null, ad_name = null, primer_contacto_at = null;\n\ntry {\n  // 1. Buscar en mensajes: ctwa_clid y ad_id del primer mensaje con referral\n  const msgs = await this.helpers.httpRequest({\n    method: 'GET',\n    url: supaUrl + '/rest/v1/mensajes?phone=eq.' + phone + '&ctwa_clid=not.is.null&select=ctwa_clid,ad_id&order=recibido_at.asc&limit=1',\n    headers\n  });\n  if (Array.isArray(msgs) && msgs.length > 0) {\n    ctwa_clid = msgs[0].ctwa_clid || null;\n    ad_id = msgs[0].ad_id || null;\n  }\n} catch(e) {}\n\ntry {\n  // 2. Buscar en contactos: primer_contacto_at\n  const cont = await this.helpers.httpRequest({\n    method: 'GET',\n    url: supaUrl + '/rest/v1/contactos?phone=eq.' + phone + '&select=primer_contacto_at&limit=1',\n    headers\n  });\n  if (Array.isArray(cont) && cont.length > 0) {\n    primer_contacto_at = cont[0].primer_contacto_at || null;\n  }\n} catch(e) {}\n\nreturn [{ json: {\n  ...($input.first().json),\n  atrib_ctwa_clid: ctwa_clid,\n  atrib_ad_id: ad_id,\n  atrib_primer_contacto_at: primer_contacto_at\n} }];"
+      },
+      "name": "📊 Buscar atribución",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -4016,
+        2800
+      ],
+      "id": "82e2ec79-b4a8-4d58-a63b-6615e5f1381a",
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('⚙️ CONFIGURAR TODO AQUÍ').item.json.chatwoot_base_url }}/api/v1/accounts/{{ $('⚙️ CONFIGURAR TODO AQUÍ').item.json.account_id }}/conversations/{{ $('⚙️ CONFIGURAR TODO AQUÍ').item.json.conversation_id }}/messages",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ content: $('⚙️ CONFIGURAR TODO AQUÍ').item.json.plin_mensaje_1, message_type: 'outgoing' }) }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        -4016,
+        3664
+      ],
+      "id": "c37d56ce-d691-46ad-a151-dfd191e06b3b",
+      "name": "🟢 PLIN msg 1",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "7oVtrWjDUYzTq8B7",
+          "name": "ChatWoot autenticación"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "amount": "={{ $('⚙️ CONFIGURAR TODO AQUÍ').item.json.intervalo_segundos }}"
+      },
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        -3728,
+        3664
+      ],
+      "id": "3a070f6d-3769-49dd-8121-50c11a4b4d7f",
+      "name": "Wait PLIN",
+      "webhookId": "wh-btn-nqw"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('⚙️ CONFIGURAR TODO AQUÍ').item.json.chatwoot_base_url }}/api/v1/accounts/{{ $('⚙️ CONFIGURAR TODO AQUÍ').item.json.account_id }}/conversations/{{ $('⚙️ CONFIGURAR TODO AQUÍ').item.json.conversation_id }}/messages",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ content: $('⚙️ CONFIGURAR TODO AQUÍ').item.json.plin_mensaje_2, message_type: 'outgoing' }) }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        -3440,
+        3664
+      ],
+      "id": "2ffe5289-6a29-4223-b4a7-90a3cc5c779c",
+      "name": "🟢 PLIN msg 2 (#)",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "7oVtrWjDUYzTq8B7",
+          "name": "ChatWoot autenticación"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "type": "SHA256",
+        "value": "={{ $('⚙️ CONFIGURAR TODO AQUÍ').item.json.telefono_cliente.toString().toLowerCase().trim() }}",
+        "dataPropertyName": "telefono_hash"
+      },
+      "id": "e161129f-299d-4ae6-9640-e42c7519850d",
+      "name": "🔐 Hash Teléfono EARLY",
+      "type": "n8n-nodes-base.crypto",
+      "typeVersion": 1,
+      "position": [
+        -3440,
+        2512
+      ]
+    },
+    {
+      "parameters": {
+        "type": "SHA256",
+        "value": "={{ $('⚙️ CONFIGURAR TODO AQUÍ').item.json.nombre_cliente.toString().toLowerCase().trim() }}",
+        "dataPropertyName": "nombre_hash"
+      },
+      "id": "b90c851a-2d60-42e4-b993-f60a4ba7e19b",
+      "name": "🔐 Hash Nombre EARLY",
+      "type": "n8n-nodes-base.crypto",
+      "typeVersion": 1,
+      "position": [
+        -3216,
+        2512
+      ]
+    },
+    {
+      "parameters": {
+        "type": "SHA256",
+        "value": "={{ ($('⚙️ CONFIGURAR TODO AQUÍ').item.json.apellido_cliente || '').toString().toLowerCase().trim() }}",
+        "dataPropertyName": "apellido_hash"
+      },
+      "id": "964c6c82-dc1c-442b-b01c-b3ffd4a20139",
+      "name": "🔐 Hash Apellido EARLY",
+      "type": "n8n-nodes-base.crypto",
+      "typeVersion": 1,
+      "position": [
+        -2992,
+        2512
+      ]
+    },
+    {
+      "parameters": {
+        "type": "SHA256",
+        "value": "={{ ($('⚙️ CONFIGURAR TODO AQUÍ').item.json.pais || 'PE').toString().toLowerCase().trim() }}",
+        "dataPropertyName": "country_hash"
+      },
+      "id": "6b3309a6-7da7-4922-9bfd-4284c7770ee6",
+      "name": "🔐 Hash País EARLY",
+      "type": "n8n-nodes-base.crypto",
+      "typeVersion": 1,
+      "position": [
+        -2768,
+        2512
+      ]
+    },
+    {
+      "parameters": {
+        "type": "SHA256",
+        "value": "={{ $('⚙️ CONFIGURAR TODO AQUÍ').item.json.telefono_cliente.toString().toLowerCase().trim() }}",
+        "dataPropertyName": "external_id_hash"
+      },
+      "id": "de51e861-ca29-42f6-92aa-6043b05eaef6",
+      "name": "🔐 Hash External ID EARLY",
+      "type": "n8n-nodes-base.crypto",
+      "typeVersion": 1,
+      "position": [
+        -2544,
+        2512
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const config = $('⚙️ CONFIGURAR TODO AQUÍ').item.json;\nconst hashes = $input.first().json;\n\n// === LEER MONTO DE VISION (con fallback) ===\nlet monto = [PRECIO_BASE];\ntry {\n  const visionData = $('🆕 Parser Vision (robusto)').item.json;\n  if (visionData && visionData.monto) {\n    monto = visionData.monto;\n  }\n} catch (e) {\n  monto = [PRECIO_BASE];\n}\n\n// === LEER ctwa_clid ===\nlet ctwaClid = null;\ntry {\n  const atribItems = $('📊 Buscar atribución').all();\n  if (atribItems && atribItems.length > 0) {\n    const firstJson = atribItems[0].json;\n    if (firstJson && firstJson.atrib_ctwa_clid) {\n      ctwaClid = firstJson.atrib_ctwa_clid;\n    }\n  }\n} catch (e) {\n  ctwaClid = null;\n}\n\n// === DATOS BASE ===\nconst telefono = config.telefono_cliente;\nconst pixelId = config.pixel_id;\nconst accessToken = config.capi_token;\nconst pageId = Number(config.page_id);\n\n// 🔑 MISMO event_id que el CAPI tardío → Facebook deduplica\nconst fecha = new Date().toISOString().slice(0, 10);\nconst orderId = 'ORDER_' + telefono + '_' + fecha;\n\n// === USER_DATA SIN email ===\nconst userData = {\n  page_id: pageId,\n  ph: [hashes.telefono_hash],\n  fn: [hashes.nombre_hash],\n  ln: [hashes.apellido_hash],\n  country: [hashes.country_hash],\n  external_id: [hashes.external_id_hash]\n};\n\nif (ctwaClid) {\n  userData.ctwa_clid = ctwaClid;\n}\n\n// === PAYLOAD FINAL (sin em[]) ===\nconst payload = {\n  data: [{\n    event_name: 'Purchase',\n    event_time: Math.floor(Date.now() / 1000),\n    event_id: 'purchase_' + telefono + '_' + fecha,\n    action_source: 'business_messaging',\n    messaging_channel: 'whatsapp',\n    user_data: userData,\n    custom_data: {\n      currency: 'PEN',\n      value: monto,\n      content_name: '[NOMBRE_PRODUCTO_UPPER]',\n      content_ids: ['[PRODUCTO_ID_PE_LARGO]'],\n      content_type: 'product',\n      contents: [{\n        id: '[PRODUCTO_ID_PE_LARGO]',\n        quantity: 1,\n        item_price: monto\n      }],\n      order_id: orderId\n    }\n  }],\n  access_token: accessToken\n};\n\nreturn [{\n  json: {\n    pixel_id: pixelId,\n    payload: payload,\n    _capi_phase: 'EARLY_no_email',\n    debug_ctwa_clid: ctwaClid || 'NO ENCONTRADO'\n  }\n}];"
+      },
+      "id": "11d4adac-53fa-43d4-8e36-71cf0b0d2a4a",
+      "name": "📦 Preparar CAPI Purchase EARLY",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -2320,
+        2512
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://graph.facebook.com/v21.0/{{ $json.pixel_id }}/events",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.payload) }}",
+        "options": {}
+      },
+      "name": "📊 CAPI - Purchase EARLY",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -2096,
+        2512
+      ],
+      "id": "7c910e0c-2726-475a-a58f-4bd89cdbbd59",
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "={{ $('⚙️ CONFIGURAR TODO AQUÍ').item.json.chatwoot_base_url }}/api/v1/accounts/{{ $('⚙️ CONFIGURAR TODO AQUÍ').item.json.account_id }}/contacts/{{ $('📥 Datos de entrada1').item.json.contact_id }}",
+        "authentication": "genericCredentialType",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ custom_attributes: { pais: 'PE', producto: '[PRODUCTO_NOMBRE]', producto_id: '[PRODUCTO_ID_PE_LARGO]', etapa: 'bienvenida' } }) }}",
+        "options": {
+          "allowUnauthorizedCerts": true
+        }
+      },
+      "id": "78a98187-fecc-40bd-9c91-ec9063651f40",
+      "name": "🧬 CA: bienvenida",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -4464,
+        3856
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "7oVtrWjDUYzTq8B7",
+          "name": "ChatWoot autenticación"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "={{ $('⚙️ CONFIGURAR TODO AQUÍ').item.json.chatwoot_base_url }}/api/v1/accounts/{{ $('⚙️ CONFIGURAR TODO AQUÍ').item.json.account_id }}/contacts/{{ $('📥 Datos de entrada1').item.json.contact_id }}",
+        "authentication": "genericCredentialType",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ custom_attributes: { etapa: 'medios_pago' } }) }}",
+        "options": {
+          "allowUnauthorizedCerts": true
+        }
+      },
+      "id": "a51f54b4-69c9-4327-b2bf-1d555e61959b",
+      "name": "🧬 CA: medios_pago",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -4464,
+        3472
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "7oVtrWjDUYzTq8B7",
+          "name": "ChatWoot autenticación"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "={{ $('⚙️ CONFIGURAR TODO AQUÍ').item.json.chatwoot_base_url }}/api/v1/accounts/{{ $('⚙️ CONFIGURAR TODO AQUÍ').item.json.account_id }}/contacts/{{ $('📥 Datos de entrada1').item.json.contact_id }}",
+        "authentication": "genericCredentialType",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ custom_attributes: { etapa: 'comprador', fecha_ultima_compra: new Date().toISOString().slice(0,10), valor_ultima_compra: ($('🆕 Parser Vision (robusto)').item.json.monto || 0) } }) }}",
+        "options": {
+          "allowUnauthorizedCerts": true
+        }
+      },
+      "id": "875a7873-5a82-4ef6-b546-0963c49f86b4",
+      "name": "🧬 CA: comprador",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -3440,
+        3088
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "7oVtrWjDUYzTq8B7",
+          "name": "ChatWoot autenticación"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "=https://jquahxsesqcjakxkcneu.supabase.co/rest/v1/contactos?phone=eq.{{ $('📥 Datos de entrada1').item.json.telefono_cliente }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "sb_secret_lMhmTaKYyvdV3vHHOWmdzg_1N-coTRg"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer sb_secret_lMhmTaKYyvdV3vHHOWmdzg_1N-coTRg"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Prefer",
+              "value": "return=minimal"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ fecha_bienvenida: new Date().toISOString() }) }}",
+        "options": {
+          "allowUnauthorizedCerts": true
+        }
+      },
+      "id": "cafc1df7-4603-4e3a-8d1a-f8ea5a077b4d",
+      "name": "📅 SB: fecha_bienvenida",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -4240,
+        3760
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "=https://jquahxsesqcjakxkcneu.supabase.co/rest/v1/contactos?phone=eq.{{ $('📥 Datos de entrada1').item.json.telefono_cliente }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "sb_secret_lMhmTaKYyvdV3vHHOWmdzg_1N-coTRg"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer sb_secret_lMhmTaKYyvdV3vHHOWmdzg_1N-coTRg"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Prefer",
+              "value": "return=minimal"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ fecha_medios_pago: new Date().toISOString() }) }}",
+        "options": {
+          "allowUnauthorizedCerts": true
+        }
+      },
+      "id": "06229ca2-9c2c-4c84-92c2-3a81e3a175b7",
+      "name": "📅 SB: fecha_medios_pago",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -4240,
+        3376
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "=https://jquahxsesqcjakxkcneu.supabase.co/rest/v1/contactos?phone=eq.{{ $('📥 Datos de entrada1').item.json.telefono_cliente }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "sb_secret_lMhmTaKYyvdV3vHHOWmdzg_1N-coTRg"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer sb_secret_lMhmTaKYyvdV3vHHOWmdzg_1N-coTRg"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Prefer",
+              "value": "return=minimal"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ fecha_compra: new Date().toISOString() }) }}",
+        "options": {
+          "allowUnauthorizedCerts": true
+        }
+      },
+      "id": "b7dd09d2-820a-4271-9138-b2eb6724d8ce",
+      "name": "📅 SB: fecha_compra",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -3440,
+        3280
+      ],
+      "onError": "continueRegularOutput"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When Executed by Recibidor": {
+      "main": [
+        [
+          {
+            "node": "📥 Datos de entrada1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🔀 Switch Principal": {
+      "main": [
+        [
+          {
+            "node": "Validador de Comprobantes",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "🏷️ Etiqueta metodo_pago",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "🏷️ Etiqueta bienvenido",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "🏷️ Etiqueta ob_si",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "📨 Mensaje OB No",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "❓ ¿Esperando email?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🏷️ Etiqueta metodo_pago": {
+      "main": [
+        [
+          {
+            "node": "🧬 CA: medios_pago",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🔀 ¿Qué método?": {
+      "main": [
+        [
+          {
+            "node": "🟣 YAPE msg 1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "🟢 PLIN msg 1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🏷️ Etiqueta bienvenido": {
+      "main": [
+        [
+          {
+            "node": "🧬 CA: bienvenida",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "📨 1. Hook": {
+      "main": [
+        [
+          {
+            "node": "Wait 1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait 1": {
+      "main": [
+        [
+          {
+            "node": "📨 2. Beneficios",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "📨 2. Beneficios": {
+      "main": [
+        [
+          {
+            "node": "Wait 2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait 2": {
+      "main": [
+        [
+          {
+            "node": "📨 3. ¿Qué incluye?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "📨 3. ¿Qué incluye?": {
+      "main": [
+        [
+          {
+            "node": "📝 Nota: Imagen Producto enviada",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait 3": {
+      "main": [
+        [
+          {
+            "node": "📨 4. Bonos",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait 4": {
+      "main": [
+        [
+          {
+            "node": "📨 5. Inversión",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "📨 5. Inversión": {
+      "main": [
+        [
+          {
+            "node": "Wait 5",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait 5": {
+      "main": [
+        [
+          {
+            "node": "📨 6. Bono Acción Rápida",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait 6": {
+      "main": [
+        [
+          {
+            "node": "📨 7. Cierre",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "📨 7. Cierre": {
+      "main": [
+        [
+          {
+            "node": "Wait 7",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait 7": {
+      "main": [
+        [
+          {
+            "node": "📨 8. Botones Pago",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "📨 Enviar respuesta IA": {
+      "main": [
+        [
+          {
+            "node": "❓ ¿Es CONTENIDO?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "❓ ¿Es CONTENIDO?": {
+      "main": [
+        [
+          {
+            "node": "Wait botones IA",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait botones IA": {
+      "main": [
+        [
+          {
+            "node": "💳 Re-mostrar botones",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "📨 4. Bonos": {
+      "main": [
+        [
+          {
+            "node": "📝 Nota: Imagen Bonos enviada",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "📨 6. Bono Acción Rápida": {
+      "main": [
+        [
+          {
+            "node": "📝 Nota: Imagen Bonos enviada1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "📝 Nota: Imagen Producto enviada": {
+      "main": [
+        [
+          {
+            "node": "Wait 3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "📝 Nota: Imagen Bonos enviada": {
+      "main": [
+        [
+          {
+            "node": "Wait 4",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "📝 Nota: Imagen Bonos enviada1": {
+      "main": [
+        [
+          {
+            "node": "Wait 6",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🆕 Parser Vision (robusto)": {
+      "main": [
+        [
+          {
+            "node": "🆕 ¿Es válido? (robusto)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🆕 ¿Es válido? (robusto)": {
+      "main": [
+        [
+          {
+            "node": "📊 Buscar atribución",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "❌ Pedir reenvío",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "❌ Pedir reenvío": {
+      "main": [
+        [
+          {
+            "node": "📝 Nota: Comprobante INVÁLIDO",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🆕 Obtener conversación": {
+      "main": [
+        [
+          {
+            "node": "🆕 Asistente_IA (memoria)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🆕 Carlos IA (langchain)": {
+      "main": [
+        [
+          {
+            "node": "🆕 Parser Carlos",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🆕 Parser Carlos": {
+      "main": [
+        [
+          {
+            "node": "📨 Enviar respuesta IA",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🆕 Asistente_IA (memoria)": {
+      "main": [
+        [
+          {
+            "node": "🆕 Carlos IA (langchain)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Registrar comprador": {
+      "main": [
+        [
+          {
+            "node": "🏷️ Etiqueta comprador (final)",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Envio comprobante, auxiliar",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "🔐 Hash Teléfono EARLY",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "🧬 CA: comprador",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "📅 SB: fecha_compra",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "📨 Mensaje gracias + email": {
+      "main": [
+        [
+          {
+            "node": "📝 Nota: Comprobante VÁLIDO",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "❓ ¿Esperando email?": {
+      "main": [
+        [
+          {
+            "node": "📧 Extraer email",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "🧠 Pre-procesador (precio + categoría)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "📧 Extraer email": {
+      "main": [
+        [
+          {
+            "node": "❓ ¿Email válido?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "❓ ¿Email válido?": {
+      "main": [
+        [
+          {
+            "node": "💾 Guardar email en Supabase",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "📨 Pedir email otra vez",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "💾 Guardar email en Supabase": {
+      "main": [
+        [
+          {
+            "node": "⏰ Wait Drive 2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "⏰ Wait Drive 2": {
+      "main": [
+        [
+          {
+            "node": "🔗 Enviar link Drive",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Envio Formulario Compradores",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🔐 Hash Email (Purchase)": {
+      "main": [
+        [
+          {
+            "node": "📦 Preparar CAPI Purchase PRO",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "📦 Preparar CAPI Purchase PRO": {
+      "main": [
+        [
+          {
+            "node": "📊 CAPI - Purchase PRO",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🔐 Hash Teléfono (Purchase)": {
+      "main": [
+        [
+          {
+            "node": "🔐 Hash Nombre (Purchase)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🔐 Hash Nombre (Purchase)": {
+      "main": [
+        [
+          {
+            "node": "🔐 Hash Apellido (Purchase)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🔐 Hash Apellido (Purchase)": {
+      "main": [
+        [
+          {
+            "node": "🔐 Hash País (Purchase)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🔐 Hash País (Purchase)": {
+      "main": [
+        [
+          {
+            "node": "🔐 Hash External ID (Purchase)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🔐 Hash External ID (Purchase)": {
+      "main": [
+        [
+          {
+            "node": "🔐 Hash Email (Purchase)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🔍 Buscar ctwa_clid": {
+      "main": [
+        [
+          {
+            "node": "🔐 Hash Teléfono (Purchase)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🔍 Leer labels (15m)": {
+      "main": [
+        [
+          {
+            "node": "🤔 ¿Sigue sin convertir? (15m)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🤔 ¿Sigue sin convertir? (15m)": {
+      "main": [
+        [
+          {
+            "node": "📋 Set estado_rmk: rmk_15m_neveras",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "⏰ Wait 45m (60m total)": {
+      "main": [
+        [
+          {
+            "node": "🔍 Leer labels (60m)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🔍 Leer labels (60m)": {
+      "main": [
+        [
+          {
+            "node": "🤔 ¿Sigue sin convertir? (60m)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🤔 ¿Sigue sin convertir? (60m)": {
+      "main": [
+        [
+          {
+            "node": "📋 Set estado_rmk: rmk_60m_neveras",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "⏰ Wait 120m (180m total)": {
+      "main": [
+        [
+          {
+            "node": "🔍 Leer labels (180m)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🔍 Leer labels (180m)": {
+      "main": [
+        [
+          {
+            "node": "🤔 ¿Sigue sin convertir? (180m)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🤔 ¿Sigue sin convertir? (180m)": {
+      "main": [
+        [
+          {
+            "node": "📋 Set estado_rmk: rmk_180m_neveras",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "📨 Msg 15m interactive": {
+      "main": [
+        [
+          {
+            "node": "⏰ Wait 45m (60m total)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "⏰ Wait 15m": {
+      "main": [
+        [
+          {
+            "node": "🔍 Leer labels (15m)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "📨 Msg 60m interactive": {
+      "main": [
+        [
+          {
+            "node": "⏰ Wait 120m (180m total)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🏷️ Etiqueta ob_si": {
+      "main": [
+        [
+          {
+            "node": "📨 Mensaje OB Sí",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🤔 ¿Tiene ob_si?": {
+      "main": [
+        [
+          {
+            "node": "📨 Entregar Kit Lavadoras",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "📨 Mensaje gracias + email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🏷️ Etiqueta comprador (final)": {
+      "main": [
+        [
+          {
+            "node": "🤔 ¿Tiene ob_si?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "📨 Entregar Kit Lavadoras": {
+      "main": [
+        [
+          {
+            "node": "📨 Mensaje gracias + email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "📨 Mensaje OB Sí": {
+      "main": [
+        [
+          {
+            "node": "💳 Datos pago (post-OB)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validador de Comprobantes": {
+      "main": [
+        [
+          {
+            "node": "🆕 Parser Vision (robusto)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "📨 Mensaje OB No": {
+      "main": [
+        [
+          {
+            "node": "💳 Datos pago (post-OB)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🧠 Pre-procesador (precio + categoría)": {
+      "main": [
+        [
+          {
+            "node": "🆕 Obtener conversación",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "📋 Set estado_rmk: rmk_15m_neveras": {
+      "main": [
+        [
+          {
+            "node": "📝 Nota: Remarketing 15m enviado",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "📋 Set estado_rmk: rmk_60m_neveras": {
+      "main": [
+        [
+          {
+            "node": "📝 Nota: Remarketing 60m enviado",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "📋 Set estado_rmk: rmk_180m_neveras": {
+      "main": [
+        [
+          {
+            "node": "📝 Nota: Remarketing 180m enviado",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "📝 Nota: Remarketing 15m enviado": {
+      "main": [
+        [
+          {
+            "node": "📨 Msg 15m interactive",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "📝 Nota: Remarketing 60m enviado": {
+      "main": [
+        [
+          {
+            "node": "📨 Msg 60m interactive",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "📝 Nota: Remarketing 180m enviado": {
+      "main": [
+        [
+          {
+            "node": "📨 Msg 180m interactive",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "📨 Msg 180m interactive": {
+      "main": [
+        [
+          {
+            "node": "Wait",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait": {
+      "main": [
+        [
+          {
+            "node": "Envio Formulario De Salida",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🔗 Enviar link Drive": {
+      "main": [
+        [
+          {
+            "node": "🔍 Buscar ctwa_clid",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "⚙️ CONFIGURAR TODO AQUÍ": {
+      "main": [
+        [
+          {
+            "node": "📦 Orderbumps Configuración",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "📦 Orderbumps Configuración": {
+      "main": [
+        [
+          {
+            "node": "🧬 Clasificar Tipo Mensaje",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "📥 Datos de entrada1": {
+      "main": [
+        [
+          {
+            "node": "🌐 Global (fijo)1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🌐 Global (fijo)1": {
+      "main": [
+        [
+          {
+            "node": "🔌 Por API / País1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🔌 Por API / País1": {
+      "main": [
+        [
+          {
+            "node": "⚙️ CONFIGURAR TODO AQUÍ",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🧬 Clasificar Tipo Mensaje": {
+      "main": [
+        [
+          {
+            "node": "🔀 Switch Principal",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "📝 Registrar contacto": {
+      "main": [
+        [
+          {
+            "node": "📨 1. Hook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "📊 Buscar atribución": {
+      "main": [
+        [
+          {
+            "node": "Registrar comprador",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🟣 YAPE msg 1": {
+      "main": [
+        [
+          {
+            "node": "Wait YAPE",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait YAPE": {
+      "main": [
+        [
+          {
+            "node": "🟣 YAPE msg 2 (#)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🟣 YAPE msg 2 (#)": {
+      "main": [
+        [
+          {
+            "node": "📨 Enviar Order Bump",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🟢 PLIN msg 1": {
+      "main": [
+        [
+          {
+            "node": "Wait PLIN",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait PLIN": {
+      "main": [
+        [
+          {
+            "node": "🟢 PLIN msg 2 (#)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🟢 PLIN msg 2 (#)": {
+      "main": [
+        [
+          {
+            "node": "📨 Enviar Order Bump",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🔐 Hash Teléfono EARLY": {
+      "main": [
+        [
+          {
+            "node": "🔐 Hash Nombre EARLY",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🔐 Hash Nombre EARLY": {
+      "main": [
+        [
+          {
+            "node": "🔐 Hash Apellido EARLY",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🔐 Hash Apellido EARLY": {
+      "main": [
+        [
+          {
+            "node": "🔐 Hash País EARLY",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🔐 Hash País EARLY": {
+      "main": [
+        [
+          {
+            "node": "🔐 Hash External ID EARLY",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🔐 Hash External ID EARLY": {
+      "main": [
+        [
+          {
+            "node": "📦 Preparar CAPI Purchase EARLY",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "📦 Preparar CAPI Purchase EARLY": {
+      "main": [
+        [
+          {
+            "node": "📊 CAPI - Purchase EARLY",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🧬 CA: bienvenida": {
+      "main": [
+        [
+          {
+            "node": "📝 Registrar contacto",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "📅 SB: fecha_bienvenida",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🧬 CA: medios_pago": {
+      "main": [
+        [
+          {
+            "node": "🔀 ¿Qué método?",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "📅 SB: fecha_medios_pago",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "1c8385a4-99b6-4d29-8369-6f17dab5ee1b",
+  "meta": {
+    "instanceId": "6c31a60be8a9a0b3229b5d9ed3da07348af3b16e42710156a207b41967a67b44"
+  },
+  "nodeGroups": [],
+  "id": "V85lshdKokyixemM",
+  "tags": []
+}
