@@ -20,7 +20,7 @@ const PASOS = [
 ] as const;
 
 // Pasos ya implementados (los demás se marcan "pronto").
-const DISPONIBLES = new Set(["identidad", "mensajes"]);
+const DISPONIBLES = new Set(["identidad", "mensajes", "imagenes"]);
 
 export function ProductoWizard({ producto }: { producto?: Producto }) {
   const router = useRouter();
@@ -28,6 +28,7 @@ export function ProductoWizard({ producto }: { producto?: Producto }) {
   const [paso, setPaso] = useState<string>("identidad");
   const [estado, setEstado] = useState<"idle" | "guardando" | "ok" | "error">("idle");
   const [genEstado, setGenEstado] = useState<string>("");
+  const [imgEstado, setImgEstado] = useState<string>("");
 
   const esNuevo = !p.id;
 
@@ -90,6 +91,31 @@ export function ProductoWizard({ producto }: { producto?: Producto }) {
       setGenEstado("✓ Listo. Revisa y ajusta antes de guardar.");
     } catch {
       setGenEstado("⚠️ No se pudo contactar al proveedor.");
+    }
+  }
+
+  async function generarImagenes(tipos?: TipoImagen[]) {
+    setImgEstado(tipos ? `Regenerando ${tipos.join(", ")}…` : "Generando 5 imágenes… (puede tardar)");
+    try {
+      const res = await fetch("/api/images", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ producto: p, tipos }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setImgEstado("⚠️ " + (data.error ?? "Error al generar imágenes"));
+        return;
+      }
+      setP((prev) => ({ ...prev, imagenes: { ...prev.imagenes, ...(data.imagenes ?? {}) } }));
+      const errs = Object.entries(data.errores ?? {});
+      setImgEstado(
+        errs.length
+          ? "⚠️ Fallaron: " + errs.map(([t, m]) => `${t} (${m})`).join("; ")
+          : "✓ Imágenes generadas y subidas. Guarda para conservar los links.",
+      );
+    } catch {
+      setImgEstado("⚠️ No se pudo generar.");
     }
   }
 
@@ -255,6 +281,60 @@ export function ProductoWizard({ producto }: { producto?: Producto }) {
               className="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-white disabled:opacity-60"
             >
               {estado === "guardando" ? "Guardando…" : "Guardar mensajes"}
+            </button>
+            {estado === "ok" && <span className="text-sm text-accent-2">✓ Guardado</span>}
+            {estado === "error" && <span className="text-sm text-red-400">Error al guardar</span>}
+          </div>
+        </section>
+      )}
+
+      {paso === "imagenes" && (
+        <section className="space-y-5">
+          <div className="flex flex-wrap items-center gap-3 rounded-xl border border-border bg-panel p-4">
+            <button
+              onClick={() => generarImagenes()}
+              className="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-white"
+            >
+              🖼️ Generar 5 imágenes
+            </button>
+            <span className="text-sm text-muted">{imgEstado}</span>
+          </div>
+          <p className="text-xs text-muted">
+            Gemini genera la escena (sin texto) y el servidor superpone el overlay
+            del Paso 2. Las imágenes se suben a tu VPS; se guardan solo los links.
+          </p>
+
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {TIPOS_IMAGEN.map((t) => (
+              <div key={t} className="overflow-hidden rounded-xl border border-border bg-panel">
+                <div className="flex aspect-square items-center justify-center bg-bg">
+                  {p.imagenes[t] ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={p.imagenes[t]} alt={t} className="h-full w-full object-cover" />
+                  ) : (
+                    <span className="text-2xl opacity-30">🖼️</span>
+                  )}
+                </div>
+                <div className="flex items-center justify-between gap-2 p-3">
+                  <span className="font-mono text-xs text-muted">{t}</span>
+                  <button
+                    onClick={() => generarImagenes([t])}
+                    className="rounded border border-border px-2 py-1 text-xs text-muted hover:text-text"
+                  >
+                    Regenerar
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div className="sticky bottom-0 flex items-center gap-3 border-t border-border bg-bg/80 py-4 backdrop-blur">
+            <button
+              onClick={guardar}
+              disabled={estado === "guardando"}
+              className="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-white disabled:opacity-60"
+            >
+              {estado === "guardando" ? "Guardando…" : "Guardar imágenes"}
             </button>
             {estado === "ok" && <span className="text-sm text-accent-2">✓ Guardado</span>}
             {estado === "error" && <span className="text-sm text-red-400">Error al guardar</span>}
