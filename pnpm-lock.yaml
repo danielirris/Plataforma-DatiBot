@@ -15,11 +15,18 @@ importers:
         specifier: ^5.7.0
         version: 5.9.3
 
+  apps/dashboard-service: {}
+
+  apps/extractor-service: {}
+
   apps/web:
     dependencies:
       '@plataforma/config':
         specifier: workspace:*
         version: link:../../packages/config
+      '@plataforma/products':
+        specifier: workspace:*
+        version: link:../../packages/products
       '@plataforma/ui':
         specifier: workspace:*
         version: link:../../packages/ui
@@ -53,6 +60,8 @@ importers:
         version: 5.9.3
 
   packages/config: {}
+
+  packages/products: {}
 
   packages/ui:
     dependencies:

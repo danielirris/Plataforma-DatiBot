@@ -17,6 +17,9 @@ dist/
 .env*.local
 .config-store.json
 
+# almacén de productos (uno por archivo)
+.products-store/
+
 # python
 .venv/
 __pycache__/
