@@ -4,7 +4,7 @@ import { Sidebar } from "./_components/Sidebar";
 
 export const metadata: Metadata = {
   title: "Mi Plataforma",
-  description: "Shell unificado — Flujos, Dashboard ads y Extractor",
+  description: "Shell unificado — Flujos, Dashboard ads y Editor de videos",
 };
 
 export default function RootLayout({

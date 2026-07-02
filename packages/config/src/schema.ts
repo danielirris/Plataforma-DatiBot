@@ -9,7 +9,7 @@
 //   3. (Opcional) agrúpalo visualmente con `section`.
 // ─────────────────────────────────────────────────────────────
 
-export type FieldType = "text" | "password" | "number" | "url";
+export type FieldType = "text" | "password" | "number" | "url" | "select";
 
 export interface ConfigField {
   /** clave canónica dentro del grupo, ej. "openai_api_key" */
@@ -21,6 +21,8 @@ export interface ConfigField {
   envName?: string;
   placeholder?: string;
   help?: string;
+  /** opciones para type:"select"; el primero es el valor por defecto */
+  options?: string[];
 }
 
 export interface ConfigGroup {
@@ -78,11 +80,11 @@ export const CONFIG_GROUPS: ConfigGroup[] = [
     ],
   },
 
-  // ── Extractor ──────────────────────────────────────────────────
+  // ── Editor de videos (antes "Extractor"; id/envTarget internos intactos) ──
   {
     id: "extractor",
-    title: "Extractor",
-    section: "Extractor",
+    title: "Editor de videos",
+    section: "Editor de videos",
     envTarget: "apps/extractor-service/.env",
     note: "OpenAI es obligatorio (transcripción + análisis). ElevenLabs solo para voz. Groq/Gemini no se usan hoy.",
     fields: [
@@ -98,6 +100,38 @@ export const CONFIG_GROUPS: ConfigGroup[] = [
       { key: "gemini_api_key", label: "Gemini API Key", type: "password", envName: "GEMINI_API_KEY", help: "Reservado — no se usa hoy. Puedes dejarlo vacío." },
       { key: "whatsapp_link", label: "WhatsApp link (CTA)", type: "url", envName: "WHATSAPP_LINK" },
       { key: "port", label: "Puerto del servicio", type: "number", envName: "PORT", placeholder: "8000", help: "Déjalo en 8000. Cambiarlo rompe el embed a menos que ajustes NEXT_PUBLIC_EXTRACTOR_URL." },
+    ],
+  },
+
+  // ── Generación con IA (imágenes y texto) ───────────────────────
+  // envTarget null: lo consume el shell vía readConfig() (API routes de
+  // /api/generate y /api/images), no un servicio Python.
+  {
+    id: "ia",
+    title: "Generación con IA",
+    section: "Generación con IA",
+    envTarget: null,
+    note: "Gemini genera las imágenes y, por defecto, también el texto. La key de OpenAI vive en «Compartidas» y se reutiliza si eliges OpenAI como proveedor de texto.",
+    fields: [
+      { key: "gemini_api_key", label: "Gemini API Key", type: "password", help: "Con acceso a generación de imágenes." },
+      { key: "text_provider", label: "Proveedor de texto", type: "select", options: ["Gemini", "OpenAI"], help: "Quién redacta los mensajes. Default: Gemini." },
+    ],
+  },
+
+  // ── Servidor de imágenes (VPS) ─────────────────────────────────
+  {
+    id: "vps",
+    title: "Servidor de imágenes (VPS)",
+    section: "Generación con IA",
+    envTarget: null,
+    note: "Adonde se suben las imágenes generadas por SFTP. El link público final = URL base + nombre de archivo.",
+    fields: [
+      { key: "vps_host", label: "Host", type: "text", placeholder: "cdn.midominio.com o IP", help: "IP o dominio del VPS." },
+      { key: "vps_port", label: "Puerto", type: "number", placeholder: "22", help: "Puerto SSH/SFTP. Default 22." },
+      { key: "vps_user", label: "Usuario", type: "text", help: "Usuario SSH/SFTP." },
+      { key: "vps_auth", label: "Clave privada (ruta) o contraseña", type: "password", help: "Prefiere una ruta a clave privada." },
+      { key: "vps_remote_dir", label: "Directorio remoto público", type: "text", placeholder: "/var/www/html/img/productos" },
+      { key: "vps_public_base_url", label: "URL pública base", type: "text", placeholder: "https://cdn.midominio.com/img/productos" },
     ],
   },
 

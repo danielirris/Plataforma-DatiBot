@@ -78,21 +78,41 @@ export function ConfigForm({ initial }: { initial: ConfigStore }) {
                     className="flex flex-col gap-1 text-sm"
                   >
                     <span className="text-muted">{field.label}</span>
-                    <input
-                      type={
-                        field.type === "password"
-                          ? "password"
-                          : field.type === "number"
-                            ? "number"
-                            : "text"
-                      }
-                      value={store[group.id]?.[field.key] ?? ""}
-                      placeholder={field.placeholder}
-                      onChange={(e) =>
-                        setField(group.id, field.key, e.target.value)
-                      }
-                      className="rounded-lg border border-border bg-bg px-3 py-2 text-text outline-none focus:border-accent"
-                    />
+                    {field.type === "select" ? (
+                      <select
+                        value={
+                          store[group.id]?.[field.key] ??
+                          field.options?.[0] ??
+                          ""
+                        }
+                        onChange={(e) =>
+                          setField(group.id, field.key, e.target.value)
+                        }
+                        className="rounded-lg border border-border bg-bg px-3 py-2 text-text outline-none focus:border-accent"
+                      >
+                        {field.options?.map((opt) => (
+                          <option key={opt} value={opt}>
+                            {opt}
+                          </option>
+                        ))}
+                      </select>
+                    ) : (
+                      <input
+                        type={
+                          field.type === "password"
+                            ? "password"
+                            : field.type === "number"
+                              ? "number"
+                              : "text"
+                        }
+                        value={store[group.id]?.[field.key] ?? ""}
+                        placeholder={field.placeholder}
+                        onChange={(e) =>
+                          setField(group.id, field.key, e.target.value)
+                        }
+                        className="rounded-lg border border-border bg-bg px-3 py-2 text-text outline-none focus:border-accent"
+                      />
+                    )}
                     {field.help && (
                       <span className="text-xs text-muted">{field.help}</span>
                     )}

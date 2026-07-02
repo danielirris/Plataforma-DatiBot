@@ -15,6 +15,6 @@ export const NAV_ITEMS: NavItem[] = [
   { href: "/", label: "Inicio", icon: "🏠" },
   { href: "/flujos", label: "Creador de Flujos", icon: "🔀" },
   { href: "/dashboard", label: "Dashboard ads", icon: "📊" },
-  { href: "/extractor", label: "Extractor", icon: "🎬" },
+  { href: "/extractor", label: "Editor de videos", icon: "🎬" },
   { href: "/configuracion", label: "Configuración", icon: "⚙️" },
 ];
