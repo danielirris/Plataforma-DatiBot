@@ -135,6 +135,25 @@ export const CONFIG_GROUPS: ConfigGroup[] = [
     ],
   },
 
+  // ── Creador de Flujos: datos de emisión (no por país) ──────────
+  // El motor resuelve estos tokens ([CATEGORIA_PRODUCTO], [DRIVE_CONTENIDO_PRODUCTO],
+  // [FORMS_GLE_COMPRADORES_*]…). Los formularios: un solo valor sirve para todos
+  // los países (el motor colapsa los sufijos _PE/_CO al mismo campo).
+  {
+    id: "flujos_general",
+    title: "Creador de Flujos — datos de emisión",
+    section: "Creador de Flujos",
+    envTarget: null,
+    note: "Valores que el emisor inyecta en el workflow (no dependen del país).",
+    fields: [
+      { key: "categoria_producto", label: "Categoría del producto", type: "text", placeholder: "neveras" },
+      { key: "descripcion_corta", label: "Descripción corta", type: "text" },
+      { key: "drive_contenido", label: "Drive de contenido (entrega)", type: "url" },
+      { key: "forms_compradores", label: "Formulario compradores (Google Forms)", type: "url" },
+      { key: "forms_salida", label: "Formulario salida / no compradores", type: "url" },
+    ],
+  },
+
   // ── Creador de Flujos: base por país ───────────────────────────
   // Estos grupos NO generan .env. Los consume el puente del navegador
   // (apps/web/public/tools/flujos/bridge.js), que inyecta estos valores

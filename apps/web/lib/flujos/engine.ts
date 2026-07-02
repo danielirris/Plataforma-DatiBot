@@ -25,6 +25,8 @@ export interface EmitirParams {
   usarOrderbump: boolean;
   /** grupo flujos_XX de la config del país: capi_token, pixel_id, phone_id, … */
   countryConfig: Record<string, string>;
+  /** grupo flujos_general: categoría, descripción, drive, formularios (no por país) */
+  generalConfig?: Record<string, string>;
 }
 
 export interface ResultadoEmision {
@@ -45,6 +47,7 @@ export function emitir({
   tipo,
   usarOrderbump,
   countryConfig,
+  generalConfig = {},
 }: EmitirParams): ResultadoEmision {
   const template = TEMPLATES[tipo];
   if (!template) throw new Error(`No hay plantilla para el tipo "${tipo}".`);
@@ -76,6 +79,12 @@ export function emitir({
     precio_rmk_15m: precios.rmk_15m,
     precio_rmk_60m: precios.rmk_60m,
     precio_rmk_180m: precios.rmk_180m,
+    // datos de emisión de Creador de Flujos (no por país)
+    categoria_producto: generalConfig.categoria_producto || undefined,
+    descripcion_corta: generalConfig.descripcion_corta || undefined,
+    drive_contenido: generalConfig.drive_contenido || undefined,
+    forms_compradores: generalConfig.forms_compradores || undefined,
+    forms_salida: generalConfig.forms_salida || undefined,
   };
 
   // fieldValues (Capa 1): mensajes + links de imágenes. Vacío NO sobrescribe.

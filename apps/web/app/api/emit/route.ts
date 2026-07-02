@@ -31,6 +31,7 @@ export async function POST(req: Request) {
 
   const store = await readConfig();
   const countryConfig = store[`flujos_${body.pais.toLowerCase()}`] ?? {};
+  const generalConfig = store["flujos_general"] ?? {};
 
   let resultado;
   try {
@@ -40,6 +41,7 @@ export async function POST(req: Request) {
       tipo: body.tipo,
       usarOrderbump: !!body.usarOrderbump,
       countryConfig,
+      generalConfig,
     });
   } catch (e) {
     return NextResponse.json(
