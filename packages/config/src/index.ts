@@ -56,8 +56,12 @@ export async function regenerateEnvFiles(store: ConfigStore): Promise<void> {
           v = shared[f.envName.toLowerCase()];
         }
         if (!v && f.key === "openai_api_key") v = shared["openai_api_key"] ?? "";
-        return `${f.envName}=${v}`;
-      });
+        return { name: f.envName as string, value: v };
+      })
+      // Solo escribimos valores no vacíos: un `VAR=` vacío pisaría el valor por
+      // defecto de la app y rompe campos tipados (p.ej. PORT=int en pydantic).
+      .filter((e) => e.value !== "")
+      .map((e) => `${e.name}=${e.value}`);
 
     const target = path.join(REPO_ROOT, group.envTarget);
     await fs.mkdir(path.dirname(target), { recursive: true });
