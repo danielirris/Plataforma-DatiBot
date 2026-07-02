@@ -30,11 +30,6 @@
         },
       );
     });
-    var px = store["flujos_pixels"] || {};
-    if (M.PIXELS) {
-      if (px.hombres) M.PIXELS.hombres = px.hombres;
-      if (px.mujeres) M.PIXELS.mujeres = px.mujeres;
-    }
   }
 
   // Detecta el país activo por el texto de la pestaña activa.
@@ -50,17 +45,24 @@
     );
   }
 
-  // Rellena el campo global de token Graph con el del país activo.
-  function syncGraphToken(M) {
+  // Fija el valor de un input (por id) y notifica a la app.
+  function setInput(id, value) {
+    if (!value) return;
+    var f = document.getElementById(id);
+    if (f && f.value !== value) {
+      f.value = value;
+      f.dispatchEvent(new Event("input", { bubbles: true }));
+    }
+  }
+
+  // Rellena, para el país activo: el token Graph global (#sec_graph) y el
+  // píxel (#pixel_id). El píxel por país tiene prioridad sobre el de categoría.
+  function syncCountryFields(M) {
     var code = activeCode(M);
     if (!code) return;
     var cfg = store[MAP[code]] || {};
-    if (!cfg.capi_token) return;
-    var f = document.getElementById("sec_graph");
-    if (f && f.value !== cfg.capi_token) {
-      f.value = cfg.capi_token;
-      f.dispatchEvent(new Event("input", { bubbles: true }));
-    }
+    setInput("sec_graph", cfg.capi_token);
+    setInput("pixel_id", cfg.pixel_id);
   }
 
   function boot() {
@@ -73,19 +75,17 @@
         var M = window.EmbudoMotor;
         applyCountryData(M);
 
-        // Sincroniza el token al cargar y cada vez que se cambia de país
-        // (las pestañas de país tienen clase .tab).
-        setTimeout(function () {
-          syncGraphToken(M);
-        }, 300);
-        document.addEventListener(
-          "click",
-          function (e) {
-            var tab = e.target && e.target.closest && e.target.closest(".tab");
-            if (tab) setTimeout(function () { syncGraphToken(M); }, 80);
-          },
-          true,
-        );
+        // Sondeo ligero: cada 250 ms detecta si cambió el país activo y reaplica
+        // token + píxel. Robusto frente al re-render de la app (evita depender de
+        // detectar el clic, que compite con la reconstrucción del formulario).
+        var lastCode = null;
+        setInterval(function () {
+          var code = activeCode(M);
+          if (code && code !== lastCode) {
+            lastCode = code;
+            syncCountryFields(M);
+          }
+        }, 250);
       })
       .catch(function (e) {
         console.warn("[flujos-bridge] no se pudo cargar la config:", e);

@@ -108,17 +108,6 @@ export const CONFIG_GROUPS: ConfigGroup[] = [
   ...flujosPais("flujos_pe", "🇵🇪 Perú"),
   ...flujosPais("flujos_cl", "🇨🇱 Chile"),
   ...flujosPais("flujos_co", "🇨🇴 Colombia"),
-  {
-    id: "flujos_pixels",
-    title: "Creador de Flujos — Píxeles (por categoría)",
-    section: "Creador de Flujos",
-    envTarget: null,
-    note: "El píxel de Meta va por categoría, no por país.",
-    fields: [
-      { key: "hombres", label: "Píxel — categoría hombres", type: "text", placeholder: "923766937348701" },
-      { key: "mujeres", label: "Píxel — categoría mujeres", type: "text" },
-    ],
-  },
 ];
 
 /** Genera un grupo de configuración base para un país del Creador de Flujos. */
@@ -132,6 +121,7 @@ function flujosPais(id: string, title: string): ConfigGroup[] {
       fields: [
         { key: "capi_token", label: "Token Facebook Graph / CAPI", type: "password", help: "El token de Meta para este país (CAPI + envío de WhatsApp)." },
         { key: "chatwoot_token", label: "Token de Chatwoot", type: "password" },
+        { key: "pixel_id", label: "Píxel ID", type: "text", help: "Píxel de Meta para este país. Si lo dejas vacío, la app usa el de la categoría." },
         { key: "phone_id", label: "Phone ID (WhatsApp)", type: "text" },
         { key: "account_id", label: "Account ID (Chatwoot)", type: "text" },
         { key: "page_id", label: "Page ID", type: "text" },
