@@ -11,7 +11,9 @@ import {
   RANURAS_MENSAJE,
   TIPOS_IMAGEN,
   TIPOS_ANGULO,
+  MECANISMOS_GANCHO,
   type Angulo,
+  type Gancho,
   type Avatar,
   type ObjecionCompra,
   type ObjecionUso,
@@ -68,6 +70,7 @@ export function ProductoWizard({ producto }: { producto?: Producto }) {
   const [imgEstado, setImgEstado] = useState<string>("");
   const [avatarEstado, setAvatarEstado] = useState<string>("");
   const [angulosEstado, setAngulosEstado] = useState<string>("");
+  const [ganchosEstado, setGanchosEstado] = useState<Record<string, string>>({});
 
   const esNuevo = !p.id;
 
@@ -160,6 +163,49 @@ export function ProductoWizard({ producto }: { producto?: Producto }) {
       }
     } catch {
       setAngulosEstado("⚠️ No se pudo contactar al proveedor.");
+    }
+  }
+
+  function setGancho(
+    ai: number,
+    hi: number,
+    campo: keyof Gancho,
+    valor: string,
+  ) {
+    setP((prev) => {
+      const angulos = [...prev.angulos];
+      const hooks = [...(angulos[ai].hooks ?? [])];
+      hooks[hi] = { ...hooks[hi], [campo]: valor };
+      angulos[ai] = { ...angulos[ai], hooks };
+      return { ...prev, angulos };
+    });
+  }
+
+  async function generarGanchos(anguloId: string) {
+    if (!p.id) {
+      setGanchosEstado((s) => ({ ...s, [anguloId]: "⚠️ Guarda el producto primero." }));
+      return;
+    }
+    setGanchosEstado((s) => ({ ...s, [anguloId]: "Generando 3 ganchos…" }));
+    try {
+      const res = await fetch(`/api/productos/${p.id}/generar-ganchos`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ producto: p, angulo_id: anguloId }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setGanchosEstado((s) => ({ ...s, [anguloId]: "⚠️ " + (data.error ?? "Error") }));
+        return;
+      }
+      setP((prev) => ({ ...prev, angulos: data.angulos }));
+      const err = data.errores?.[anguloId];
+      setGanchosEstado((s) => ({
+        ...s,
+        [anguloId]: err ? "⚠️ " + err : "✓ 3 ganchos generados.",
+      }));
+    } catch {
+      setGanchosEstado((s) => ({ ...s, [anguloId]: "⚠️ No se pudo generar." }));
     }
   }
 
@@ -582,6 +628,61 @@ export function ProductoWizard({ producto }: { producto?: Producto }) {
                       />
                     </label>
                   ))}
+
+                  {/* Ganchos del ángulo */}
+                  <div className="mt-2 border-t border-border pt-3">
+                    <div className="mb-2 flex items-center justify-between gap-2">
+                      <span className="text-xs font-medium">
+                        Ganchos ({ang.hooks?.length ?? 0}/3)
+                      </span>
+                      <button
+                        onClick={() => generarGanchos(ang.id)}
+                        className="shrink-0 rounded border border-border px-2 py-1 text-xs text-muted hover:text-text"
+                      >
+                        Regenerar los 3 ganchos
+                      </button>
+                    </div>
+                    {ganchosEstado[ang.id] && (
+                      <p className="mb-2 text-xs text-muted">{ganchosEstado[ang.id]}</p>
+                    )}
+                    {(!ang.hooks || ang.hooks.length === 0) && (
+                      <p className="text-xs text-muted">
+                        Aún no hay ganchos. Pulsa “Regenerar los 3 ganchos”.
+                      </p>
+                    )}
+                    <div className="space-y-2">
+                      {(ang.hooks ?? []).map((g, hi) => (
+                        <div key={hi} className="rounded-lg border border-border bg-bg p-2">
+                          <textarea
+                            value={g.texto}
+                            onChange={(e) => setGancho(i, hi, "texto", e.target.value)}
+                            rows={2}
+                            placeholder="gancho (≤ 20 palabras)"
+                            className="w-full rounded border border-border bg-panel px-2 py-1 text-sm text-text outline-none focus:border-accent"
+                          />
+                          <div className="mt-1 flex gap-2">
+                            <select
+                              value={g.mecanismo}
+                              onChange={(e) => setGancho(i, hi, "mecanismo", e.target.value)}
+                              className="rounded border border-border bg-panel px-1 py-0.5 text-[11px] text-text outline-none focus:border-accent"
+                            >
+                              {MECANISMOS_GANCHO.map((m) => (
+                                <option key={m} value={m}>
+                                  {m}
+                                </option>
+                              ))}
+                            </select>
+                            <input
+                              value={g.por_que_funciona}
+                              onChange={(e) => setGancho(i, hi, "por_que_funciona", e.target.value)}
+                              placeholder="por qué funciona"
+                              className="flex-1 rounded border border-border bg-panel px-2 py-0.5 text-xs text-text outline-none focus:border-accent"
+                            />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
                 </div>
               ))}
             </div>

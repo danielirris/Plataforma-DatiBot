@@ -158,6 +158,35 @@ export type TipoAngulo = (typeof TIPOS_ANGULO)[number];
 /** Cuántos ángulos exige el producto. */
 export const NUM_ANGULOS = 6;
 
+/** Mecanismos psicológicos del banco de ganchos (data/ganchos_base.json). */
+export const MECANISMOS_GANCHO = [
+  "NOVEDAD_HACK",
+  "GENERAL",
+  "CURIOSIDAD_SECRETO",
+  "DOLOR_PROBLEMA",
+  "AUTORIDAD_CREDENCIAL",
+  "SORPRESA_REVELACION",
+  "CONTROVERSIA_OPINION",
+  "RELATABILIDAD_IDENTIFICACION",
+  "URGENCIA_FOMO",
+  "ADVERTENCIA_MIEDO",
+  "TRANSFORMACION_ANTES_DESPUES",
+  "PRUEBA_SOCIAL",
+] as const;
+export type MecanismoGancho = (typeof MECANISMOS_GANCHO)[number];
+
+/** Cuántos ganchos por ángulo. */
+export const NUM_GANCHOS = 3;
+
+/** Un GANCHO: los 2 primeros segundos de un anuncio (intro/titular). */
+export interface Gancho {
+  texto: string;
+  mecanismo: MecanismoGancho;
+  /** opcional: plantilla del banco que sirvió de semilla */
+  plantilla_origen?: string;
+  por_que_funciona: string;
+}
+
 /**
  * Un ÁNGULO es el encuadre emocional/argumental desde el que se vende el
  * producto. NO es una feature: es una entrada psicológica al deseo/dolor.
@@ -172,8 +201,8 @@ export interface Angulo {
   emocion_dominante: string;
   dolor_o_deseo_atacado: string;
   prueba_o_evidencia: string;
-  /** vacío por ahora; se rellena en el siguiente paso (hooks) */
-  hooks: string[];
+  /** 3 ganchos ganadores (se rellenan en el paso de ganchos) */
+  hooks: Gancho[];
 }
 
 /**

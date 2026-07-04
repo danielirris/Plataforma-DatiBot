@@ -1,0 +1,42 @@
+[
+  { "plantilla": "¿Cansado de [problema] sin importar lo que intentes?", "ejemplo": "¿Cansado de que se te caiga el pelo sin importar lo que intentes?", "idioma": "es", "mecanismo": "DOLOR_PROBLEMA", "nichos": ["salud", "belleza"], "fuente": "seed" },
+  { "plantilla": "Si sufres de [problema], esto te va a doler leerlo.", "ejemplo": "Si sufres de dolor de espalda, esto te va a doler leerlo.", "idioma": "es", "mecanismo": "DOLOR_PROBLEMA", "nichos": ["salud"], "fuente": "seed" },
+  { "plantilla": "The real reason your [problema] never goes away.", "ejemplo": "The real reason your acne never goes away.", "idioma": "en", "mecanismo": "DOLOR_PROBLEMA", "nichos": ["belleza"], "fuente": "seed" },
+
+  { "plantilla": "Nadie te cuenta este secreto sobre [tema].", "ejemplo": "Nadie te cuenta este secreto sobre bajar de peso.", "idioma": "es", "mecanismo": "CURIOSIDAD_SECRETO", "nichos": ["fitness"], "fuente": "seed" },
+  { "plantilla": "Lo que [expertos] no quieren que sepas sobre [tema].", "ejemplo": "Lo que los dermatólogos no quieren que sepas sobre tu piel.", "idioma": "es", "mecanismo": "CURIOSIDAD_SECRETO", "nichos": ["belleza"], "fuente": "seed" },
+  { "plantilla": "There's a reason [grupo] keeps [resultado] a secret.", "ejemplo": "There's a reason chefs keep this trick a secret.", "idioma": "en", "mecanismo": "CURIOSIDAD_SECRETO", "nichos": ["cocina"], "fuente": "seed" },
+
+  { "plantilla": "Como [credencial], te digo la verdad sobre [tema].", "ejemplo": "Como enfermera, te digo la verdad sobre estos suplementos.", "idioma": "es", "mecanismo": "AUTORIDAD_CREDENCIAL", "nichos": ["salud"], "fuente": "seed" },
+  { "plantilla": "Según [estudios/expertos], [afirmación sobre el tema].", "ejemplo": "Según varios estudios, dormir mal engorda más que comer mal.", "idioma": "es", "mecanismo": "AUTORIDAD_CREDENCIAL", "nichos": ["salud"], "fuente": "seed" },
+
+  { "plantilla": "En [tiempo], [transformación concreta].", "ejemplo": "En 14 días, tus dientes se ven 2 tonos más claros.", "idioma": "es", "mecanismo": "TRANSFORMACION_ANTES_DESPUES", "nichos": ["belleza"], "fuente": "seed" },
+  { "plantilla": "Pasé de [antes] a [después] sin [sacrificio].", "ejemplo": "Pasé de no dormir a descansar toda la noche sin pastillas.", "idioma": "es", "mecanismo": "TRANSFORMACION_ANTES_DESPUES", "nichos": ["salud"], "fuente": "seed" },
+
+  { "plantilla": "Miles de [público] ya lograron [resultado].", "ejemplo": "Miles de mamás ya lograron que su bebé duerma de corrido.", "idioma": "es", "mecanismo": "PRUEBA_SOCIAL", "nichos": ["crianza"], "fuente": "seed" },
+  { "plantilla": "Everyone in [grupo] is switching to [solución].", "ejemplo": "Everyone in my gym is switching to this.", "idioma": "en", "mecanismo": "PRUEBA_SOCIAL", "nichos": ["fitness"], "fuente": "seed" },
+
+  { "plantilla": "Deja de [acción] antes de que [consecuencia].", "ejemplo": "Deja de lavarte así el pelo antes de que la caída sea irreversible.", "idioma": "es", "mecanismo": "ADVERTENCIA_MIEDO", "nichos": ["belleza"], "fuente": "seed" },
+  { "plantilla": "Lo que nadie te advierte antes de [situación].", "ejemplo": "Lo que nadie te advierte antes de empezar una dieta.", "idioma": "es", "mecanismo": "ADVERTENCIA_MIEDO", "nichos": ["salud"], "fuente": "seed" },
+
+  { "plantilla": "El truco de [tiempo corto] que cambia [resultado].", "ejemplo": "El truco de 5 minutos que cambia cómo duermes.", "idioma": "es", "mecanismo": "NOVEDAD_HACK", "nichos": ["salud"], "fuente": "seed" },
+  { "plantilla": "This [objeto] hack nobody talks about.", "ejemplo": "This kitchen hack nobody talks about.", "idioma": "en", "mecanismo": "NOVEDAD_HACK", "nichos": ["cocina"], "fuente": "seed" },
+  { "plantilla": "Haz [acción simple] y mira lo que pasa con [problema].", "ejemplo": "Haz esto antes de dormir y mira lo que pasa con tu digestión.", "idioma": "es", "mecanismo": "NOVEDAD_HACK", "nichos": ["salud"], "fuente": "seed" },
+
+  { "plantilla": "No vas a creer lo que pasó cuando [acción].", "ejemplo": "No vas a creer lo que pasó cuando dejé el café una semana.", "idioma": "es", "mecanismo": "SORPRESA_REVELACION", "nichos": ["salud"], "fuente": "seed" },
+  { "plantilla": "Resulta que [creencia común] era completamente falso.", "ejemplo": "Resulta que tomar 8 vasos de agua era completamente falso.", "idioma": "es", "mecanismo": "SORPRESA_REVELACION", "nichos": ["salud"], "fuente": "seed" },
+
+  { "plantilla": "Impopular pero cierto: [afirmación polémica].", "ejemplo": "Impopular pero cierto: el desayuno no es la comida más importante.", "idioma": "es", "mecanismo": "CONTROVERSIA_OPINION", "nichos": ["salud"], "fuente": "seed" },
+  { "plantilla": "Por eso [solución popular] no te funcionó nunca.", "ejemplo": "Por eso las cremas de farmacia no te funcionaron nunca.", "idioma": "es", "mecanismo": "CONTROVERSIA_OPINION", "nichos": ["belleza"], "fuente": "seed" },
+
+  { "plantilla": "Si eres de las que [comportamiento], esto es para ti.", "ejemplo": "Si eres de las que evita las fotos, esto es para ti.", "idioma": "es", "mecanismo": "RELATABILIDAD_IDENTIFICACION", "nichos": ["belleza"], "fuente": "seed" },
+  { "plantilla": "POV: [situación cotidiana del público].", "ejemplo": "POV: son las 3am y otra vez no puedes dormir.", "idioma": "es", "mecanismo": "RELATABILIDAD_IDENTIFICACION", "nichos": ["salud"], "fuente": "seed" },
+
+  { "plantilla": "Solo por [ventana de tiempo]: [oportunidad].", "ejemplo": "Solo esta semana: la guía completa sin costo extra.", "idioma": "es", "mecanismo": "URGENCIA_FOMO", "nichos": ["general"], "fuente": "seed" },
+  { "plantilla": "Antes de que [se acabe/cambie], necesitas ver esto.", "ejemplo": "Antes de que suba, necesitas ver esto.", "idioma": "es", "mecanismo": "URGENCIA_FOMO", "nichos": ["general"], "fuente": "seed" },
+
+  { "plantilla": "Esto es lo que necesitas saber sobre [tema].", "ejemplo": "Esto es lo que necesitas saber sobre tu metabolismo.", "idioma": "es", "mecanismo": "GENERAL", "nichos": ["general"], "fuente": "seed" },
+  { "plantilla": "3 cosas que [público] debería hacer con [tema].", "ejemplo": "3 cosas que toda mamá debería hacer con la lonchera.", "idioma": "es", "mecanismo": "GENERAL", "nichos": ["general"], "fuente": "seed" },
+  { "plantilla": "Watch this before you [acción].", "ejemplo": "Watch this before you buy another supplement.", "idioma": "en", "mecanismo": "GENERAL", "nichos": ["general"], "fuente": "seed" },
+  { "plantilla": "La forma correcta de [acción] que casi nadie usa.", "ejemplo": "La forma correcta de tomar colágeno que casi nadie usa.", "idioma": "es", "mecanismo": "GENERAL", "nichos": ["salud"], "fuente": "seed" }
+]
