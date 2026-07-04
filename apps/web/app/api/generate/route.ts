@@ -17,13 +17,28 @@ function construirPrompt(p: Producto, ranuras: typeof RANURAS_MENSAJE): string {
     .join("\n");
   const listaOverlays = TIPOS_IMAGEN.map((t) => `"${t}"`).join(", ");
 
+  const av = p.avatar;
+  const tieneAvatar =
+    av && (av.compradores || av.deseos || av.demografia || av.mecanismo_unico);
+  const bloqueAvatar = tieneAvatar
+    ? `
+
+INVESTIGACIÓN DE AVATAR (úsala para que el copy le hable a esta persona real):
+- Quiénes compran: ${av.compradores}
+- Deseos: ${av.deseos}
+- Demografía/psicografía: ${av.demografia}
+- Otras soluciones: ${av.otras_soluciones}
+- Curiosidad/autoridad: ${av.curiosidad}
+- Mecanismo único: ${av.mecanismo_unico}`
+    : "";
+
   return `Eres un copywriter experto en embudos de venta por WhatsApp de respuesta directa, en ESPAÑOL NEUTRAL (sin modismos de ningún país).
 
 PRODUCTO:
 - Nombre: ${p.nombre}
 - Promesa: ${p.identidad.promesa}
 - Posicionamiento: ${p.identidad.posicionamiento}
-- Dirigido a: ${p.identidad.dirigidoA}
+- Dirigido a: ${p.identidad.dirigidoA}${bloqueAvatar}
 
 Redacta el contenido de cada RANURA del embudo: persuasivo, claro, cercano y orientado a la acción, adaptado al producto.
 

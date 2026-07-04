@@ -5,8 +5,10 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
   crearProductoBorrador,
+  AVATAR_SECCIONES,
   RANURAS_MENSAJE,
   TIPOS_IMAGEN,
+  type Avatar,
   type Producto,
   type TipoImagen,
 } from "@plataforma/products/schema";
@@ -14,21 +16,33 @@ import { cn } from "@plataforma/ui";
 
 const PASOS = [
   { key: "identidad", label: "1 · Identidad" },
-  { key: "mensajes", label: "2 · Mensajes" },
-  { key: "imagenes", label: "3 · Imágenes" },
-  { key: "revisar", label: "4 · Guardar" },
+  { key: "avatar", label: "2 · Avatar" },
+  { key: "mensajes", label: "3 · Mensajes" },
+  { key: "imagenes", label: "4 · Imágenes" },
 ] as const;
 
-// Pasos ya implementados (los demás se marcan "pronto").
-const DISPONIBLES = new Set(["identidad", "mensajes", "imagenes"]);
+// Pasos ya implementados.
+const DISPONIBLES = new Set(["identidad", "avatar", "mensajes", "imagenes"]);
 
 export function ProductoWizard({ producto }: { producto?: Producto }) {
   const router = useRouter();
-  const [p, setP] = useState<Producto>(producto ?? crearProductoBorrador());
+  const [p, setP] = useState<Producto>(() => {
+    const base = crearProductoBorrador();
+    if (!producto) return base;
+    // Rellena defaults por si el producto viene de antes de agregar campos nuevos.
+    return {
+      ...base,
+      ...producto,
+      avatar: { ...base.avatar, ...(producto.avatar ?? {}) },
+      overlays: { ...base.overlays, ...(producto.overlays ?? {}) },
+      imagenes: { ...base.imagenes, ...(producto.imagenes ?? {}) },
+    };
+  });
   const [paso, setPaso] = useState<string>("identidad");
   const [estado, setEstado] = useState<"idle" | "guardando" | "ok" | "error">("idle");
   const [genEstado, setGenEstado] = useState<string>("");
   const [imgEstado, setImgEstado] = useState<string>("");
+  const [avatarEstado, setAvatarEstado] = useState<string>("");
 
   const esNuevo = !p.id;
 
@@ -45,6 +59,31 @@ export function ProductoWizard({ producto }: { producto?: Producto }) {
   }
   function setOverlay(key: TipoImagen, valor: string) {
     setP((prev) => ({ ...prev, overlays: { ...prev.overlays, [key]: valor } }));
+  }
+  function setAvatarSeccion(key: keyof Avatar, valor: string) {
+    setP((prev) => ({ ...prev, avatar: { ...prev.avatar, [key]: valor } }));
+  }
+
+  async function investigarAvatar() {
+    setAvatarEstado("Investigando en la web (Gemini + Google Search)… puede tardar.");
+    try {
+      const res = await fetch("/api/avatar", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ producto: p }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setAvatarEstado("⚠️ " + (data.error ?? "Error en la investigación"));
+        return;
+      }
+      setP((prev) => ({ ...prev, avatar: data.avatar }));
+      setAvatarEstado(
+        `✓ Investigación lista (${data.avatar.fuentes?.length ?? 0} fuentes). Revisa y ajusta.`,
+      );
+    } catch {
+      setAvatarEstado("⚠️ No se pudo contactar al proveedor.");
+    }
   }
 
   async function guardar(): Promise<Producto | null> {
@@ -214,6 +253,75 @@ export function ProductoWizard({ producto }: { producto?: Producto }) {
               className="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-white disabled:opacity-60"
             >
               {estado === "guardando" ? "Guardando…" : "Guardar borrador"}
+            </button>
+            {estado === "ok" && <span className="text-sm text-accent-2">✓ Guardado</span>}
+            {estado === "error" && <span className="text-sm text-red-400">Error al guardar</span>}
+          </div>
+        </section>
+      )}
+
+      {paso === "avatar" && (
+        <section className="space-y-5">
+          <div className="flex flex-wrap items-center gap-3 rounded-xl border border-border bg-panel p-4">
+            <button
+              onClick={investigarAvatar}
+              className="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-white"
+            >
+              🔎 Investigar avatar (búsqueda web)
+            </button>
+            <span className="text-sm text-muted">{avatarEstado}</span>
+          </div>
+          <p className="text-xs text-muted">
+            La IA investiga en la web (Gemini + Google Search) al público de este
+            producto y responde cada sección. Revisa y ajusta antes de guardar.
+          </p>
+
+          <div className="space-y-3">
+            {AVATAR_SECCIONES.map((s) => (
+              <div key={s.key} className="rounded-xl border border-border bg-panel p-4">
+                <div className="mb-1">
+                  <span className="text-sm font-medium">{s.label}</span>
+                  <p className="text-xs text-muted">{s.pregunta}</p>
+                </div>
+                <textarea
+                  value={(p.avatar[s.key as keyof Avatar] as string) ?? ""}
+                  onChange={(e) => setAvatarSeccion(s.key as keyof Avatar, e.target.value)}
+                  rows={4}
+                  className="w-full rounded-lg border border-border bg-bg px-3 py-2 text-sm text-text outline-none focus:border-accent"
+                />
+              </div>
+            ))}
+          </div>
+
+          {p.avatar.fuentes?.length > 0 && (
+            <div className="rounded-xl border border-border bg-panel p-4">
+              <h3 className="mb-2 text-sm font-medium">
+                Fuentes ({p.avatar.fuentes.length})
+              </h3>
+              <ul className="space-y-1 text-xs">
+                {p.avatar.fuentes.map((f, i) => (
+                  <li key={i}>
+                    <a
+                      href={f.url}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-accent-2 hover:underline"
+                    >
+                      {f.titulo || f.url}
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          <div className="sticky bottom-0 flex items-center gap-3 border-t border-border bg-bg/80 py-4 backdrop-blur">
+            <button
+              onClick={guardar}
+              disabled={estado === "guardando"}
+              className="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-white disabled:opacity-60"
+            >
+              {estado === "guardando" ? "Guardando…" : "Guardar avatar"}
             </button>
             {estado === "ok" && <span className="text-sm text-accent-2">✓ Guardado</span>}
             {estado === "error" && <span className="text-sm text-red-400">Error al guardar</span>}

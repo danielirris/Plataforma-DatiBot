@@ -43,6 +43,61 @@ export interface IdentidadProducto {
   dirigidoA: string;
 }
 
+/** Secciones de la investigación de avatar (con las preguntas exactas para la IA). */
+export const AVATAR_SECCIONES: { key: string; label: string; pregunta: string }[] = [
+  {
+    key: "compradores",
+    label: "Quiénes compran",
+    pregunta:
+      "¿Quiénes son las personas más probables de comprar esto? Descríbelas con detalle.",
+  },
+  {
+    key: "deseos",
+    label: "Deseos",
+    pregunta: "¿Cuáles son sus deseos más profundos relacionados con esto?",
+  },
+  {
+    key: "demografia",
+    label: "Demografía y psicografía",
+    pregunta:
+      "¿Quién es exactamente el cliente (edad, género, ocupación)? ¿Qué actitudes políticas, religiosas o sociales tienen? ¿Cuáles son sus mayores esperanzas y sueños? ¿Sus mayores victorias y fracasos? ¿Qué fuerzas externas creen que les han impedido ser felices o mejorar? ¿Cuáles son sus prejuicios y creencias inamovibles sobre la vida, el amor y la familia? Termina con una síntesis de 1 a 3 frases.",
+  },
+  {
+    key: "otras_soluciones",
+    label: "Otras soluciones existentes",
+    pregunta:
+      "¿Qué otras soluciones usa ya el mercado para este problema (lista)? ¿Qué les gusta y qué les disgusta de esas alternativas? ¿Tienen historias de terror o malas experiencias? ¿Creen realmente que funcionan? Si no, ¿por qué?",
+  },
+  {
+    key: "curiosidad",
+    label: "Curiosidad y autoridad",
+    pregunta:
+      "¿Alguien ha intentado resolver esto de una manera muy original y con qué resultado? ¿Existe una historia de 'conspiración' de por qué las soluciones tradicionales no funcionan? ¿Hay algún dato histórico, estudio o descubrimiento poco conocido que valide este enfoque?",
+  },
+  {
+    key: "mecanismo_unico",
+    label: "Mecanismo único",
+    pregunta:
+      "¿Cuál es la causa raíz o el 'enemigo oculto' del problema del cliente? ¿Por qué este producto/método funciona de manera diferente a todo lo demás? ¿Cuál es el Mecanismo Único que hace que sea la única solución que realmente tiene sentido?",
+  },
+];
+
+export interface FuenteAvatar {
+  titulo: string;
+  url: string;
+}
+
+export interface Avatar {
+  compradores: string;
+  deseos: string;
+  demografia: string;
+  otras_soluciones: string;
+  curiosidad: string;
+  mecanismo_unico: string;
+  /** fuentes web usadas por el grounding de Gemini */
+  fuentes: FuenteAvatar[];
+}
+
 /**
  * Ranuras de mensaje del embudo que redacta la IA (coinciden con los campos del
  * nodo ⚙️ CONFIGURAR del motor n8n). El copy va en español neutral y DEJA
@@ -91,6 +146,8 @@ export interface Producto {
   identidad: IdentidadProducto;
   /** identificador propio del producto (NO el ID de pago/checkout, que es por país) */
   productoId: string;
+  /** investigación de avatar (grounding web con Gemini) */
+  avatar: Avatar;
   /** ranuras del motor (mensaje_1..8, mensaje_rmk_*, ob_mensaje_*, …) en español neutral */
   mensajes: Record<string, string>;
   /** líneas cortas de texto que el servidor superpone en cada imagen */
@@ -119,6 +176,15 @@ export function crearProductoBorrador(parcial: Partial<Producto> = {}): Producto
     nombre: "",
     identidad: { promesa: "", posicionamiento: "", dirigidoA: "" },
     productoId: "",
+    avatar: {
+      compradores: "",
+      deseos: "",
+      demografia: "",
+      otras_soluciones: "",
+      curiosidad: "",
+      mecanismo_unico: "",
+      fuentes: [],
+    },
     mensajes: {},
     overlays: overlaysVacios(),
     imagenes: overlaysVacios(),

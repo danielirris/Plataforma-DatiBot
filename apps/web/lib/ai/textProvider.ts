@@ -66,6 +66,56 @@ async function geminiGenerate(prompt: string, key: string): Promise<string> {
   return text;
 }
 
+export interface ResultadoGrounding {
+  text: string;
+  fuentes: { titulo: string; url: string }[];
+}
+
+/**
+ * Investigación con Gemini + Google Search grounding (búsqueda web real).
+ * Devuelve el texto y las fuentes web usadas. Solo Gemini soporta grounding.
+ */
+export async function investigarConGemini(
+  prompt: string,
+): Promise<ResultadoGrounding> {
+  const cfg = await leerTextoConfig();
+  if (!cfg.geminiKey)
+    throw new Error(
+      "La investigación de avatar usa Gemini (búsqueda web). Falta la Gemini API Key en Configuración.",
+    );
+
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_TEXT_MODEL}:generateContent?key=${encodeURIComponent(cfg.geminiKey)}`;
+  const res = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      contents: [{ parts: [{ text: prompt }] }],
+      tools: [{ google_search: {} }],
+      generationConfig: { temperature: 0.7 },
+    }),
+  });
+  if (!res.ok)
+    throw new Error(`Gemini (grounding) respondió ${res.status}: ${await res.text()}`);
+
+  const data = await res.json();
+  const cand = data?.candidates?.[0];
+  const text = (cand?.content?.parts ?? [])
+    .map((p: { text?: string }) => p.text ?? "")
+    .join("");
+  if (!text) throw new Error("Gemini no devolvió texto en la investigación.");
+
+  // Fuentes desde groundingMetadata.groundingChunks[].web { uri, title }
+  const chunks = cand?.groundingMetadata?.groundingChunks ?? [];
+  const fuentes = chunks
+    .map((c: { web?: { uri?: string; title?: string } }) => ({
+      url: c?.web?.uri ?? "",
+      titulo: c?.web?.title ?? c?.web?.uri ?? "",
+    }))
+    .filter((f: { url: string }) => f.url);
+
+  return { text, fuentes };
+}
+
 async function openaiChat(prompt: string, key: string): Promise<string> {
   const res = await fetch("https://api.openai.com/v1/chat/completions", {
     method: "POST",
