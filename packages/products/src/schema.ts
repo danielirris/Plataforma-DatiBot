@@ -87,6 +87,42 @@ export interface FuenteAvatar {
   url: string;
 }
 
+/** Objeciones de COMPRA: qué frena al cliente al momento de pagar. */
+export const CATEGORIAS_OBJECION_COMPRA = [
+  "precio",
+  "confianza",
+  "logistica",
+  "autenticidad",
+  "garantia",
+  "necesidad",
+  "otro",
+] as const;
+export type CategoriaObjecionCompra =
+  (typeof CATEGORIAS_OBJECION_COMPRA)[number];
+
+/** Objeciones de USO: qué frena al cliente DESPUÉS de comprar (usar/mantener). */
+export const CATEGORIAS_OBJECION_USO = [
+  "dificultad",
+  "tiempo",
+  "mantenimiento",
+  "riesgo_de_fallar",
+  "no_soy_capaz",
+  "efectos_secundarios",
+  "otro",
+] as const;
+export type CategoriaObjecionUso = (typeof CATEGORIAS_OBJECION_USO)[number];
+
+export interface ObjecionCompra {
+  objecion: string;
+  categoria: CategoriaObjecionCompra;
+  respuesta_sugerida: string;
+}
+export interface ObjecionUso {
+  objecion: string;
+  categoria: CategoriaObjecionUso;
+  respuesta_sugerida: string;
+}
+
 export interface Avatar {
   compradores: string;
   deseos: string;
@@ -94,6 +130,10 @@ export interface Avatar {
   otras_soluciones: string;
   curiosidad: string;
   mecanismo_unico: string;
+  /** qué frena al cliente al momento de pagar (5-8) */
+  objeciones_compra: ObjecionCompra[];
+  /** qué frena al cliente al usar/mantener el producto tras comprar (5-8) */
+  objeciones_uso: ObjecionUso[];
   /** fuentes web usadas por el grounding de Gemini */
   fuentes: FuenteAvatar[];
 }
@@ -183,6 +223,8 @@ export function crearProductoBorrador(parcial: Partial<Producto> = {}): Producto
       otras_soluciones: "",
       curiosidad: "",
       mecanismo_unico: "",
+      objeciones_compra: [],
+      objeciones_uso: [],
       fuentes: [],
     },
     mensajes: {},

@@ -6,9 +6,13 @@ import Link from "next/link";
 import {
   crearProductoBorrador,
   AVATAR_SECCIONES,
+  CATEGORIAS_OBJECION_COMPRA,
+  CATEGORIAS_OBJECION_USO,
   RANURAS_MENSAJE,
   TIPOS_IMAGEN,
   type Avatar,
+  type ObjecionCompra,
+  type ObjecionUso,
   type Producto,
   type TipoImagen,
 } from "@plataforma/products/schema";
@@ -62,6 +66,35 @@ export function ProductoWizard({ producto }: { producto?: Producto }) {
   }
   function setAvatarSeccion(key: keyof Avatar, valor: string) {
     setP((prev) => ({ ...prev, avatar: { ...prev.avatar, [key]: valor } }));
+  }
+
+  type BloqueObj = "objeciones_compra" | "objeciones_uso";
+  function setObjecion(
+    bloque: BloqueObj,
+    index: number,
+    campo: "objecion" | "categoria" | "respuesta_sugerida",
+    valor: string,
+  ) {
+    setP((prev) => {
+      const lista = [...(prev.avatar[bloque] as (ObjecionCompra | ObjecionUso)[])];
+      lista[index] = { ...lista[index], [campo]: valor };
+      return { ...prev, avatar: { ...prev.avatar, [bloque]: lista } };
+    });
+  }
+  function addObjecion(bloque: BloqueObj) {
+    setP((prev) => {
+      const vacia = { objecion: "", categoria: "otro", respuesta_sugerida: "" };
+      const lista = [...(prev.avatar[bloque] as (ObjecionCompra | ObjecionUso)[]), vacia];
+      return { ...prev, avatar: { ...prev.avatar, [bloque]: lista } };
+    });
+  }
+  function removeObjecion(bloque: BloqueObj, index: number) {
+    setP((prev) => {
+      const lista = (prev.avatar[bloque] as (ObjecionCompra | ObjecionUso)[]).filter(
+        (_, i) => i !== index,
+      );
+      return { ...prev, avatar: { ...prev.avatar, [bloque]: lista } };
+    });
   }
 
   async function investigarAvatar() {
@@ -292,6 +325,85 @@ export function ProductoWizard({ producto }: { producto?: Producto }) {
               </div>
             ))}
           </div>
+
+          {(
+            [
+              {
+                bloque: "objeciones_compra",
+                titulo: "Objeciones de COMPRA",
+                ayuda: "qué frena al cliente al momento de pagar",
+                cats: CATEGORIAS_OBJECION_COMPRA,
+              },
+              {
+                bloque: "objeciones_uso",
+                titulo: "Objeciones de USO",
+                ayuda: "qué frena al cliente al usar/mantener, ya con el producto",
+                cats: CATEGORIAS_OBJECION_USO,
+              },
+            ] as const
+          ).map((b) => {
+            const lista = p.avatar[b.bloque] as (ObjecionCompra | ObjecionUso)[];
+            return (
+              <div key={b.bloque} className="rounded-xl border border-border bg-panel p-4">
+                <div className="mb-3 flex items-center justify-between gap-2">
+                  <div>
+                    <span className="text-sm font-medium">{b.titulo}</span>
+                    <p className="text-xs text-muted">{b.ayuda}</p>
+                  </div>
+                  <button
+                    onClick={() => addObjecion(b.bloque)}
+                    className="shrink-0 rounded border border-border px-2 py-1 text-xs text-muted hover:text-text"
+                  >
+                    + Añadir
+                  </button>
+                </div>
+                <div className="space-y-3">
+                  {lista.length === 0 && (
+                    <p className="text-xs text-muted">
+                      Aún no hay objeciones. Genera con IA o añade a mano.
+                    </p>
+                  )}
+                  {lista.map((o, i) => (
+                    <div key={i} className="rounded-lg border border-border bg-bg p-3">
+                      <div className="flex flex-wrap gap-2">
+                        <input
+                          value={o.objecion}
+                          onChange={(e) => setObjecion(b.bloque, i, "objecion", e.target.value)}
+                          placeholder="objeción en primera persona"
+                          className="min-w-[10rem] flex-1 rounded border border-border bg-panel px-2 py-1 text-sm text-text outline-none focus:border-accent"
+                        />
+                        <select
+                          value={o.categoria}
+                          onChange={(e) => setObjecion(b.bloque, i, "categoria", e.target.value)}
+                          className="rounded border border-border bg-panel px-2 py-1 text-xs text-text outline-none focus:border-accent"
+                        >
+                          {b.cats.map((c) => (
+                            <option key={c} value={c}>
+                              {c}
+                            </option>
+                          ))}
+                        </select>
+                        <button
+                          onClick={() => removeObjecion(b.bloque, i)}
+                          className="rounded border border-border px-2 text-xs text-muted hover:text-red-400"
+                          title="Eliminar"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                      <textarea
+                        value={o.respuesta_sugerida}
+                        onChange={(e) => setObjecion(b.bloque, i, "respuesta_sugerida", e.target.value)}
+                        rows={2}
+                        placeholder="respuesta sugerida para desactivarla (accionable, sin inventar datos)"
+                        className="mt-2 w-full rounded border border-border bg-panel px-2 py-1 text-sm text-text outline-none focus:border-accent"
+                      />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            );
+          })}
 
           {p.avatar.fuentes?.length > 0 && (
             <div className="rounded-xl border border-border bg-panel p-4">
