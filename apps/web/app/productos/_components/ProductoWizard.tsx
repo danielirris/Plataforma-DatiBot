@@ -10,6 +10,8 @@ import {
   CATEGORIAS_OBJECION_USO,
   RANURAS_MENSAJE,
   TIPOS_IMAGEN,
+  TIPOS_ANGULO,
+  type Angulo,
   type Avatar,
   type ObjecionCompra,
   type ObjecionUso,
@@ -21,12 +23,29 @@ import { cn } from "@plataforma/ui";
 const PASOS = [
   { key: "identidad", label: "1 · Identidad" },
   { key: "avatar", label: "2 · Avatar" },
-  { key: "mensajes", label: "3 · Mensajes" },
-  { key: "imagenes", label: "4 · Imágenes" },
+  { key: "angulos", label: "3 · Ángulos" },
+  { key: "mensajes", label: "4 · Mensajes" },
+  { key: "imagenes", label: "5 · Imágenes" },
 ] as const;
 
 // Pasos ya implementados.
-const DISPONIBLES = new Set(["identidad", "avatar", "mensajes", "imagenes"]);
+const DISPONIBLES = new Set([
+  "identidad",
+  "avatar",
+  "angulos",
+  "mensajes",
+  "imagenes",
+]);
+
+// Campos de texto largos de cada ángulo (nombre y tipo van aparte en el header).
+const CAMPOS_ANGULO: { key: keyof Angulo; label: string; rows: number }[] = [
+  { key: "promesa_central", label: "Promesa central", rows: 2 },
+  { key: "gran_idea", label: "Gran idea (titular)", rows: 2 },
+  { key: "publico_objetivo_del_angulo", label: "Público del ángulo", rows: 2 },
+  { key: "emocion_dominante", label: "Emoción dominante", rows: 1 },
+  { key: "dolor_o_deseo_atacado", label: "Dolor/deseo atacado", rows: 2 },
+  { key: "prueba_o_evidencia", label: "Prueba/evidencia", rows: 2 },
+];
 
 export function ProductoWizard({ producto }: { producto?: Producto }) {
   const router = useRouter();
@@ -38,6 +57,7 @@ export function ProductoWizard({ producto }: { producto?: Producto }) {
       ...base,
       ...producto,
       avatar: { ...base.avatar, ...(producto.avatar ?? {}) },
+      angulos: producto.angulos ?? base.angulos,
       overlays: { ...base.overlays, ...(producto.overlays ?? {}) },
       imagenes: { ...base.imagenes, ...(producto.imagenes ?? {}) },
     };
@@ -47,6 +67,7 @@ export function ProductoWizard({ producto }: { producto?: Producto }) {
   const [genEstado, setGenEstado] = useState<string>("");
   const [imgEstado, setImgEstado] = useState<string>("");
   const [avatarEstado, setAvatarEstado] = useState<string>("");
+  const [angulosEstado, setAngulosEstado] = useState<string>("");
 
   const esNuevo = !p.id;
 
@@ -95,6 +116,51 @@ export function ProductoWizard({ producto }: { producto?: Producto }) {
       );
       return { ...prev, avatar: { ...prev.avatar, [bloque]: lista } };
     });
+  }
+
+  function setAngulo(index: number, campo: keyof Angulo, valor: string) {
+    setP((prev) => {
+      const lista = [...prev.angulos];
+      lista[index] = { ...lista[index], [campo]: valor };
+      return { ...prev, angulos: lista };
+    });
+  }
+
+  // Regenera todos (soloIndice undefined) o solo un ángulo (reemplaza ese índice).
+  async function generarAngulos(soloIndice?: number) {
+    if (!p.id) {
+      setAngulosEstado("⚠️ Guarda el producto primero (paso Identidad).");
+      return;
+    }
+    setAngulosEstado(
+      soloIndice == null ? "Generando 6 ángulos con IA…" : `Regenerando ángulo ${soloIndice + 1}…`,
+    );
+    try {
+      const res = await fetch(`/api/productos/${p.id}/generar-angulos`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ producto: p }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setAngulosEstado("⚠️ " + (data.error ?? "Error al generar ángulos"));
+        return;
+      }
+      const nuevos = data.angulos as Angulo[];
+      if (soloIndice == null) {
+        setP((prev) => ({ ...prev, angulos: nuevos }));
+        setAngulosEstado("✓ 6 ángulos generados. Revisa y ajusta.");
+      } else {
+        setP((prev) => {
+          const lista = [...prev.angulos];
+          lista[soloIndice] = nuevos[soloIndice] ?? nuevos[0];
+          return { ...prev, angulos: lista };
+        });
+        setAngulosEstado(`✓ Ángulo ${soloIndice + 1} regenerado.`);
+      }
+    } catch {
+      setAngulosEstado("⚠️ No se pudo contactar al proveedor.");
+    }
   }
 
   async function investigarAvatar() {
@@ -434,6 +500,100 @@ export function ProductoWizard({ producto }: { producto?: Producto }) {
               className="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-white disabled:opacity-60"
             >
               {estado === "guardando" ? "Guardando…" : "Guardar avatar"}
+            </button>
+            {estado === "ok" && <span className="text-sm text-accent-2">✓ Guardado</span>}
+            {estado === "error" && <span className="text-sm text-red-400">Error al guardar</span>}
+          </div>
+        </section>
+      )}
+
+      {paso === "angulos" && (
+        <section className="space-y-5">
+          <div className="flex flex-wrap items-center gap-3 rounded-xl border border-border bg-panel p-4">
+            <button
+              onClick={() => generarAngulos()}
+              className="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-white"
+            >
+              🎯 Generar 6 ángulos
+            </button>
+            {p.angulos.length > 0 && (
+              <button
+                onClick={() => generarAngulos()}
+                className="rounded-lg border border-border px-4 py-2 text-sm text-muted hover:text-text"
+              >
+                Regenerar todos
+              </button>
+            )}
+            <span className="text-sm text-muted">{angulosEstado}</span>
+          </div>
+          <p className="text-xs text-muted">
+            Un ángulo es la entrada emocional al deseo/dolor del cliente (no una
+            feature). Cada uno produce un anuncio distinto. Usa el avatar; edita
+            libremente y regenera todos o uno a uno.
+          </p>
+
+          {p.angulos.length === 0 ? (
+            <div className="rounded-xl border border-dashed border-border p-8 text-center text-muted">
+              Aún no hay ángulos. Pulsa “Generar 6 ángulos”.
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+              {p.angulos.map((ang, i) => (
+                <div key={i} className="space-y-3 rounded-xl border border-border bg-panel p-4">
+                  <div className="flex items-center gap-2">
+                    <span className="rounded bg-accent/15 px-2 py-0.5 text-xs text-accent-2">
+                      {i + 1}
+                    </span>
+                    <input
+                      value={ang.nombre}
+                      onChange={(e) => setAngulo(i, "nombre", e.target.value)}
+                      placeholder="Nombre del ángulo"
+                      className="flex-1 rounded border border-border bg-bg px-2 py-1 text-sm font-medium text-text outline-none focus:border-accent"
+                    />
+                    <button
+                      onClick={() => generarAngulos(i)}
+                      className="shrink-0 rounded border border-border px-2 py-1 text-xs text-muted hover:text-text"
+                    >
+                      Regenerar
+                    </button>
+                  </div>
+                  <label className="flex flex-col gap-1 text-xs">
+                    <span className="text-muted">Tipo</span>
+                    <select
+                      value={ang.tipo}
+                      onChange={(e) => setAngulo(i, "tipo", e.target.value)}
+                      className="rounded border border-border bg-bg px-2 py-1 text-sm text-text outline-none focus:border-accent"
+                    >
+                      {TIPOS_ANGULO.map((t) => (
+                        <option key={t} value={t}>
+                          {t}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  {CAMPOS_ANGULO.map((c) => (
+                    <label key={c.key} className="flex flex-col gap-1 text-xs">
+                      <span className="text-muted">{c.label}</span>
+                      <textarea
+                        value={(ang[c.key] as string) ?? ""}
+                        onChange={(e) => setAngulo(i, c.key, e.target.value)}
+                        rows={c.rows}
+                        className="w-full rounded border border-border bg-bg px-2 py-1 text-sm text-text outline-none focus:border-accent"
+                      />
+                    </label>
+                  ))}
+                </div>
+              ))}
+            </div>
+          )}
+
+          <div className="sticky bottom-0 flex items-center gap-3 border-t border-border bg-bg/80 py-4 backdrop-blur">
+            <button
+              onClick={guardar}
+              disabled={estado === "guardando"}
+              className="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-white disabled:opacity-60"
+            >
+              {estado === "guardando" ? "Guardando…" : "Guardar ángulos"}
             </button>
             {estado === "ok" && <span className="text-sm text-accent-2">✓ Guardado</span>}
             {estado === "error" && <span className="text-sm text-red-400">Error al guardar</span>}

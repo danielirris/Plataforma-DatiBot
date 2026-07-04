@@ -138,6 +138,44 @@ export interface Avatar {
   fuentes: FuenteAvatar[];
 }
 
+/** Catálogo de tipos de ángulo publicitario (vector psicológico). */
+export const TIPOS_ANGULO = [
+  "DOLOR_AGUDO",
+  "RESULTADO_SOÑADO",
+  "MIEDO_OCULTO",
+  "AUTORIDAD_RESPALDO",
+  "PRUEBA_SOCIAL",
+  "CONSPIRACION_SECRETO",
+  "MECANISMO_UNICO",
+  "CONTRA_SOLUCIONES_FALLIDAS",
+  "IDENTIDAD_ASPIRACION",
+  "ATAJO_HACK",
+  "VERGUENZA_SOCIAL",
+  "URGENCIA_VENTANA",
+] as const;
+export type TipoAngulo = (typeof TIPOS_ANGULO)[number];
+
+/** Cuántos ángulos exige el producto. */
+export const NUM_ANGULOS = 6;
+
+/**
+ * Un ÁNGULO es el encuadre emocional/argumental desde el que se vende el
+ * producto. NO es una feature: es una entrada psicológica al deseo/dolor.
+ */
+export interface Angulo {
+  id: string;
+  nombre: string;
+  tipo: TipoAngulo;
+  promesa_central: string;
+  gran_idea: string;
+  publico_objetivo_del_angulo: string;
+  emocion_dominante: string;
+  dolor_o_deseo_atacado: string;
+  prueba_o_evidencia: string;
+  /** vacío por ahora; se rellena en el siguiente paso (hooks) */
+  hooks: string[];
+}
+
 /**
  * Ranuras de mensaje del embudo que redacta la IA (coinciden con los campos del
  * nodo ⚙️ CONFIGURAR del motor n8n). El copy va en español neutral y DEJA
@@ -188,6 +226,8 @@ export interface Producto {
   productoId: string;
   /** investigación de avatar (grounding web con Gemini) */
   avatar: Avatar;
+  /** 6 ángulos publicitarios (encuadres para vender el mismo producto) */
+  angulos: Angulo[];
   /** ranuras del motor (mensaje_1..8, mensaje_rmk_*, ob_mensaje_*, …) en español neutral */
   mensajes: Record<string, string>;
   /** líneas cortas de texto que el servidor superpone en cada imagen */
@@ -227,6 +267,7 @@ export function crearProductoBorrador(parcial: Partial<Producto> = {}): Producto
       objeciones_uso: [],
       fuentes: [],
     },
+    angulos: [],
     mensajes: {},
     overlays: overlaysVacios(),
     imagenes: overlaysVacios(),
