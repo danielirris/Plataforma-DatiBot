@@ -12,9 +12,15 @@ import {
   TIPOS_IMAGEN,
   TIPOS_ANGULO,
   MECANISMOS_GANCHO,
+  MIN_BONOS,
+  MAX_BONOS,
+  ofertaVacia,
+  bonoVacio,
   type Angulo,
   type Gancho,
   type Avatar,
+  type Oferta,
+  type BonoOferta,
   type ObjecionCompra,
   type ObjecionUso,
   type Producto,
@@ -26,8 +32,9 @@ const PASOS = [
   { key: "identidad", label: "1 · Identidad" },
   { key: "avatar", label: "2 · Avatar" },
   { key: "angulos", label: "3 · Ángulos" },
-  { key: "mensajes", label: "4 · Mensajes" },
-  { key: "imagenes", label: "5 · Imágenes" },
+  { key: "oferta", label: "4 · Oferta" },
+  { key: "mensajes", label: "5 · Mensajes" },
+  { key: "imagenes", label: "6 · Imágenes" },
 ] as const;
 
 // Pasos ya implementados.
@@ -35,6 +42,7 @@ const DISPONIBLES = new Set([
   "identidad",
   "avatar",
   "angulos",
+  "oferta",
   "mensajes",
   "imagenes",
 ]);
@@ -60,6 +68,7 @@ export function ProductoWizard({ producto }: { producto?: Producto }) {
       ...producto,
       avatar: { ...base.avatar, ...(producto.avatar ?? {}) },
       angulos: producto.angulos ?? base.angulos,
+      oferta: producto.oferta ?? null,
       overlays: { ...base.overlays, ...(producto.overlays ?? {}) },
       imagenes: { ...base.imagenes, ...(producto.imagenes ?? {}) },
     };
@@ -71,6 +80,7 @@ export function ProductoWizard({ producto }: { producto?: Producto }) {
   const [avatarEstado, setAvatarEstado] = useState<string>("");
   const [angulosEstado, setAngulosEstado] = useState<string>("");
   const [ganchosEstado, setGanchosEstado] = useState<Record<string, string>>({});
+  const [ofertaEstado, setOfertaEstado] = useState<string>("");
 
   const esNuevo = !p.id;
 
@@ -206,6 +216,83 @@ export function ProductoWizard({ producto }: { producto?: Producto }) {
       }));
     } catch {
       setGanchosEstado((s) => ({ ...s, [anguloId]: "⚠️ No se pudo generar." }));
+    }
+  }
+
+  // ── Oferta ──────────────────────────────────────────────────
+  function updateOferta(fn: (o: Oferta) => Oferta) {
+    setP((prev) => (prev.oferta ? { ...prev, oferta: fn(prev.oferta) } : prev));
+  }
+  function setOfertaCampo(campo: keyof Oferta, valor: string) {
+    updateOferta((o) => ({ ...o, [campo]: valor }));
+  }
+  function setOfertaPP(campo: keyof Oferta["producto_principal"], valor: string) {
+    updateOferta((o) => ({ ...o, producto_principal: { ...o.producto_principal, [campo]: valor } }));
+  }
+  function setQueIncluye(i: number, valor: string) {
+    updateOferta((o) => {
+      const q = [...o.producto_principal.que_incluye];
+      q[i] = valor;
+      return { ...o, producto_principal: { ...o.producto_principal, que_incluye: q } };
+    });
+  }
+  function addQueIncluye() {
+    updateOferta((o) => ({
+      ...o,
+      producto_principal: {
+        ...o.producto_principal,
+        que_incluye: [...o.producto_principal.que_incluye, ""],
+      },
+    }));
+  }
+  function removeQueIncluye(i: number) {
+    updateOferta((o) => ({
+      ...o,
+      producto_principal: {
+        ...o.producto_principal,
+        que_incluye: o.producto_principal.que_incluye.filter((_, k) => k !== i),
+      },
+    }));
+  }
+  function setBono(i: number, campo: keyof BonoOferta, valor: string) {
+    updateOferta((o) => {
+      const bonos = [...o.bonos];
+      bonos[i] = { ...bonos[i], [campo]: valor };
+      return { ...o, bonos };
+    });
+  }
+  function addBono() {
+    updateOferta((o) =>
+      o.bonos.length >= MAX_BONOS ? o : { ...o, bonos: [...o.bonos, bonoVacio()] },
+    );
+  }
+  function removeBono(i: number) {
+    updateOferta((o) =>
+      o.bonos.length <= MIN_BONOS ? o : { ...o, bonos: o.bonos.filter((_, k) => k !== i) },
+    );
+  }
+
+  async function generarOferta() {
+    if (!p.id) {
+      setOfertaEstado("⚠️ Guarda el producto primero (paso Identidad).");
+      return;
+    }
+    setOfertaEstado("Generando oferta con IA…");
+    try {
+      const res = await fetch(`/api/productos/${p.id}/generar-oferta`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ producto: p }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setOfertaEstado("⚠️ " + (data.error ?? "Error al generar oferta"));
+        return;
+      }
+      setP((prev) => ({ ...prev, oferta: data.oferta }));
+      setOfertaEstado("✓ Oferta generada. Revisa y ajusta.");
+    } catch {
+      setOfertaEstado("⚠️ No se pudo contactar al proveedor.");
     }
   }
 
@@ -695,6 +782,209 @@ export function ProductoWizard({ producto }: { producto?: Producto }) {
               className="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-white disabled:opacity-60"
             >
               {estado === "guardando" ? "Guardando…" : "Guardar ángulos"}
+            </button>
+            {estado === "ok" && <span className="text-sm text-accent-2">✓ Guardado</span>}
+            {estado === "error" && <span className="text-sm text-red-400">Error al guardar</span>}
+          </div>
+        </section>
+      )}
+
+      {paso === "oferta" && (
+        <section className="space-y-5">
+          <div className="flex flex-wrap items-center gap-3 rounded-xl border border-border bg-panel p-4">
+            <button
+              onClick={generarOferta}
+              className="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-white"
+            >
+              🎁 {p.oferta ? "Regenerar oferta" : "Generar oferta"}
+            </button>
+            {!p.oferta && (
+              <button
+                onClick={() => setP((prev) => ({ ...prev, oferta: ofertaVacia() }))}
+                className="rounded-lg border border-border px-4 py-2 text-sm text-muted hover:text-text"
+              >
+                Empezar en blanco
+              </button>
+            )}
+            <span className="text-sm text-muted">{ofertaEstado}</span>
+          </div>
+
+          {!p.oferta ? (
+            <div className="rounded-xl border border-dashed border-border p-8 text-center text-muted">
+              Aún no hay oferta. Genérala con IA (usa avatar, objeciones y ángulos)
+              o empieza en blanco. Los precios NO van aquí: se rellenan por país al
+              emitir; usa tokens como <code>[PRECIO_BASE]</code> si el copy los necesita.
+            </div>
+          ) : (
+            <>
+              <div className="space-y-3 rounded-xl border border-border bg-panel p-5">
+                <label className="flex flex-col gap-1 text-sm">
+                  <span className="text-muted">Nombre de la oferta</span>
+                  <input
+                    value={p.oferta!.nombre_oferta}
+                    onChange={(e) => setOfertaCampo("nombre_oferta", e.target.value)}
+                    className="rounded-lg border border-border bg-bg px-3 py-2 text-text outline-none focus:border-accent"
+                  />
+                </label>
+                <label className="flex flex-col gap-1 text-sm">
+                  <span className="text-muted">Promesa grande</span>
+                  <textarea
+                    value={p.oferta!.promesa_grande}
+                    onChange={(e) => setOfertaCampo("promesa_grande", e.target.value)}
+                    rows={2}
+                    className="rounded-lg border border-border bg-bg px-3 py-2 text-text outline-none focus:border-accent"
+                  />
+                </label>
+              </div>
+
+              {/* Producto principal */}
+              <div className="space-y-3 rounded-xl border border-accent/40 bg-panel p-5">
+                <h3 className="text-sm font-medium text-accent-2">Producto principal</h3>
+                <label className="flex flex-col gap-1 text-sm">
+                  <span className="text-muted">Título (vestido para el embudo)</span>
+                  <input
+                    value={p.oferta!.producto_principal.titulo}
+                    onChange={(e) => setOfertaPP("titulo", e.target.value)}
+                    className="rounded-lg border border-border bg-bg px-3 py-2 text-text outline-none focus:border-accent"
+                  />
+                </label>
+                <label className="flex flex-col gap-1 text-sm">
+                  <span className="text-muted">Descripción corta</span>
+                  <textarea
+                    value={p.oferta!.producto_principal.descripcion_corta}
+                    onChange={(e) => setOfertaPP("descripcion_corta", e.target.value)}
+                    rows={2}
+                    className="rounded-lg border border-border bg-bg px-3 py-2 text-text outline-none focus:border-accent"
+                  />
+                </label>
+                <div>
+                  <div className="mb-1 flex items-center justify-between">
+                    <span className="text-sm text-muted">¿Qué incluye?</span>
+                    <button
+                      onClick={addQueIncluye}
+                      className="rounded border border-border px-2 py-0.5 text-xs text-muted hover:text-text"
+                    >
+                      + Bullet
+                    </button>
+                  </div>
+                  <div className="space-y-2">
+                    {p.oferta!.producto_principal.que_incluye.map((b, i) => (
+                      <div key={i} className="flex gap-2">
+                        <input
+                          value={b}
+                          onChange={(e) => setQueIncluye(i, e.target.value)}
+                          placeholder="bullet concreto"
+                          className="flex-1 rounded border border-border bg-bg px-2 py-1 text-sm text-text outline-none focus:border-accent"
+                        />
+                        <button
+                          onClick={() => removeQueIncluye(i)}
+                          className="rounded border border-border px-2 text-xs text-muted hover:text-red-400"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                <label className="flex flex-col gap-1 text-sm">
+                  <span className="text-muted">Valor percibido (texto comparativo, no dinero)</span>
+                  <input
+                    value={p.oferta!.producto_principal.valor_percibido_texto}
+                    onChange={(e) => setOfertaPP("valor_percibido_texto", e.target.value)}
+                    placeholder="equivalente a 3 meses de suscripción premium"
+                    className="rounded-lg border border-border bg-bg px-3 py-2 text-text outline-none focus:border-accent"
+                  />
+                </label>
+              </div>
+
+              {/* Bonos */}
+              <div>
+                <div className="mb-2 flex items-center justify-between">
+                  <span className="text-sm font-medium">
+                    Bonos ({p.oferta!.bonos.length}/{MIN_BONOS}-{MAX_BONOS})
+                  </span>
+                  <button
+                    onClick={addBono}
+                    disabled={p.oferta!.bonos.length >= MAX_BONOS}
+                    className="rounded border border-border px-2 py-1 text-xs text-muted hover:text-text disabled:opacity-40"
+                  >
+                    + Añadir bono
+                  </button>
+                </div>
+                <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+                  {p.oferta!.bonos.map((bono, i) => (
+                    <div key={i} className="space-y-2 rounded-xl border border-border bg-panel p-4">
+                      <div className="flex items-center gap-2">
+                        <span className="rounded bg-accent/15 px-2 py-0.5 text-xs text-accent-2">
+                          Bono {i + 1}
+                        </span>
+                        <input
+                          value={bono.titulo}
+                          onChange={(e) => setBono(i, "titulo", e.target.value)}
+                          placeholder="Título memorable"
+                          className="flex-1 rounded border border-border bg-bg px-2 py-1 text-sm font-medium text-text outline-none focus:border-accent"
+                        />
+                        <button
+                          onClick={() => removeBono(i)}
+                          disabled={p.oferta!.bonos.length <= MIN_BONOS}
+                          className="rounded border border-border px-2 text-xs text-muted hover:text-red-400 disabled:opacity-40"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                      {(
+                        [
+                          { k: "descripcion_corta", l: "Descripción corta" },
+                          { k: "por_que_lo_incluyo", l: "Por qué lo incluyo" },
+                          { k: "objecion_que_desactiva", l: "Objeción que desactiva (cítala del avatar)" },
+                          { k: "valor_percibido_texto", l: "Valor percibido (texto, no dinero)" },
+                        ] as const
+                      ).map((f) => (
+                        <label key={f.k} className="flex flex-col gap-1 text-xs">
+                          <span className="text-muted">{f.l}</span>
+                          <textarea
+                            value={bono[f.k]}
+                            onChange={(e) => setBono(i, f.k, e.target.value)}
+                            rows={2}
+                            className="w-full rounded border border-border bg-bg px-2 py-1 text-sm text-text outline-none focus:border-accent"
+                          />
+                        </label>
+                      ))}
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Framing / urgencia / garantía */}
+              <div className="space-y-3 rounded-xl border border-border bg-panel p-5">
+                {(
+                  [
+                    { k: "framing_del_stack", l: "Framing del stack (se usa literal en el mensaje del embudo)" },
+                    { k: "razon_de_urgencia", l: "Razón de urgencia (sin fechas ni cifras concretas)" },
+                    { k: "garantia_o_reversibilidad", l: "Garantía o reversibilidad (política de marca)" },
+                  ] as const
+                ).map((f) => (
+                  <label key={f.k} className="flex flex-col gap-1 text-sm">
+                    <span className="text-muted">{f.l}</span>
+                    <textarea
+                      value={p.oferta![f.k]}
+                      onChange={(e) => setOfertaCampo(f.k, e.target.value)}
+                      rows={2}
+                      className="rounded-lg border border-border bg-bg px-3 py-2 text-text outline-none focus:border-accent"
+                    />
+                  </label>
+                ))}
+              </div>
+            </>
+          )}
+
+          <div className="sticky bottom-0 flex items-center gap-3 border-t border-border bg-bg/80 py-4 backdrop-blur">
+            <button
+              onClick={guardar}
+              disabled={estado === "guardando"}
+              className="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-white disabled:opacity-60"
+            >
+              {estado === "guardando" ? "Guardando…" : "Guardar oferta"}
             </button>
             {estado === "ok" && <span className="text-sm text-accent-2">✓ Guardado</span>}
             {estado === "error" && <span className="text-sm text-red-400">Error al guardar</span>}

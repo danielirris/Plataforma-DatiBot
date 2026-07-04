@@ -247,6 +247,62 @@ export interface EmisionRegistro {
   fecha: string;
 }
 
+// ── OFERTA (Grand Slam Offer del embudo) ───────────────────────
+export interface ProductoPrincipalOferta {
+  titulo: string;
+  descripcion_corta: string;
+  que_incluye: string[];
+  /** valor percibido en TEXTO comparativo, no en dinero */
+  valor_percibido_texto: string;
+}
+export interface BonoOferta {
+  titulo: string;
+  descripcion_corta: string;
+  por_que_lo_incluyo: string;
+  /** objeción del avatar (compra o uso) que este bono desactiva */
+  objecion_que_desactiva: string;
+  valor_percibido_texto: string;
+}
+export interface Oferta {
+  nombre_oferta: string;
+  promesa_grande: string;
+  producto_principal: ProductoPrincipalOferta;
+  /** 3 o 4 bonos */
+  bonos: BonoOferta[];
+  framing_del_stack: string;
+  razon_de_urgencia: string;
+  garantia_o_reversibilidad: string;
+}
+
+export const MIN_BONOS = 3;
+export const MAX_BONOS = 4;
+
+export function bonoVacio(): BonoOferta {
+  return {
+    titulo: "",
+    descripcion_corta: "",
+    por_que_lo_incluyo: "",
+    objecion_que_desactiva: "",
+    valor_percibido_texto: "",
+  };
+}
+export function ofertaVacia(): Oferta {
+  return {
+    nombre_oferta: "",
+    promesa_grande: "",
+    producto_principal: {
+      titulo: "",
+      descripcion_corta: "",
+      que_incluye: [""],
+      valor_percibido_texto: "",
+    },
+    bonos: [bonoVacio(), bonoVacio(), bonoVacio()],
+    framing_del_stack: "",
+    razon_de_urgencia: "",
+    garantia_o_reversibilidad: "",
+  };
+}
+
 export interface Producto {
   id: string;
   nombre: string;
@@ -257,6 +313,8 @@ export interface Producto {
   avatar: Avatar;
   /** 6 ángulos publicitarios (encuadres para vender el mismo producto) */
   angulos: Angulo[];
+  /** paquete de venta (Grand Slam Offer); null hasta que se genera */
+  oferta: Oferta | null;
   /** ranuras del motor (mensaje_1..8, mensaje_rmk_*, ob_mensaje_*, …) en español neutral */
   mensajes: Record<string, string>;
   /** líneas cortas de texto que el servidor superpone en cada imagen */
@@ -297,6 +355,7 @@ export function crearProductoBorrador(parcial: Partial<Producto> = {}): Producto
       fuentes: [],
     },
     angulos: [],
+    oferta: null,
     mensajes: {},
     overlays: overlaysVacios(),
     imagenes: overlaysVacios(),
