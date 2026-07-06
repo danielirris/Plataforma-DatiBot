@@ -36,8 +36,11 @@ Elige los 6 mejores de este catálogo, según lo que más resuene con este produ
 10. ATAJO_HACK — el atajo, el hack, ahorro de tiempo/esfuerzo
 11. VERGUENZA_SOCIAL — lo que otros pensarán / cómo no quedar mal
 12. URGENCIA_VENTANA — la ventana de oportunidad que se cierra
+13. NEGOCIO_EMPRENDER — emprender / ganar dinero con esto (revenderlo, negocio desde casa, ingreso extra)
 
 REGLAS ESTRICTAS
+
+- OBLIGATORIO: uno de los 6 ángulos debe ser SIEMPRE de tipo "NEGOCIO_EMPRENDER", con el tono de emprender y ganar dinero con este producto (revenderlo, montar un negocio desde casa, generar un ingreso extra). Los otros 5, los mejores del catálogo por relevancia.
 
 - Español neutral. Nada de modismos de país específico. El copy se usa en PE/CL/CO/EC/MX/VE.
 - NO menciones precios, moneda, ni links. Nada de "$", "S/", "COP", "MXN".

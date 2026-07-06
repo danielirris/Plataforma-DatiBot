@@ -31,6 +31,12 @@ apps/extractor-service/storage/incoming/
 apps/extractor-service/storage/jobs/
 apps/extractor-service/storage/outputs/
 
+# tsc incremental
+*.tsbuildinfo
+
+# copia duplicada de ebookforge en la raíz (la buena vive en apps/ebookforge-service)
+/ebookforge/
+
 # misc
 .DS_Store
 *.log

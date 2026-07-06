@@ -17,7 +17,9 @@ function findRepoRoot(): string {
   return process.cwd();
 }
 
-const STORE_DIR = path.join(findRepoRoot(), ".products-store");
+// DATA_DIR: en producción (contenedor) apunta a un volumen persistente; en local
+// queda undefined y se usa la raíz del monorepo.
+const STORE_DIR = path.join(process.env.DATA_DIR || findRepoRoot(), ".products-store");
 
 /** Sanea el id para usarlo como nombre de archivo (evita path traversal). */
 function safeId(id: string): string {

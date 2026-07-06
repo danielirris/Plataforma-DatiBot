@@ -1,0 +1,21 @@
+{
+  "title": "Guía de ejemplo",
+  "theme": "amigurumi",
+  "blocks": [
+    {"type":"cover","title":"Guía de Ejemplo","latch":"EbookForge","subtitle":"tu contenido, tu estilo",
+     "welcome":["Este ebook se generó a partir de un archivo de contenido y un tema, sin diseñar nada a mano.",
+                "Cambia el <strong>contenido</strong> o el <strong>tema</strong> y el resultado se adapta solo."],
+     "tagline":"Un motor, muchos ebooks.","brand":"Entregado por [ TU MARCA ]","brand_sub":"Edición 2026 · hecho con EbookForge"},
+    {"type":"section","eyebrow":"Contenido","title":"Qué incluye"},
+    {"type":"chips","items":["01 Introducción","02 Ejemplos","03 Cierre"]},
+    {"type":"section","eyebrow":"Capítulo 01","title":"Bloques de contenido"},
+    {"type":"paragraph","text":"El contenido es una lista de <strong>bloques</strong>. Cada bloque tiene un tipo y el tema sabe dibujarlo. Así el mismo motor sirve para catálogos, recetarios, manuales o guías."},
+    {"type":"list","items":["Portada, secciones y cierre","Párrafos, listas y destacados","Fichas con enlace y descripción","Imágenes con pie de foto"]},
+    {"type":"card","name":"Ficha de ejemplo","link":"https://ejemplo.com","link_text":"ejemplo.com","body":"Una ficha sirve para tiendas, productos, recetas o cualquier elemento con título, enlace y descripción."},
+    {"type":"callout","kind":"sell","tag":"Consejo","text":"Reutiliza un tema para todos tus ebooks: inviertes una vez en el diseño y lo aprovechas para siempre."},
+    {"type":"section","eyebrow":"Capítulo 02","title":"Con imágenes"},
+    {"type":"paragraph","text":"Las imágenes se incrustan solas (se corrige la orientación, se comprimen y se pasan a base64), así el archivo queda autocontenido."},
+    {"type":"image","src":"ejemplo.jpg","caption":"Tus fotos van aquí"},
+    {"type":"closing","big":"¡Listo!","small":"Cambia el contenido o el tema y vuelve a generar.","brand":"Hecho con EbookForge"}
+  ]
+}

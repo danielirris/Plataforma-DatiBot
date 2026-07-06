@@ -1,0 +1,25 @@
+# Contexto de build de la imagen web (se construye desde la raíz del monorepo).
+# Fuera todo lo pesado, generado o sensible.
+**/node_modules
+**/.next
+**/.turbo
+**/dist
+**/.venv
+**/__pycache__
+**/*.pyc
+.git
+.gitignore
+
+# secretos y datos locales (NO deben entrar a la imagen)
+.config-store.json
+.products-store
+**/.env
+**/.env.local
+
+# copia duplicada de ebookforge que quedó en la raíz (la buena vive en apps/)
+/ebookforge
+
+# artefactos varios
+**/*.tsbuildinfo
+**/*.log
+.DS_Store

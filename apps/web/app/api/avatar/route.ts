@@ -56,7 +56,8 @@ PRODUCTO:
 - Posicionamiento: ${p.identidad.posicionamiento}
 - Dirigido a: ${p.identidad.dirigidoA}
 
-Investiga y responde CADA sección con profundidad, en español neutral, basándote en lo que encuentres de personas reales:
+Investiga y responde CADA sección con profundidad, en español neutral, basándote en lo que encuentres de personas reales.
+FORMATO: cada sección debe venir como una LISTA DE BULLET POINTS (una idea por línea, empezando con "- " y separadas por saltos de línea \\n), fáciles de leer y de interpretar. Nada de párrafos largos corridos:
 ${preguntas}
 ${PROMPT_OBJECIONES}
 ${notaRetry ? `\nIMPORTANTE: ${notaRetry}\n` : ""}

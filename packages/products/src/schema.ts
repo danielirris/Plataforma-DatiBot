@@ -152,6 +152,7 @@ export const TIPOS_ANGULO = [
   "ATAJO_HACK",
   "VERGUENZA_SOCIAL",
   "URGENCIA_VENTANA",
+  "NEGOCIO_EMPRENDER",
 ] as const;
 export type TipoAngulo = (typeof TIPOS_ANGULO)[number];
 
@@ -271,7 +272,8 @@ export interface Oferta {
   bonos: BonoOferta[];
   framing_del_stack: string;
   razon_de_urgencia: string;
-  garantia_o_reversibilidad: string;
+  /** si la oferta incluye algún bono en video (lo decide un toggle de la UI) */
+  incluye_video: boolean;
 }
 
 export const MIN_BONOS = 3;
@@ -299,7 +301,7 @@ export function ofertaVacia(): Oferta {
     bonos: [bonoVacio(), bonoVacio(), bonoVacio()],
     framing_del_stack: "",
     razon_de_urgencia: "",
-    garantia_o_reversibilidad: "",
+    incluye_video: false,
   };
 }
 

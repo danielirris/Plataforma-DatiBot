@@ -7,10 +7,12 @@
 
 export const metadata = { title: "Dashboard ads · Mi Plataforma" };
 
-const DASHBOARD_URL =
-  process.env.NEXT_PUBLIC_DASHBOARD_URL ?? "http://localhost:8501";
+// Render dinámico: la URL se lee del entorno EN RUNTIME (no se incrusta en build),
+// así EasyPanel puede inyectar el subdominio del servicio sin rebuild.
+export const dynamic = "force-dynamic";
 
 export default function DashboardPage() {
+  const DASHBOARD_URL = process.env.DASHBOARD_URL ?? "http://localhost:8501";
   return (
     <iframe
       src={`${DASHBOARD_URL}/?embed=true`}

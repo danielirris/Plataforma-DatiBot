@@ -103,6 +103,19 @@ export const CONFIG_GROUPS: ConfigGroup[] = [
     ],
   },
 
+  // ── Ebooks (EbookForge) ────────────────────────────────────────
+  // Motor determinista (sin IA). Solo necesita su puerto para el embed.
+  {
+    id: "ebooks",
+    title: "Ebooks",
+    section: "Ebooks",
+    envTarget: "apps/ebookforge-service/.env",
+    note: "Generador de ebooks (PDF) local y determinista. No usa API keys.",
+    fields: [
+      { key: "port", label: "Puerto del servicio", type: "number", envName: "PORT", placeholder: "8600", help: "Déjalo en 8600. Cambiarlo rompe el embed a menos que ajustes NEXT_PUBLIC_EBOOKFORGE_URL." },
+    ],
+  },
+
   // ── Generación con IA (imágenes y texto) ───────────────────────
   // envTarget null: lo consume el shell vía readConfig() (API routes de
   // /api/generate y /api/images), no un servicio Python.

@@ -1,0 +1,91 @@
+/* ===== TEMA AMIGURUMI (lavanda) =====
+   Los tokens viven aquí. Cambia estas variables y cambia todo el ebook.
+   'FONTS/' se reemplaza por la ruta real de las fuentes al construir. */
+@font-face{font-family:'Fredoka';font-weight:700;src:url('FONTS/Fredoka-Bold.ttf')}
+@font-face{font-family:'Fredoka';font-weight:600;src:url('FONTS/Fredoka-SemiBold.ttf')}
+@font-face{font-family:'Fredoka';font-weight:500;src:url('FONTS/Fredoka-Medium.ttf')}
+@font-face{font-family:'Poppins';font-weight:400;src:url('FONTS/Poppins-Regular.ttf')}
+@font-face{font-family:'Poppins';font-weight:500;src:url('FONTS/Poppins-Medium.ttf')}
+@font-face{font-family:'Poppins';font-weight:700;src:url('FONTS/Poppins-Bold.ttf')}
+
+:root{
+  --bg:#FCF1FB; --violet:#7C5AA0; --violet-deep:#5A3F7A; --plum:#8A5DB0;
+  --lilac:#CBAAE4; --lilac-soft:#E6CCF0; --lilac-wash:#F4EBFB;
+  --ink:#453C4E; --ink2:#867A94; --line:#E3D3F0;
+}
+*{box-sizing:border-box}
+@page{size:A4;margin:22mm 17mm 18mm;background:#FCF1FB;
+  @top-right{content:string(runhead);font-family:'Fredoka';font-weight:500;font-size:8.5pt;color:#CBAAE4}
+  @bottom-center{content:counter(page);font-family:'Poppins';font-weight:500;font-size:9pt;color:#CBAAE4}}
+@page cover{margin:0;@top-right{content:none}@bottom-center{content:none}}
+@page plain{@top-right{content:none}@bottom-center{content:none}}
+html{-weasy-hyphens:none}
+body{font-family:'Poppins';color:var(--ink);font-size:11pt;line-height:1.5;
+     print-color-adjust:exact;-weasy-print-color-adjust:exact}
+p{margin:0}
+
+.pagedeco{position:fixed;top:0;left:0;width:100%;height:100%;z-index:-1;pointer-events:none}
+.pagedeco .a{position:absolute;top:-12mm;left:-10mm}
+.pagedeco .b{position:absolute;bottom:-12mm;right:-10mm}
+.deco{position:absolute;z-index:1;pointer-events:none}
+
+/* ---- cover ---- */
+.cover{page:cover;position:relative;width:210mm;height:297mm;overflow:hidden;background:var(--bg);page-break-after:always}
+.cover .in{position:absolute;z-index:2;inset:0;display:flex;flex-direction:column;justify-content:center;text-align:center;padding:24mm 22mm}
+.ktitle{font-family:'Fredoka';font-weight:700;color:var(--violet);font-size:34pt;line-height:1.06;margin:0 0 3mm}
+.klat{display:inline-block;margin-top:3mm;color:#fff;background:var(--violet);padding:1mm 7mm;border-radius:40px;font-size:25pt}
+.ksub{font-family:'Fredoka';font-weight:500;color:var(--lilac);font-size:15pt;margin:0 0 8mm}
+.wpanel{background:var(--lilac-wash);border:1.5px solid var(--lilac-soft);border-radius:8mm;padding:8mm 9mm;max-width:152mm;margin:0 auto}
+.wpanel p{font-size:11.5pt;line-height:1.6;margin:0 0 3mm}
+.wpanel p:last-child{margin:0}
+.wpanel strong{color:var(--violet-deep);font-weight:700}
+.tagline{font-family:'Fredoka';font-weight:500;color:var(--violet);font-size:13pt;margin:7mm auto 0;line-height:1.4}
+.brand{margin-top:9mm;font-family:'Poppins';font-weight:600;letter-spacing:.14em;text-transform:uppercase;font-size:8.5pt;color:var(--violet)}
+.brand small{display:block;margin-top:2mm;font-weight:400;letter-spacing:.04em;text-transform:none;color:var(--ink2);font-size:8.5pt}
+
+/* ---- section ---- */
+.section{margin:3mm 0 4mm;break-after:avoid;string-set:runhead content(text)}
+.sec-eyebrow{font-family:'Fredoka';font-weight:600;letter-spacing:.14em;text-transform:uppercase;font-size:9pt;color:var(--lilac)}
+.sec-title{font-family:'Fredoka';font-weight:700;color:var(--violet);font-size:26pt;margin:1mm 0 0}
+.flourish{display:block;width:32mm;height:7px;margin:2mm 0 0}
+
+/* ---- card ---- */
+.card{position:relative;margin:0 0 5.5mm;padding-left:9mm;break-inside:avoid}
+.card::before{content:'';position:absolute;left:0;top:2.4mm;width:4mm;height:4mm;border-radius:50%;background:var(--lilac-soft);border:1.3mm solid var(--lilac)}
+.cardname{font-family:'Poppins';font-weight:700;color:var(--ink);font-size:12pt;line-height:1.3}
+.tri::after{content:'';display:inline-block;margin:0 2.2mm;border-left:7px solid var(--lilac);border-top:5px solid transparent;border-bottom:5px solid transparent;vertical-align:middle}
+.cardlink{font-family:'Poppins';font-weight:500;color:var(--plum);font-size:10.5pt;text-decoration:underline;text-decoration-color:var(--lilac)}
+.cardnolink{font-family:'Poppins';font-weight:500;color:var(--ink2);font-size:10pt;font-style:italic}
+.cardbody{margin:1.4mm 0 0;font-size:10.5pt;line-height:1.5;color:var(--ink2)}
+
+/* ---- paragraph / list ---- */
+.para{margin:0 0 3mm;font-size:11pt;line-height:1.55}
+.blist{margin:0 0 4mm;padding-left:0;list-style:none}
+.blist li{position:relative;padding:1mm 0 1mm 8mm;font-size:10.8pt;line-height:1.45}
+.blist li::before{content:'';position:absolute;left:2mm;top:3.4mm;width:3mm;height:3mm;border-radius:50%;background:var(--lilac)}
+
+/* ---- image ---- */
+.photo{margin:5mm 0 6mm;break-inside:avoid;text-align:center}
+.frame{display:inline-block;border-radius:6mm;overflow:hidden;border:2px solid var(--lilac-soft);line-height:0}
+.frame img{display:block;max-width:150mm;max-height:100mm;width:auto;height:auto}
+.figcap{text-align:center;font-family:'Fredoka';font-weight:500;color:var(--lilac);font-size:10.5pt;margin:3mm 0 0}
+
+/* ---- callout ---- */
+.callout{border-left:3mm solid var(--lilac);background:var(--lilac-wash);border-radius:0 4mm 4mm 0;padding:5mm 6mm;margin:0 0 5mm;break-inside:avoid}
+.callout .tag{display:block;font-family:'Fredoka';font-weight:600;text-transform:uppercase;letter-spacing:.1em;font-size:8.5pt;color:var(--plum);margin-bottom:1.5mm}
+.callout.sell{border-left-color:#C79A2E;background:#FBF3DF}.callout.sell .tag{color:#B07E1C}
+.callout.danger{border-left-color:#C86A6A;background:#F8E9E9}.callout.danger .tag{color:#A84A4A}
+.callout p{font-size:10.5pt;line-height:1.5}
+
+/* ---- chips (índice) ---- */
+.chips{font-size:0;margin-top:2mm}
+.chip{display:inline-block;font-family:'Fredoka';font-weight:500;font-size:12.5pt;color:var(--violet);background:var(--lilac-wash);border:1.5px solid var(--lilac-soft);border-radius:30px;padding:2.6mm 6.5mm;margin:0 3.5mm 4.5mm 0}
+
+/* ---- divider ---- */
+.divider{display:block;width:100%;height:12px;margin:2mm 0 6mm}
+
+/* ---- closing ---- */
+.closing{page:plain;page-break-before:always;position:relative;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;height:238mm}
+.cbig{font-family:'Fredoka';font-weight:700;color:var(--violet);font-size:30pt;line-height:1.1;margin:0 0 3mm}
+.csmall{font-family:'Fredoka';font-weight:500;color:var(--lilac);font-size:13pt;max-width:120mm;line-height:1.5}
+.cbrand{margin-top:10mm;font-family:'Poppins';font-weight:600;letter-spacing:.14em;text-transform:uppercase;font-size:8.5pt;color:var(--violet)}

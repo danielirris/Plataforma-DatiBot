@@ -6,10 +6,11 @@
 
 export const metadata = { title: "Editor de videos · Mi Plataforma" };
 
-const EXTRACTOR_URL =
-  process.env.NEXT_PUBLIC_EXTRACTOR_URL ?? "http://localhost:8000";
+// Render dinámico: la URL se lee del entorno EN RUNTIME (no se incrusta en build).
+export const dynamic = "force-dynamic";
 
 export default function ExtractorPage() {
+  const EXTRACTOR_URL = process.env.EXTRACTOR_URL ?? "http://localhost:8000";
   return (
     <iframe
       src={EXTRACTOR_URL}

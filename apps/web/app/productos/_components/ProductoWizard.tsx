@@ -27,6 +27,7 @@ import {
   type TipoImagen,
 } from "@plataforma/products/schema";
 import { cn } from "@plataforma/ui";
+import { AutoTextarea } from "./AutoTextarea";
 
 const PASOS = [
   { key: "identidad", label: "1 · Identidad" },
@@ -76,12 +77,14 @@ export function ProductoWizard({ producto }: { producto?: Producto }) {
   const [paso, setPaso] = useState<string>("identidad");
   const [estado, setEstado] = useState<"idle" | "guardando" | "ok" | "error">("idle");
   const [genEstado, setGenEstado] = useState<string>("");
-  const [anguloMensajes, setAnguloMensajes] = useState<string>("");
   const [imgEstado, setImgEstado] = useState<string>("");
   const [avatarEstado, setAvatarEstado] = useState<string>("");
   const [angulosEstado, setAngulosEstado] = useState<string>("");
   const [ganchosEstado, setGanchosEstado] = useState<Record<string, string>>({});
   const [ofertaEstado, setOfertaEstado] = useState<string>("");
+  const [incluyeVideo, setIncluyeVideo] = useState<boolean>(
+    producto?.oferta?.incluye_video ?? false,
+  );
 
   const esNuevo = !p.id;
 
@@ -283,7 +286,7 @@ export function ProductoWizard({ producto }: { producto?: Producto }) {
       const res = await fetch(`/api/productos/${p.id}/generar-oferta`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ producto: p }),
+        body: JSON.stringify({ producto: p, incluye_video: incluyeVideo }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -348,11 +351,7 @@ export function ProductoWizard({ producto }: { producto?: Producto }) {
       const res = await fetch("/api/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          producto: p,
-          soloRanuras,
-          angulo_id: anguloMensajes || undefined,
-        }),
+        body: JSON.stringify({ producto: p, soloRanuras }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -433,9 +432,10 @@ export function ProductoWizard({ producto }: { producto?: Producto }) {
         <section className="space-y-4 rounded-xl border border-border bg-panel p-5">
           <label className="flex flex-col gap-1 text-sm">
             <span className="text-muted">Nombre del producto</span>
-            <input
+            <AutoTextarea
               value={p.nombre}
               onChange={(e) => setCampo("nombre", e.target.value)}
+              rows={1}
               placeholder="chorizos para emprender desde casa"
               className="rounded-lg border border-border bg-bg px-3 py-2 text-text outline-none focus:border-accent"
             />
@@ -454,7 +454,7 @@ export function ProductoWizard({ producto }: { producto?: Producto }) {
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <label className="flex flex-col gap-1 text-sm sm:col-span-2">
               <span className="text-muted">Promesa principal</span>
-              <textarea
+              <AutoTextarea
                 value={p.identidad.promesa}
                 onChange={(e) => setIdentidad("promesa", e.target.value)}
                 rows={2}
@@ -464,7 +464,7 @@ export function ProductoWizard({ producto }: { producto?: Producto }) {
             </label>
             <label className="flex flex-col gap-1 text-sm">
               <span className="text-muted">Posicionamiento</span>
-              <textarea
+              <AutoTextarea
                 value={p.identidad.posicionamiento}
                 onChange={(e) => setIdentidad("posicionamiento", e.target.value)}
                 rows={2}
@@ -474,7 +474,7 @@ export function ProductoWizard({ producto }: { producto?: Producto }) {
             </label>
             <label className="flex flex-col gap-1 text-sm">
               <span className="text-muted">Dirigido a (general, sin avatar)</span>
-              <textarea
+              <AutoTextarea
                 value={p.identidad.dirigidoA}
                 onChange={(e) => setIdentidad("dirigidoA", e.target.value)}
                 rows={2}
@@ -520,7 +520,7 @@ export function ProductoWizard({ producto }: { producto?: Producto }) {
                   <span className="text-sm font-medium">{s.label}</span>
                   <p className="text-xs text-muted">{s.pregunta}</p>
                 </div>
-                <textarea
+                <AutoTextarea
                   value={(p.avatar[s.key as keyof Avatar] as string) ?? ""}
                   onChange={(e) => setAvatarSeccion(s.key as keyof Avatar, e.target.value)}
                   rows={4}
@@ -569,10 +569,12 @@ export function ProductoWizard({ producto }: { producto?: Producto }) {
                   )}
                   {lista.map((o, i) => (
                     <div key={i} className="rounded-lg border border-border bg-bg p-3">
-                      <div className="flex flex-wrap gap-2">
-                        <input
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="text-xs font-medium text-muted">{i + 1}.</span>
+                        <AutoTextarea
                           value={o.objecion}
                           onChange={(e) => setObjecion(b.bloque, i, "objecion", e.target.value)}
+                          rows={1}
                           placeholder="objeción en primera persona"
                           className="min-w-[10rem] flex-1 rounded border border-border bg-panel px-2 py-1 text-sm text-text outline-none focus:border-accent"
                         />
@@ -595,7 +597,7 @@ export function ProductoWizard({ producto }: { producto?: Producto }) {
                           ✕
                         </button>
                       </div>
-                      <textarea
+                      <AutoTextarea
                         value={o.respuesta_sugerida}
                         onChange={(e) => setObjecion(b.bloque, i, "respuesta_sugerida", e.target.value)}
                         rows={2}
@@ -682,9 +684,10 @@ export function ProductoWizard({ producto }: { producto?: Producto }) {
                     <span className="rounded bg-accent/15 px-2 py-0.5 text-xs text-accent-2">
                       {i + 1}
                     </span>
-                    <input
+                    <AutoTextarea
                       value={ang.nombre}
                       onChange={(e) => setAngulo(i, "nombre", e.target.value)}
+                      rows={1}
                       placeholder="Nombre del ángulo"
                       className="flex-1 rounded border border-border bg-bg px-2 py-1 text-sm font-medium text-text outline-none focus:border-accent"
                     />
@@ -712,7 +715,7 @@ export function ProductoWizard({ producto }: { producto?: Producto }) {
                   {CAMPOS_ANGULO.map((c) => (
                     <label key={c.key} className="flex flex-col gap-1 text-xs">
                       <span className="text-muted">{c.label}</span>
-                      <textarea
+                      <AutoTextarea
                         value={(ang[c.key] as string) ?? ""}
                         onChange={(e) => setAngulo(i, c.key, e.target.value)}
                         rows={c.rows}
@@ -745,7 +748,7 @@ export function ProductoWizard({ producto }: { producto?: Producto }) {
                     <div className="space-y-2">
                       {(ang.hooks ?? []).map((g, hi) => (
                         <div key={hi} className="rounded-lg border border-border bg-bg p-2">
-                          <textarea
+                          <AutoTextarea
                             value={g.texto}
                             onChange={(e) => setGancho(i, hi, "texto", e.target.value)}
                             rows={2}
@@ -764,9 +767,10 @@ export function ProductoWizard({ producto }: { producto?: Producto }) {
                                 </option>
                               ))}
                             </select>
-                            <input
+                            <AutoTextarea
                               value={g.por_que_funciona}
                               onChange={(e) => setGancho(i, hi, "por_que_funciona", e.target.value)}
+                              rows={1}
                               placeholder="por qué funciona"
                               className="flex-1 rounded border border-border bg-panel px-2 py-0.5 text-xs text-text outline-none focus:border-accent"
                             />
@@ -811,6 +815,17 @@ export function ProductoWizard({ producto }: { producto?: Producto }) {
                 Empezar en blanco
               </button>
             )}
+            <label className="flex items-center gap-2 text-sm text-muted">
+              <input
+                type="checkbox"
+                checked={incluyeVideo}
+                onChange={(e) => {
+                  setIncluyeVideo(e.target.checked);
+                  updateOferta((o) => ({ ...o, incluye_video: e.target.checked }));
+                }}
+              />
+              ¿Se ofrece algo en video?
+            </label>
             <span className="text-sm text-muted">{ofertaEstado}</span>
           </div>
 
@@ -825,15 +840,16 @@ export function ProductoWizard({ producto }: { producto?: Producto }) {
               <div className="space-y-3 rounded-xl border border-border bg-panel p-5">
                 <label className="flex flex-col gap-1 text-sm">
                   <span className="text-muted">Nombre de la oferta</span>
-                  <input
+                  <AutoTextarea
                     value={p.oferta!.nombre_oferta}
                     onChange={(e) => setOfertaCampo("nombre_oferta", e.target.value)}
+                    rows={1}
                     className="rounded-lg border border-border bg-bg px-3 py-2 text-text outline-none focus:border-accent"
                   />
                 </label>
                 <label className="flex flex-col gap-1 text-sm">
                   <span className="text-muted">Promesa grande</span>
-                  <textarea
+                  <AutoTextarea
                     value={p.oferta!.promesa_grande}
                     onChange={(e) => setOfertaCampo("promesa_grande", e.target.value)}
                     rows={2}
@@ -847,15 +863,16 @@ export function ProductoWizard({ producto }: { producto?: Producto }) {
                 <h3 className="text-sm font-medium text-accent-2">Producto principal</h3>
                 <label className="flex flex-col gap-1 text-sm">
                   <span className="text-muted">Título (vestido para el embudo)</span>
-                  <input
+                  <AutoTextarea
                     value={p.oferta!.producto_principal.titulo}
                     onChange={(e) => setOfertaPP("titulo", e.target.value)}
+                    rows={1}
                     className="rounded-lg border border-border bg-bg px-3 py-2 text-text outline-none focus:border-accent"
                   />
                 </label>
                 <label className="flex flex-col gap-1 text-sm">
                   <span className="text-muted">Descripción corta</span>
-                  <textarea
+                  <AutoTextarea
                     value={p.oferta!.producto_principal.descripcion_corta}
                     onChange={(e) => setOfertaPP("descripcion_corta", e.target.value)}
                     rows={2}
@@ -875,9 +892,10 @@ export function ProductoWizard({ producto }: { producto?: Producto }) {
                   <div className="space-y-2">
                     {p.oferta!.producto_principal.que_incluye.map((b, i) => (
                       <div key={i} className="flex gap-2">
-                        <input
+                        <AutoTextarea
                           value={b}
                           onChange={(e) => setQueIncluye(i, e.target.value)}
+                          rows={1}
                           placeholder="bullet concreto"
                           className="flex-1 rounded border border-border bg-bg px-2 py-1 text-sm text-text outline-none focus:border-accent"
                         />
@@ -893,9 +911,10 @@ export function ProductoWizard({ producto }: { producto?: Producto }) {
                 </div>
                 <label className="flex flex-col gap-1 text-sm">
                   <span className="text-muted">Valor percibido (texto comparativo, no dinero)</span>
-                  <input
+                  <AutoTextarea
                     value={p.oferta!.producto_principal.valor_percibido_texto}
                     onChange={(e) => setOfertaPP("valor_percibido_texto", e.target.value)}
+                    rows={1}
                     placeholder="equivalente a 3 meses de suscripción premium"
                     className="rounded-lg border border-border bg-bg px-3 py-2 text-text outline-none focus:border-accent"
                   />
@@ -923,9 +942,10 @@ export function ProductoWizard({ producto }: { producto?: Producto }) {
                         <span className="rounded bg-accent/15 px-2 py-0.5 text-xs text-accent-2">
                           Bono {i + 1}
                         </span>
-                        <input
+                        <AutoTextarea
                           value={bono.titulo}
                           onChange={(e) => setBono(i, "titulo", e.target.value)}
+                          rows={1}
                           placeholder="Título memorable"
                           className="flex-1 rounded border border-border bg-bg px-2 py-1 text-sm font-medium text-text outline-none focus:border-accent"
                         />
@@ -947,7 +967,7 @@ export function ProductoWizard({ producto }: { producto?: Producto }) {
                       ).map((f) => (
                         <label key={f.k} className="flex flex-col gap-1 text-xs">
                           <span className="text-muted">{f.l}</span>
-                          <textarea
+                          <AutoTextarea
                             value={bono[f.k]}
                             onChange={(e) => setBono(i, f.k, e.target.value)}
                             rows={2}
@@ -966,12 +986,11 @@ export function ProductoWizard({ producto }: { producto?: Producto }) {
                   [
                     { k: "framing_del_stack", l: "Framing del stack (se usa literal en el mensaje del embudo)" },
                     { k: "razon_de_urgencia", l: "Razón de urgencia (sin fechas ni cifras concretas)" },
-                    { k: "garantia_o_reversibilidad", l: "Garantía o reversibilidad (política de marca)" },
                   ] as const
                 ).map((f) => (
                   <label key={f.k} className="flex flex-col gap-1 text-sm">
                     <span className="text-muted">{f.l}</span>
-                    <textarea
+                    <AutoTextarea
                       value={p.oferta![f.k]}
                       onChange={(e) => setOfertaCampo(f.k, e.target.value)}
                       rows={2}
@@ -1006,29 +1025,12 @@ export function ProductoWizard({ producto }: { producto?: Producto }) {
             >
               ✨ Generar mensajes con IA
             </button>
-            <label className="flex items-center gap-2 text-sm text-muted">
-              Ángulo:
-              <select
-                value={anguloMensajes}
-                onChange={(e) => setAnguloMensajes(e.target.value)}
-                className="rounded-lg border border-border bg-bg px-2 py-1 text-text outline-none focus:border-accent"
-              >
-                <option value="">Sin ángulo específico</option>
-                {p.angulos.map((a) => (
-                  <option key={a.id} value={a.id}>
-                    {a.tipo} · {a.nombre}
-                  </option>
-                ))}
-              </select>
-            </label>
             <span className="text-sm text-muted">{genEstado}</span>
           </div>
-          {p.oferta && (
-            <p className="text-xs text-accent-2">
-              ✓ Usando la oferta: mensaje_3 listará “qué incluye” y mensaje_4 los
-              bonos.
-            </p>
-          )}
+          <p className="text-xs text-muted">
+            El copy usa <b>los 6 ángulos</b> (distintos mensajes se apoyan en
+            distintos ángulos){p.oferta ? " y la oferta (mensaje_3 = qué incluye, mensaje_4 = bonos)" : ""}.
+          </p>
 
           <div className="space-y-3">
             {RANURAS_MENSAJE.map((r) => (
@@ -1045,7 +1047,7 @@ export function ProductoWizard({ producto }: { producto?: Producto }) {
                     Regenerar
                   </button>
                 </div>
-                <textarea
+                <AutoTextarea
                   value={p.mensajes[r.key] ?? ""}
                   onChange={(e) => setMensaje(r.key, e.target.value)}
                   rows={3}
@@ -1061,9 +1063,10 @@ export function ProductoWizard({ producto }: { producto?: Producto }) {
               {TIPOS_IMAGEN.map((t) => (
                 <label key={t} className="flex flex-col gap-1 text-sm">
                   <span className="font-mono text-xs text-muted">{t}</span>
-                  <input
+                  <AutoTextarea
                     value={p.overlays[t] ?? ""}
                     onChange={(e) => setOverlay(t, e.target.value)}
+                    rows={1}
                     className="rounded-lg border border-border bg-bg px-3 py-2 text-text outline-none focus:border-accent"
                   />
                 </label>

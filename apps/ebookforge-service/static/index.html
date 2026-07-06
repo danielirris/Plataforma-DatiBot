@@ -1,0 +1,39 @@
+<!DOCTYPE html><html lang="es"><head><meta charset="utf-8"><title>EbookForge</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  body{font-family:system-ui,sans-serif;max-width:820px;margin:40px auto;padding:0 18px;color:#453C4E;background:#FCF1FB}
+  h1{color:#7C5AA0;font-size:28px;margin-bottom:4px} p.sub{color:#867A94;margin-top:0}
+  label{display:block;font-weight:600;margin:18px 0 6px}
+  textarea{width:100%;min-height:280px;font-family:ui-monospace,monospace;font-size:13px;
+           border:1.5px solid #E6CCF0;border-radius:10px;padding:12px;background:#fff}
+  select,input[type=file]{border:1.5px solid #E6CCF0;border-radius:10px;padding:8px;background:#fff}
+  button{margin-top:20px;background:#7C5AA0;color:#fff;border:0;border-radius:24px;
+         padding:12px 28px;font-size:15px;font-weight:600;cursor:pointer}
+  .row{display:flex;gap:24px;flex-wrap:wrap;align-items:center}
+  small{color:#867A94}
+</style></head><body>
+  <h1>EbookForge</h1>
+  <p class="sub">Contenido + tema → PDF. Sin diseñar nada a mano.</p>
+  <label>Contenido (JSON de bloques)</label>
+  <textarea id="content">Pega aquí tu content.json…</textarea>
+  <div class="row">
+    <div><label>Tema</label><select id="theme"></select></div>
+    <div><label>Imágenes (opcional)</label><input id="images" type="file" multiple accept="image/*"></div>
+  </div>
+  <button onclick="generar()">Generar PDF</button>
+  <p><small>Los nombres de archivo de las imágenes deben coincidir con los <code>src</code> del JSON.</small></p>
+<script>
+fetch('/themes').then(r=>r.json()).then(d=>{
+  document.getElementById('theme').innerHTML = d.themes.map(t=>`<option>${t}</option>`).join('');
+});
+async function generar(){
+  const fd = new FormData();
+  fd.append('content', document.getElementById('content').value);
+  fd.append('theme', document.getElementById('theme').value);
+  for(const f of document.getElementById('images').files) fd.append('images', f);
+  const res = await fetch('/generate',{method:'POST',body:fd});
+  if(!res.ok){ alert('Error: '+await res.text()); return; }
+  const url = URL.createObjectURL(await res.blob());
+  const a = document.createElement('a'); a.href=url; a.download='ebook.pdf'; a.click();
+}
+</script></body></html>

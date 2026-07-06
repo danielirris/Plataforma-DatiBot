@@ -17,6 +17,7 @@ como cáscara, más servicios Python (Streamlit / FastAPI) embebidos.
 | Creador de Flujos | `/flujos` | Generador de SubWorkflows n8n (HTML/JS offline) | **Absorbida**: servida estática en `public/tools/flujos/` + iframe |
 | Dashboard ads | `/dashboard` | Facebook Ads × Supabase → ROAS/CPA (Streamlit) | **Servicio** `apps/dashboard-service` (puerto 8501) + iframe |
 | Extractor | `/extractor` | Clips verticales desde video (FastAPI + FFmpeg + Remotion) | **Servicio** `apps/extractor-service` (puerto 8000) + iframe |
+| Ebooks | `/ebooks` | Generador de ebooks PDF (contenido + tema → PDF, sin IA · FastAPI + WeasyPrint) | **Servicio** `apps/ebookforge-service` (puerto 8600) + iframe |
 | Configuración | `/configuracion` | Panel central de **todas las API keys** | Nativa (Next.js) |
 
 ---
@@ -49,9 +50,14 @@ mi-plataforma/
 ## Requisitos
 
 - **Node ≥ 20** (probado con 24). pnpm se activa con `corepack enable pnpm`.
-- **Python 3.11+** (probado con 3.13) para los dos servicios.
+- **Python 3.11+** (probado con 3.13) para los servicios.
 - **ffprobe** en el sistema (los servicios de video lo usan). En macOS: `brew install ffmpeg`.
   (El `ffmpeg` con subtítulos ya viene compilado en `apps/extractor-service/bin/`.)
+- **Pango/Cairo/GDK-Pixbuf** para Ebooks (WeasyPrint). En macOS:
+  `brew install pango gdk-pixbuf libffi`. En Linux:
+  `sudo apt install libpango-1.0-0 libpangocairo-1.0-0 libgdk-pixbuf-2.0-0`.
+  (En macOS, `apps/ebookforge-service/run.sh` ya expone estas libs de Homebrew
+  vía `DYLD_FALLBACK_LIBRARY_PATH`.)
 
 ---
 
@@ -63,7 +69,7 @@ cd mi-plataforma
 # 1. Dependencias JS del workspace
 pnpm install
 
-# 2. Entornos Python de los dos servicios (crea .venv e instala requirements)
+# 2. Entornos Python de los servicios (crea .venv e instala requirements)
 pnpm setup:services
 
 # 3. Levantar TODO con un solo comando
@@ -75,6 +81,7 @@ pnpm dev
 - **web** → http://localhost:3000  (el shell; entra por aquí)
 - **dashboard-service** → http://localhost:8501  (embebido en `/dashboard`)
 - **extractor-service** → http://localhost:8000  (embebido en `/extractor`)
+- **ebookforge-service** → http://localhost:8600  (embebido en `/ebooks`)
 
 Abre **http://localhost:3000** y navega desde el sidebar.
 

@@ -23,23 +23,23 @@ TU TAREA
 
 2. STACK DE 3 O 4 BONOS. Cada bono:
    - Desactiva una OBJECIÓN CONCRETA del avatar (cítala tal como está en objeciones_compra u objeciones_uso, no la reformules).
-   - Fácil de entregar por WhatsApp (PDF, video, checklist, plantilla, mini-curso, ticket de acceso). Evita bonos físicos con envío extra salvo que el producto ya viaje.
+   - LO MÁS BÁSICO POSIBLE: un ebook / PDF / checklist digital simple, entregable por WhatsApp al instante. Estos productos se prueban RÁPIDO; NO lo compliques.
+   - PROHIBIDO: soporte, acompañamiento, grupos o comunidad, canal privado, sesiones 1-a-1, garantías, devoluciones. Nada que la marca tenga que sostener en el tiempo.
+   - NO especifiques cantidades (nada de "5 videos", "10 plantillas", "3 clases"): un solo entregable básico por bono.
    - No canibaliza el producto principal.
    - Nombre memorable ("Manual anti-recaída: los 7 errores que te devuelven al punto cero", no "Bono de bienvenida").
 
-Arquetipos que funcionan en LATAM: kit de arranque en 7 días; plantilla/lista de compras o de qué evitar; solucionador de dudas frecuentes; acceso a canal privado (si existe); guía express para la pareja/familia.
+Arquetipos válidos (siempre como ebook/PDF/checklist simple): guía de arranque paso a paso; lista de qué comprar / qué evitar; solucionador de dudas frecuentes; mini-recetario o plantillas listas; guía express para la familia.
 
 3. FRAMING DEL STACK: 1-2 frases que se usan literalmente en el mensaje del embudo. Explica por qué el conjunto vale mucho más que la suma de las partes.
 
 4. RAZÓN DE URGENCIA: por qué comprar HOY es distinto a mañana. NO uses fechas ni cifras concretas; construcción general que el país adapta.
 
-5. GARANTÍA O REVERSIBILIDAD: qué protege al cliente (política de MARCA, no de país).
-
 REGLAS ESTRICTAS
 
 - Español neutral. Sin modismos. Funciona igual en Lima, Santiago, Bogotá, Quito, CDMX y Caracas.
 - NO menciones cifras monetarias, moneda, ni links. Si anclas precio, usa los tokens literales [PRECIO_BASE], [PRECIO_TACHADO], [PRECIO_ADICIONAL_OB] (el motor los rellena por país).
-- Los bonos deben ser plausibles con lo que la marca puede entregar. No inventes cursos, consultorías 1-a-1 o comunidades que no existan. Si es dropshipping físico con poco backend, los bonos deben ser digitales simples (PDF, video, checklist) o ampliaciones del mismo producto.
+- NO ofrezcas soporte, acompañamiento, comunidad ni garantía en NINGUNA parte de la oferta.
 - Entre 3 y 4 bonos (no 2, no 5).
 
 FORMATO DE SALIDA
@@ -52,8 +52,7 @@ Devuelve un JSON con esta forma exacta:
     "producto_principal": { "titulo": "...", "descripcion_corta": "...", "que_incluye": ["...","..."], "valor_percibido_texto": "..." },
     "bonos": [ { "titulo": "...", "descripcion_corta": "...", "por_que_lo_incluyo": "...", "objecion_que_desactiva": "...", "valor_percibido_texto": "..." } ],
     "framing_del_stack": "...",
-    "razon_de_urgencia": "...",
-    "garantia_o_reversibilidad": "..."
+    "razon_de_urgencia": "..."
   }
 }
 
@@ -102,7 +101,7 @@ function validar(sec: Record<string, unknown>): { oferta?: Oferta; error?: strin
   const o = sec.oferta as Record<string, unknown> | undefined;
   if (!o || typeof o !== "object") return { error: "no vino el objeto 'oferta'" };
 
-  for (const c of ["nombre_oferta", "promesa_grande", "framing_del_stack", "razon_de_urgencia", "garantia_o_reversibilidad"]) {
+  for (const c of ["nombre_oferta", "promesa_grande", "framing_del_stack", "razon_de_urgencia"]) {
     if (!str(o[c])) return { error: `falta o vacío "${c}"` };
   }
   const pp = o.producto_principal as Record<string, unknown> | undefined;
@@ -143,7 +142,7 @@ function validar(sec: Record<string, unknown>): { oferta?: Oferta; error?: strin
     bonos,
     framing_del_stack: str(o.framing_del_stack),
     razon_de_urgencia: str(o.razon_de_urgencia),
-    garantia_o_reversibilidad: str(o.garantia_o_reversibilidad),
+    incluye_video: false, // lo fija el toggle de la UI en el POST
   };
 
   if (tieneCifrasSueltas(oferta))
@@ -154,7 +153,7 @@ function validar(sec: Record<string, unknown>): { oferta?: Oferta; error?: strin
 
 export async function POST(req: Request, { params }: Ctx) {
   const { id } = await params;
-  let body: { producto?: Producto } = {};
+  let body: { producto?: Producto; incluye_video?: boolean } = {};
   try {
     body = (await req.json()) as typeof body;
   } catch {
@@ -164,7 +163,11 @@ export async function POST(req: Request, { params }: Ctx) {
   if (!producto?.nombre)
     return NextResponse.json({ error: "Producto no encontrado." }, { status: 404 });
 
-  const promptBase = `${SYSTEM_PROMPT}\n\n${insumos(producto)}`;
+  const incluyeVideo = !!body.incluye_video;
+  const reglaVideo = incluyeVideo
+    ? "REGLA DE VIDEO: se permite que UNO de los bonos sea un video corto simple (ej. una mini-clase). Los demás, ebook/PDF/checklist."
+    : "REGLA DE VIDEO: NINGÚN bono en video. TODOS los bonos son ebook/PDF/checklist digitales simples.";
+  const promptBase = `${SYSTEM_PROMPT}\n\n${reglaVideo}\n\n${insumos(producto)}`;
 
   async function intento(nota = ""): Promise<{ oferta?: Oferta; error?: string }> {
     let raw: string;
@@ -191,5 +194,6 @@ export async function POST(req: Request, { params }: Ctx) {
     );
   }
 
+  r.oferta.incluye_video = incluyeVideo;
   return NextResponse.json({ oferta: r.oferta });
 }

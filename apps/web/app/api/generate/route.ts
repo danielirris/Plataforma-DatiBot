@@ -14,8 +14,6 @@ interface Body {
   producto: Producto;
   /** si viene, solo se regeneran estas ranuras (regenerar por campo) */
   soloRanuras?: string[];
-  /** ángulo desde el que se encuadra el copy */
-  angulo_id?: string;
 }
 
 function bloqueAvatar(p: Producto): string {
@@ -52,7 +50,6 @@ ${incluye}
 ${bonos}
 - Framing del stack: ${o.framing_del_stack}
 - Razón de urgencia: ${o.razon_de_urgencia}
-- Garantía: ${o.garantia_o_reversibilidad}
 
 USO OBLIGATORIO DE LA OFERTA:
 - "mensaje_3" (¿qué recibes?) debe listar lo que incluye el PRODUCTO PRINCIPAL (los bullets de arriba), con checks ✅.
@@ -60,24 +57,23 @@ USO OBLIGATORIO DE LA OFERTA:
 - "mensaje_6" puede apoyarse en la razón de urgencia.`;
 }
 
-function bloqueAngulo(ang: Angulo | null): string {
-  if (!ang) return "";
-  const hooks = (ang.hooks ?? []).map((h) => `  · ${h.texto}`).join("\n");
+function bloqueAngulos(angulos: Angulo[]): string {
+  if (!angulos?.length) return "";
+  const lista = angulos
+    .map((a) => {
+      const hk = (a.hooks ?? []).map((h) => h.texto).filter(Boolean);
+      return `- ${a.tipo} «${a.nombre}»: ${a.gran_idea} (emoción: ${a.emocion_dominante}; dolor/deseo: ${a.dolor_o_deseo_atacado})${hk.length ? ` · ganchos: ${hk.join(" | ")}` : ""}`;
+    })
+    .join("\n");
   return `
 
-ÁNGULO ELEGIDO (encuadra TODO el copy desde aquí):
-- Tipo: ${ang.tipo} · ${ang.nombre}
-- Promesa central: ${ang.promesa_central}
-- Gran idea: ${ang.gran_idea}
-- Emoción dominante: ${ang.emocion_dominante}
-- Dolor/deseo atacado: ${ang.dolor_o_deseo_atacado}
-${hooks ? `- Ganchos de este ángulo (inspira el "mensaje_1"):\n${hooks}` : ""}`;
+ÁNGULOS (usa la VARIEDAD de los ${angulos.length} a lo largo del embudo; NO te quedes en uno solo — distintos mensajes se apoyan en distintos ángulos, y los ganchos inspiran el "mensaje_1"):
+${lista}`;
 }
 
 function construirPrompt(
   p: Producto,
   ranuras: typeof RANURAS_MENSAJE,
-  ang: Angulo | null,
 ): string {
   const listaRanuras = ranuras.map((r) => `- "${r.key}": ${r.descripcion}`).join("\n");
   const listaOverlays = TIPOS_IMAGEN.map((t) => `"${t}"`).join(", ");
@@ -88,14 +84,15 @@ PRODUCTO:
 - Nombre: ${p.nombre}
 - Promesa: ${p.identidad.promesa}
 - Posicionamiento: ${p.identidad.posicionamiento}
-- Dirigido a: ${p.identidad.dirigidoA}${bloqueAvatar(p)}${bloqueAngulo(ang)}${bloqueOferta(p)}
+- Dirigido a: ${p.identidad.dirigidoA}${bloqueAvatar(p)}${bloqueAngulos(p.angulos ?? [])}${bloqueOferta(p)}
 
-Redacta el contenido de cada RANURA del embudo: persuasivo, claro, cercano y orientado a la acción, coherente con el ángulo y la oferta.
+Redacta el contenido de cada RANURA del embudo: persuasivo, claro, cercano y orientado a la acción.
 
 REGLAS CRÍTICAS:
 - NO incluyas precios, links de pago, moneda ni datos que dependan del país como texto suelto.
 - Donde harían falta esos datos, deja LITERAL el token del motor entre corchetes: [PRECIO_BASE], [PRECIO_TACHADO], [PRECIO_ADICIONAL_OB], [NUMERO_PAGO], [TITULAR_CUENTA]. NO los inventes ni cambies su forma.
 - Español neutral, sin modismos. Emojis con moderación donde sumen.
+- FORMATO WHATSAPP: cada mensaje debe venir ORGANIZADO y con SALTOS DE LÍNEA reales (\\n) — párrafos cortos de 1-2 líneas, y donde ayude, listas con viñetas o checks ✅ en líneas separadas. Nada de un bloque de texto corrido.
 
 RANURAS a redactar:
 ${listaRanuras}
@@ -130,11 +127,7 @@ export async function POST(req: Request) {
     ? RANURAS_MENSAJE.filter((r) => body.soloRanuras!.includes(r.key))
     : RANURAS_MENSAJE;
 
-  const ang =
-    (body.angulo_id && body.producto.angulos?.find((a) => a.id === body.angulo_id)) ||
-    null;
-
-  const prompt = construirPrompt(body.producto, ranuras, ang);
+  const prompt = construirPrompt(body.producto, ranuras);
 
   let raw: string;
   try {

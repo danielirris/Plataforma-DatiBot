@@ -18,8 +18,14 @@ function findRepoRoot(): string {
   return process.cwd();
 }
 
+// DATA_DIR permite fijar dónde viven los datos persistentes (almacén de config y
+// productos). En producción (contenedor) se apunta a un volumen montado; en local
+// queda undefined y se usa la raíz del monorepo, como siempre.
+const DATA_DIR = process.env.DATA_DIR || findRepoRoot();
+// REPO_ROOT sigue siendo la raíz real del repo (para los .env que se generan en
+// despliegues de un solo host; en multi-contenedor esos .env se ignoran).
 const REPO_ROOT = findRepoRoot();
-const STORE_PATH = path.join(REPO_ROOT, ".config-store.json");
+const STORE_PATH = path.join(DATA_DIR, ".config-store.json");
 
 export async function readConfig(): Promise<ConfigStore> {
   try {
