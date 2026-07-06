@@ -61,7 +61,7 @@ Para cada uno: **Create → App → Source: GitHub** (este repo, rama `main`).
   ```
 
 ### ebooks
-- **Build:** Dockerfile · context `apps/ebookforge-service` · Dockerfile `Dockerfile`.
+- **Build:** Dockerfile · **context `/` (raíz del repo)** · Dockerfile `apps/ebookforge-service/Dockerfile`.
 - **Puerto:** 8600.
 - **Dominio:** `ebooks.tudominio.com` · **Basic Auth** activado.
 - **Env:** ninguna (el motor no usa keys).
