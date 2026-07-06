@@ -30,6 +30,12 @@ export interface ConfigGroup {
   title: string;
   /** ruta del servicio cuyo .env se genera con este grupo (relativa al monorepo). null = solo se guarda */
   envTarget: string | null;
+  /**
+   * Si true, NO se muestra en el panel de Configuración: sus claves se gestionan
+   * en el Environment de EasyPanel (por servicio o del web). El grupo sigue
+   * existiendo para que el shell lea las variables de entorno (<GRUPO>_<CAMPO>).
+   */
+  hidden?: boolean;
   /** encabezado de sección para agrupar tarjetas relacionadas en la UI */
   section?: string;
   /** texto de ayuda que se muestra bajo el título del grupo */
@@ -41,6 +47,7 @@ export const CONFIG_GROUPS: ConfigGroup[] = [
   // ── Compartidas ────────────────────────────────────────────────
   {
     id: "compartidas",
+    hidden: true,
     title: "Compartidas",
     section: "General",
     envTarget: null,
@@ -59,6 +66,7 @@ export const CONFIG_GROUPS: ConfigGroup[] = [
   // ── Dashboard ads ──────────────────────────────────────────────
   {
     id: "dashboard",
+    hidden: true,
     title: "Dashboard ads",
     section: "Dashboard ads",
     envTarget: "apps/dashboard-service/.env",
@@ -83,6 +91,7 @@ export const CONFIG_GROUPS: ConfigGroup[] = [
   // ── Editor de videos (antes "Extractor"; id/envTarget internos intactos) ──
   {
     id: "extractor",
+    hidden: true,
     title: "Editor de videos",
     section: "Editor de videos",
     envTarget: "apps/extractor-service/.env",
@@ -107,6 +116,7 @@ export const CONFIG_GROUPS: ConfigGroup[] = [
   // Motor determinista (sin IA). Solo necesita su puerto para el embed.
   {
     id: "ebooks",
+    hidden: true,
     title: "Ebooks",
     section: "Ebooks",
     envTarget: "apps/ebookforge-service/.env",
@@ -121,6 +131,7 @@ export const CONFIG_GROUPS: ConfigGroup[] = [
   // /api/generate y /api/images), no un servicio Python.
   {
     id: "ia",
+    hidden: true,
     title: "Generación con IA",
     section: "Generación con IA",
     envTarget: null,
@@ -142,6 +153,7 @@ export const CONFIG_GROUPS: ConfigGroup[] = [
   // ── Servidor de imágenes (VPS) ─────────────────────────────────
   {
     id: "vps",
+    hidden: true,
     title: "Servidor de imágenes (VPS)",
     section: "Generación con IA",
     envTarget: null,

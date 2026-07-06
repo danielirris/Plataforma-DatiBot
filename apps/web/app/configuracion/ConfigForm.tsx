@@ -35,9 +35,10 @@ export function ConfigForm({ initial }: { initial: ConfigStore }) {
     }
   }
 
-  // Agrupa los grupos por su `section` conservando el orden de definición.
+  // Agrupa los grupos VISIBLES por su `section` conservando el orden de
+  // definición. Los `hidden` se gestionan por el Environment de EasyPanel.
   const sections: { name: string; groups: ConfigGroup[] }[] = [];
-  for (const group of CONFIG_GROUPS) {
+  for (const group of CONFIG_GROUPS.filter((g) => !g.hidden)) {
     const name = group.section ?? "Otros";
     let bucket = sections.find((s) => s.name === name);
     if (!bucket) {
