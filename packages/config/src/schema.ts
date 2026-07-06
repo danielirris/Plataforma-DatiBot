@@ -152,7 +152,8 @@ export const CONFIG_GROUPS: ConfigGroup[] = [
       { key: "vps_user", label: "Usuario", type: "text", help: "Usuario SSH/SFTP." },
       { key: "vps_auth", label: "Clave privada (ruta) o contraseña", type: "password", help: "Prefiere una ruta a clave privada." },
       { key: "vps_remote_dir", label: "Directorio remoto público", type: "text", placeholder: "/var/www/html/img/productos" },
-      { key: "vps_public_base_url", label: "URL pública base", type: "text", placeholder: "https://cdn.midominio.com/img/productos" },
+      { key: "vps_public_base_url", label: "URL pública base", type: "text", placeholder: "https://img.midominio.com" },
+      { key: "local_dir", label: "Carpeta local (escritura directa, sin SFTP)", type: "text", placeholder: "/uploads", help: "Recomendado si el shell comparte volumen con el servidor de imágenes: escribe aquí directo y NO usa SFTP (ignora host/usuario/clave). Env: VPS_LOCAL_DIR." },
     ],
   },
 
