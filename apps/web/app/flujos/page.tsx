@@ -98,7 +98,7 @@ export default function FlujosPage() {
       </p>
 
       {productos.length === 0 ? (
-        <div className="rounded-xl border border-dashed border-border p-8 text-center text-muted">
+        <div className="rounded-xl border border-dashed border-white/10 p-8 text-center text-muted">
           No hay productos.{" "}
           <Link href="/productos/nuevo" className="text-accent-2 hover:underline">
             Crea uno primero
@@ -107,13 +107,13 @@ export default function FlujosPage() {
         </div>
       ) : (
         <div className="space-y-5">
-          <div className="grid grid-cols-1 gap-4 rounded-xl border border-border bg-panel p-5 sm:grid-cols-2">
+          <div className="grid grid-cols-1 gap-4 rounded-xl border border-white/10 glass p-5 sm:grid-cols-2">
             <label className="flex flex-col gap-1 text-sm sm:col-span-2">
               <span className="text-muted">Producto</span>
               <select
                 value={productoId}
                 onChange={(e) => setProductoId(e.target.value)}
-                className="rounded-lg border border-border bg-bg px-3 py-2 text-text outline-none focus:border-accent"
+                className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-text outline-none focus:border-accent"
               >
                 {productos.map((p) => (
                   <option key={p.id} value={p.id}>
@@ -128,7 +128,7 @@ export default function FlujosPage() {
               <select
                 value={pais}
                 onChange={(e) => setPais(e.target.value)}
-                className="rounded-lg border border-border bg-bg px-3 py-2 text-text outline-none focus:border-accent"
+                className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-text outline-none focus:border-accent"
               >
                 {PAISES.map((p) => (
                   <option key={p.codigo} value={p.codigo}>
@@ -143,7 +143,7 @@ export default function FlujosPage() {
               <select
                 value={tipo}
                 onChange={(e) => setTipo(e.target.value)}
-                className="rounded-lg border border-border bg-bg px-3 py-2 text-text outline-none focus:border-accent"
+                className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-text outline-none focus:border-accent"
               >
                 {TIPOS.map((t) => (
                   <option key={t.key} value={t.key}>
@@ -180,7 +180,7 @@ export default function FlujosPage() {
           </button>
 
           {res && (
-            <div className="space-y-3 rounded-xl border border-border bg-panel p-5">
+            <div className="space-y-3 rounded-xl border border-white/10 glass p-5">
               {res.error ? (
                 <p className="text-red-400">⚠️ {res.error}</p>
               ) : (
@@ -221,7 +221,7 @@ export default function FlujosPage() {
                     </button>
                     <button
                       onClick={copiar}
-                      className="rounded-lg border border-border px-4 py-2 text-sm text-muted hover:text-text"
+                      className="rounded-lg border border-white/10 px-4 py-2 text-sm text-muted hover:text-text"
                     >
                       Copiar
                     </button>

@@ -487,7 +487,7 @@ export function ProductoWizard({ producto }: { producto?: Producto }) {
               disabled={!disponible}
               className={cn(
                 "rounded-lg border px-3 py-1.5 text-sm",
-                activo ? "border-accent bg-accent/15 text-text" : "border-border text-muted",
+                activo ? "border-accent bg-accent/15 text-text" : "border-white/10 text-muted",
                 !disponible && "opacity-50",
               )}
             >
@@ -499,7 +499,7 @@ export function ProductoWizard({ producto }: { producto?: Producto }) {
       </div>
 
       {paso === "identidad" && (
-        <section className="space-y-4 rounded-xl border border-border bg-panel p-5">
+        <section className="space-y-4 rounded-xl border border-white/10 glass p-5">
           <label className="flex flex-col gap-1 text-sm">
             <span className="text-muted">Nombre del producto</span>
             <AutoTextarea
@@ -507,7 +507,7 @@ export function ProductoWizard({ producto }: { producto?: Producto }) {
               onChange={(e) => setCampo("nombre", e.target.value)}
               rows={1}
               placeholder="chorizos para emprender desde casa"
-              className="rounded-lg border border-border bg-bg px-3 py-2 text-text outline-none focus:border-accent"
+              className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-text outline-none focus:border-accent"
             />
           </label>
           <label className="flex flex-col gap-1 text-sm">
@@ -518,7 +518,7 @@ export function ProductoWizard({ producto }: { producto?: Producto }) {
               value={p.productoId}
               onChange={(e) => setCampo("productoId", e.target.value)}
               placeholder="CHZ-001"
-              className="rounded-lg border border-border bg-bg px-3 py-2 font-mono text-text outline-none focus:border-accent"
+              className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 font-mono text-text outline-none focus:border-accent"
             />
           </label>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -529,7 +529,7 @@ export function ProductoWizard({ producto }: { producto?: Producto }) {
                 onChange={(e) => setIdentidad("promesa", e.target.value)}
                 rows={2}
                 placeholder="qué resultado logra el cliente"
-                className="rounded-lg border border-border bg-bg px-3 py-2 text-text outline-none focus:border-accent"
+                className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-text outline-none focus:border-accent"
               />
             </label>
             <label className="flex flex-col gap-1 text-sm">
@@ -539,7 +539,7 @@ export function ProductoWizard({ producto }: { producto?: Producto }) {
                 onChange={(e) => setIdentidad("posicionamiento", e.target.value)}
                 rows={2}
                 placeholder="idea / ángulo del producto"
-                className="rounded-lg border border-border bg-bg px-3 py-2 text-text outline-none focus:border-accent"
+                className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-text outline-none focus:border-accent"
               />
             </label>
             <label className="flex flex-col gap-1 text-sm">
@@ -549,7 +549,7 @@ export function ProductoWizard({ producto }: { producto?: Producto }) {
                 onChange={(e) => setIdentidad("dirigidoA", e.target.value)}
                 rows={2}
                 placeholder="a quién va dirigido en términos generales"
-                className="rounded-lg border border-border bg-bg px-3 py-2 text-text outline-none focus:border-accent"
+                className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-text outline-none focus:border-accent"
               />
             </label>
           </div>
@@ -569,7 +569,7 @@ export function ProductoWizard({ producto }: { producto?: Producto }) {
 
       {paso === "avatar" && (
         <section className="space-y-5">
-          <div className="flex flex-wrap items-center gap-3 rounded-xl border border-border bg-panel p-4">
+          <div className="flex flex-wrap items-center gap-3 rounded-xl border border-white/10 glass p-4">
             <button
               onClick={investigarAvatar}
               className="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-white"
@@ -585,7 +585,7 @@ export function ProductoWizard({ producto }: { producto?: Producto }) {
 
           <div className="space-y-3">
             {AVATAR_SECCIONES.map((s) => (
-              <div key={s.key} className="rounded-xl border border-border bg-panel p-4">
+              <div key={s.key} className="rounded-xl border border-white/10 glass p-4">
                 <div className="mb-1">
                   <span className="text-sm font-medium">{s.label}</span>
                   <p className="text-xs text-muted">{s.pregunta}</p>
@@ -594,7 +594,7 @@ export function ProductoWizard({ producto }: { producto?: Producto }) {
                   value={(p.avatar[s.key as keyof Avatar] as string) ?? ""}
                   onChange={(e) => setAvatarSeccion(s.key as keyof Avatar, e.target.value)}
                   rows={4}
-                  className="w-full rounded-lg border border-border bg-bg px-3 py-2 text-sm text-text outline-none focus:border-accent"
+                  className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-text outline-none focus:border-accent"
                 />
               </div>
             ))}
@@ -618,7 +618,7 @@ export function ProductoWizard({ producto }: { producto?: Producto }) {
           ).map((b) => {
             const lista = p.avatar[b.bloque] as (ObjecionCompra | ObjecionUso)[];
             return (
-              <div key={b.bloque} className="rounded-xl border border-border bg-panel p-4">
+              <div key={b.bloque} className="rounded-xl border border-white/10 glass p-4">
                 <div className="mb-3 flex items-center justify-between gap-2">
                   <div>
                     <span className="text-sm font-medium">{b.titulo}</span>
@@ -626,7 +626,7 @@ export function ProductoWizard({ producto }: { producto?: Producto }) {
                   </div>
                   <button
                     onClick={() => addObjecion(b.bloque)}
-                    className="shrink-0 rounded border border-border px-2 py-1 text-xs text-muted hover:text-text"
+                    className="shrink-0 rounded border border-white/10 px-2 py-1 text-xs text-muted hover:text-text"
                   >
                     + Añadir
                   </button>
@@ -638,7 +638,7 @@ export function ProductoWizard({ producto }: { producto?: Producto }) {
                     </p>
                   )}
                   {lista.map((o, i) => (
-                    <div key={i} className="rounded-lg border border-border bg-bg p-3">
+                    <div key={i} className="rounded-lg border border-white/10 bg-white/5 p-3">
                       <div className="flex flex-wrap items-center gap-2">
                         <span className="text-xs font-medium text-muted">{i + 1}.</span>
                         <AutoTextarea
@@ -646,12 +646,12 @@ export function ProductoWizard({ producto }: { producto?: Producto }) {
                           onChange={(e) => setObjecion(b.bloque, i, "objecion", e.target.value)}
                           rows={1}
                           placeholder="objeción en primera persona"
-                          className="min-w-[10rem] flex-1 rounded border border-border bg-panel px-2 py-1 text-sm text-text outline-none focus:border-accent"
+                          className="min-w-[10rem] flex-1 rounded border border-white/10 glass px-2 py-1 text-sm text-text outline-none focus:border-accent"
                         />
                         <select
                           value={o.categoria}
                           onChange={(e) => setObjecion(b.bloque, i, "categoria", e.target.value)}
-                          className="rounded border border-border bg-panel px-2 py-1 text-xs text-text outline-none focus:border-accent"
+                          className="rounded border border-white/10 glass px-2 py-1 text-xs text-text outline-none focus:border-accent"
                         >
                           {b.cats.map((c) => (
                             <option key={c} value={c}>
@@ -661,7 +661,7 @@ export function ProductoWizard({ producto }: { producto?: Producto }) {
                         </select>
                         <button
                           onClick={() => removeObjecion(b.bloque, i)}
-                          className="rounded border border-border px-2 text-xs text-muted hover:text-red-400"
+                          className="rounded border border-white/10 px-2 text-xs text-muted hover:text-red-400"
                           title="Eliminar"
                         >
                           ✕
@@ -672,7 +672,7 @@ export function ProductoWizard({ producto }: { producto?: Producto }) {
                         onChange={(e) => setObjecion(b.bloque, i, "respuesta_sugerida", e.target.value)}
                         rows={2}
                         placeholder="respuesta sugerida para desactivarla (accionable, sin inventar datos)"
-                        className="mt-2 w-full rounded border border-border bg-panel px-2 py-1 text-sm text-text outline-none focus:border-accent"
+                        className="mt-2 w-full rounded border border-white/10 glass px-2 py-1 text-sm text-text outline-none focus:border-accent"
                       />
                     </div>
                   ))}
@@ -682,7 +682,7 @@ export function ProductoWizard({ producto }: { producto?: Producto }) {
           })}
 
           {p.avatar.fuentes?.length > 0 && (
-            <div className="rounded-xl border border-border bg-panel p-4">
+            <div className="rounded-xl border border-white/10 glass p-4">
               <h3 className="mb-2 text-sm font-medium">
                 Fuentes ({p.avatar.fuentes.length})
               </h3>
@@ -703,7 +703,7 @@ export function ProductoWizard({ producto }: { producto?: Producto }) {
             </div>
           )}
 
-          <div className="sticky bottom-0 flex items-center gap-3 border-t border-border bg-bg/80 py-4 backdrop-blur">
+          <div className="sticky bottom-0 flex items-center gap-3 border-t border-white/10 bg-bg/80 py-4 backdrop-blur">
             <button
               onClick={guardar}
               disabled={estado === "guardando"}
@@ -719,7 +719,7 @@ export function ProductoWizard({ producto }: { producto?: Producto }) {
 
       {paso === "angulos" && (
         <section className="space-y-5">
-          <div className="flex flex-wrap items-center gap-3 rounded-xl border border-border bg-panel p-4">
+          <div className="flex flex-wrap items-center gap-3 rounded-xl border border-white/10 glass p-4">
             <button
               onClick={() => generarAngulos()}
               className="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-white"
@@ -729,7 +729,7 @@ export function ProductoWizard({ producto }: { producto?: Producto }) {
             {p.angulos.length > 0 && (
               <button
                 onClick={() => generarAngulos()}
-                className="rounded-lg border border-border px-4 py-2 text-sm text-muted hover:text-text"
+                className="rounded-lg border border-white/10 px-4 py-2 text-sm text-muted hover:text-text"
               >
                 Regenerar todos
               </button>
@@ -743,13 +743,13 @@ export function ProductoWizard({ producto }: { producto?: Producto }) {
           </p>
 
           {p.angulos.length === 0 ? (
-            <div className="rounded-xl border border-dashed border-border p-8 text-center text-muted">
+            <div className="rounded-xl border border-dashed border-white/10 p-8 text-center text-muted">
               Aún no hay ángulos. Pulsa “Generar 6 ángulos”.
             </div>
           ) : (
             <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
               {p.angulos.map((ang, i) => (
-                <div key={i} className="space-y-3 rounded-xl border border-border bg-panel p-4">
+                <div key={i} className="space-y-3 rounded-xl border border-white/10 glass p-4">
                   <div className="flex items-center gap-2">
                     <span className="rounded bg-accent/15 px-2 py-0.5 text-xs text-accent-2">
                       {i + 1}
@@ -759,11 +759,11 @@ export function ProductoWizard({ producto }: { producto?: Producto }) {
                       onChange={(e) => setAngulo(i, "nombre", e.target.value)}
                       rows={1}
                       placeholder="Nombre del ángulo"
-                      className="flex-1 rounded border border-border bg-bg px-2 py-1 text-sm font-medium text-text outline-none focus:border-accent"
+                      className="flex-1 rounded border border-white/10 bg-white/5 px-2 py-1 text-sm font-medium text-text outline-none focus:border-accent"
                     />
                     <button
                       onClick={() => generarAngulos(i)}
-                      className="shrink-0 rounded border border-border px-2 py-1 text-xs text-muted hover:text-text"
+                      className="shrink-0 rounded border border-white/10 px-2 py-1 text-xs text-muted hover:text-text"
                     >
                       Regenerar
                     </button>
@@ -773,7 +773,7 @@ export function ProductoWizard({ producto }: { producto?: Producto }) {
                     <select
                       value={ang.tipo}
                       onChange={(e) => setAngulo(i, "tipo", e.target.value)}
-                      className="rounded border border-border bg-bg px-2 py-1 text-sm text-text outline-none focus:border-accent"
+                      className="rounded border border-white/10 bg-white/5 px-2 py-1 text-sm text-text outline-none focus:border-accent"
                     >
                       {TIPOS_ANGULO.map((t) => (
                         <option key={t} value={t}>
@@ -789,20 +789,20 @@ export function ProductoWizard({ producto }: { producto?: Producto }) {
                         value={(ang[c.key] as string) ?? ""}
                         onChange={(e) => setAngulo(i, c.key, e.target.value)}
                         rows={c.rows}
-                        className="w-full rounded border border-border bg-bg px-2 py-1 text-sm text-text outline-none focus:border-accent"
+                        className="w-full rounded border border-white/10 bg-white/5 px-2 py-1 text-sm text-text outline-none focus:border-accent"
                       />
                     </label>
                   ))}
 
                   {/* Ganchos del ángulo */}
-                  <div className="mt-2 border-t border-border pt-3">
+                  <div className="mt-2 border-t border-white/10 pt-3">
                     <div className="mb-2 flex items-center justify-between gap-2">
                       <span className="text-xs font-medium">
                         Ganchos ({ang.hooks?.length ?? 0}/3)
                       </span>
                       <button
                         onClick={() => generarGanchos(ang.id)}
-                        className="shrink-0 rounded border border-border px-2 py-1 text-xs text-muted hover:text-text"
+                        className="shrink-0 rounded border border-white/10 px-2 py-1 text-xs text-muted hover:text-text"
                       >
                         Regenerar los 3 ganchos
                       </button>
@@ -817,19 +817,19 @@ export function ProductoWizard({ producto }: { producto?: Producto }) {
                     )}
                     <div className="space-y-2">
                       {(ang.hooks ?? []).map((g, hi) => (
-                        <div key={hi} className="rounded-lg border border-border bg-bg p-2">
+                        <div key={hi} className="rounded-lg border border-white/10 bg-white/5 p-2">
                           <AutoTextarea
                             value={g.texto}
                             onChange={(e) => setGancho(i, hi, "texto", e.target.value)}
                             rows={2}
                             placeholder="gancho (≤ 20 palabras)"
-                            className="w-full rounded border border-border bg-panel px-2 py-1 text-sm text-text outline-none focus:border-accent"
+                            className="w-full rounded border border-white/10 glass px-2 py-1 text-sm text-text outline-none focus:border-accent"
                           />
                           <div className="mt-1 flex gap-2">
                             <select
                               value={g.mecanismo}
                               onChange={(e) => setGancho(i, hi, "mecanismo", e.target.value)}
-                              className="rounded border border-border bg-panel px-1 py-0.5 text-[11px] text-text outline-none focus:border-accent"
+                              className="rounded border border-white/10 glass px-1 py-0.5 text-[11px] text-text outline-none focus:border-accent"
                             >
                               {MECANISMOS_GANCHO.map((m) => (
                                 <option key={m} value={m}>
@@ -842,7 +842,7 @@ export function ProductoWizard({ producto }: { producto?: Producto }) {
                               onChange={(e) => setGancho(i, hi, "por_que_funciona", e.target.value)}
                               rows={1}
                               placeholder="por qué funciona"
-                              className="flex-1 rounded border border-border bg-panel px-2 py-0.5 text-xs text-text outline-none focus:border-accent"
+                              className="flex-1 rounded border border-white/10 glass px-2 py-0.5 text-xs text-text outline-none focus:border-accent"
                             />
                           </div>
                         </div>
@@ -854,7 +854,7 @@ export function ProductoWizard({ producto }: { producto?: Producto }) {
             </div>
           )}
 
-          <div className="sticky bottom-0 flex items-center gap-3 border-t border-border bg-bg/80 py-4 backdrop-blur">
+          <div className="sticky bottom-0 flex items-center gap-3 border-t border-white/10 bg-bg/80 py-4 backdrop-blur">
             <button
               onClick={guardar}
               disabled={estado === "guardando"}
@@ -870,7 +870,7 @@ export function ProductoWizard({ producto }: { producto?: Producto }) {
 
       {paso === "oferta" && (
         <section className="space-y-5">
-          <div className="flex flex-wrap items-center gap-3 rounded-xl border border-border bg-panel p-4">
+          <div className="flex flex-wrap items-center gap-3 rounded-xl border border-white/10 glass p-4">
             <button
               onClick={generarOferta}
               className="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-white"
@@ -880,7 +880,7 @@ export function ProductoWizard({ producto }: { producto?: Producto }) {
             {!p.oferta && (
               <button
                 onClick={() => setP((prev) => ({ ...prev, oferta: ofertaVacia() }))}
-                className="rounded-lg border border-border px-4 py-2 text-sm text-muted hover:text-text"
+                className="rounded-lg border border-white/10 px-4 py-2 text-sm text-muted hover:text-text"
               >
                 Empezar en blanco
               </button>
@@ -900,21 +900,21 @@ export function ProductoWizard({ producto }: { producto?: Producto }) {
           </div>
 
           {!p.oferta ? (
-            <div className="rounded-xl border border-dashed border-border p-8 text-center text-muted">
+            <div className="rounded-xl border border-dashed border-white/10 p-8 text-center text-muted">
               Aún no hay oferta. Genérala con IA (usa avatar, objeciones y ángulos)
               o empieza en blanco. Los precios NO van aquí: se rellenan por país al
               emitir; usa tokens como <code>[PRECIO_BASE]</code> si el copy los necesita.
             </div>
           ) : (
             <>
-              <div className="space-y-3 rounded-xl border border-border bg-panel p-5">
+              <div className="space-y-3 rounded-xl border border-white/10 glass p-5">
                 <label className="flex flex-col gap-1 text-sm">
                   <span className="text-muted">Nombre de la oferta</span>
                   <AutoTextarea
                     value={p.oferta!.nombre_oferta}
                     onChange={(e) => setOfertaCampo("nombre_oferta", e.target.value)}
                     rows={1}
-                    className="rounded-lg border border-border bg-bg px-3 py-2 text-text outline-none focus:border-accent"
+                    className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-text outline-none focus:border-accent"
                   />
                 </label>
                 <label className="flex flex-col gap-1 text-sm">
@@ -923,13 +923,13 @@ export function ProductoWizard({ producto }: { producto?: Producto }) {
                     value={p.oferta!.promesa_grande}
                     onChange={(e) => setOfertaCampo("promesa_grande", e.target.value)}
                     rows={2}
-                    className="rounded-lg border border-border bg-bg px-3 py-2 text-text outline-none focus:border-accent"
+                    className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-text outline-none focus:border-accent"
                   />
                 </label>
               </div>
 
               {/* Producto principal */}
-              <div className="space-y-3 rounded-xl border border-accent/40 bg-panel p-5">
+              <div className="space-y-3 rounded-xl border border-accent/40 glass p-5">
                 <h3 className="text-sm font-medium text-accent-2">Producto principal</h3>
                 <label className="flex flex-col gap-1 text-sm">
                   <span className="text-muted">Título (vestido para el embudo)</span>
@@ -937,7 +937,7 @@ export function ProductoWizard({ producto }: { producto?: Producto }) {
                     value={p.oferta!.producto_principal.titulo}
                     onChange={(e) => setOfertaPP("titulo", e.target.value)}
                     rows={1}
-                    className="rounded-lg border border-border bg-bg px-3 py-2 text-text outline-none focus:border-accent"
+                    className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-text outline-none focus:border-accent"
                   />
                 </label>
                 <label className="flex flex-col gap-1 text-sm">
@@ -946,7 +946,7 @@ export function ProductoWizard({ producto }: { producto?: Producto }) {
                     value={p.oferta!.producto_principal.descripcion_corta}
                     onChange={(e) => setOfertaPP("descripcion_corta", e.target.value)}
                     rows={2}
-                    className="rounded-lg border border-border bg-bg px-3 py-2 text-text outline-none focus:border-accent"
+                    className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-text outline-none focus:border-accent"
                   />
                 </label>
                 <div>
@@ -954,7 +954,7 @@ export function ProductoWizard({ producto }: { producto?: Producto }) {
                     <span className="text-sm text-muted">¿Qué incluye?</span>
                     <button
                       onClick={addQueIncluye}
-                      className="rounded border border-border px-2 py-0.5 text-xs text-muted hover:text-text"
+                      className="rounded border border-white/10 px-2 py-0.5 text-xs text-muted hover:text-text"
                     >
                       + Bullet
                     </button>
@@ -967,11 +967,11 @@ export function ProductoWizard({ producto }: { producto?: Producto }) {
                           onChange={(e) => setQueIncluye(i, e.target.value)}
                           rows={1}
                           placeholder="bullet concreto"
-                          className="flex-1 rounded border border-border bg-bg px-2 py-1 text-sm text-text outline-none focus:border-accent"
+                          className="flex-1 rounded border border-white/10 bg-white/5 px-2 py-1 text-sm text-text outline-none focus:border-accent"
                         />
                         <button
                           onClick={() => removeQueIncluye(i)}
-                          className="rounded border border-border px-2 text-xs text-muted hover:text-red-400"
+                          className="rounded border border-white/10 px-2 text-xs text-muted hover:text-red-400"
                         >
                           ✕
                         </button>
@@ -986,7 +986,7 @@ export function ProductoWizard({ producto }: { producto?: Producto }) {
                     onChange={(e) => setOfertaPP("valor_percibido_texto", e.target.value)}
                     rows={1}
                     placeholder="equivalente a 3 meses de suscripción premium"
-                    className="rounded-lg border border-border bg-bg px-3 py-2 text-text outline-none focus:border-accent"
+                    className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-text outline-none focus:border-accent"
                   />
                 </label>
               </div>
@@ -1000,14 +1000,14 @@ export function ProductoWizard({ producto }: { producto?: Producto }) {
                   <button
                     onClick={addBono}
                     disabled={p.oferta!.bonos.length >= MAX_BONOS}
-                    className="rounded border border-border px-2 py-1 text-xs text-muted hover:text-text disabled:opacity-40"
+                    className="rounded border border-white/10 px-2 py-1 text-xs text-muted hover:text-text disabled:opacity-40"
                   >
                     + Añadir bono
                   </button>
                 </div>
                 <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
                   {p.oferta!.bonos.map((bono, i) => (
-                    <div key={i} className="space-y-2 rounded-xl border border-border bg-panel p-4">
+                    <div key={i} className="space-y-2 rounded-xl border border-white/10 glass p-4">
                       <div className="flex items-center gap-2">
                         <span className="rounded bg-accent/15 px-2 py-0.5 text-xs text-accent-2">
                           Bono {i + 1}
@@ -1017,12 +1017,12 @@ export function ProductoWizard({ producto }: { producto?: Producto }) {
                           onChange={(e) => setBono(i, "titulo", e.target.value)}
                           rows={1}
                           placeholder="Título memorable"
-                          className="flex-1 rounded border border-border bg-bg px-2 py-1 text-sm font-medium text-text outline-none focus:border-accent"
+                          className="flex-1 rounded border border-white/10 bg-white/5 px-2 py-1 text-sm font-medium text-text outline-none focus:border-accent"
                         />
                         <button
                           onClick={() => removeBono(i)}
                           disabled={p.oferta!.bonos.length <= MIN_BONOS}
-                          className="rounded border border-border px-2 text-xs text-muted hover:text-red-400 disabled:opacity-40"
+                          className="rounded border border-white/10 px-2 text-xs text-muted hover:text-red-400 disabled:opacity-40"
                         >
                           ✕
                         </button>
@@ -1041,7 +1041,7 @@ export function ProductoWizard({ producto }: { producto?: Producto }) {
                             value={bono[f.k]}
                             onChange={(e) => setBono(i, f.k, e.target.value)}
                             rows={2}
-                            className="w-full rounded border border-border bg-bg px-2 py-1 text-sm text-text outline-none focus:border-accent"
+                            className="w-full rounded border border-white/10 bg-white/5 px-2 py-1 text-sm text-text outline-none focus:border-accent"
                           />
                         </label>
                       ))}
@@ -1051,7 +1051,7 @@ export function ProductoWizard({ producto }: { producto?: Producto }) {
               </div>
 
               {/* Framing / urgencia / garantía */}
-              <div className="space-y-3 rounded-xl border border-border bg-panel p-5">
+              <div className="space-y-3 rounded-xl border border-white/10 glass p-5">
                 {(
                   [
                     { k: "framing_del_stack", l: "Framing del stack (se usa literal en el mensaje del embudo)" },
@@ -1064,7 +1064,7 @@ export function ProductoWizard({ producto }: { producto?: Producto }) {
                       value={p.oferta![f.k]}
                       onChange={(e) => setOfertaCampo(f.k, e.target.value)}
                       rows={2}
-                      className="rounded-lg border border-border bg-bg px-3 py-2 text-text outline-none focus:border-accent"
+                      className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-text outline-none focus:border-accent"
                     />
                   </label>
                 ))}
@@ -1072,7 +1072,7 @@ export function ProductoWizard({ producto }: { producto?: Producto }) {
             </>
           )}
 
-          <div className="sticky bottom-0 flex items-center gap-3 border-t border-border bg-bg/80 py-4 backdrop-blur">
+          <div className="sticky bottom-0 flex items-center gap-3 border-t border-white/10 bg-bg/80 py-4 backdrop-blur">
             <button
               onClick={guardar}
               disabled={estado === "guardando"}
@@ -1088,7 +1088,7 @@ export function ProductoWizard({ producto }: { producto?: Producto }) {
 
       {paso === "mensajes" && (
         <section className="space-y-5">
-          <div className="flex flex-wrap items-center gap-3 rounded-xl border border-border bg-panel p-4">
+          <div className="flex flex-wrap items-center gap-3 rounded-xl border border-white/10 glass p-4">
             <button
               onClick={() => generar()}
               className="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-white"
@@ -1104,7 +1104,7 @@ export function ProductoWizard({ producto }: { producto?: Producto }) {
 
           <div className="space-y-3">
             {RANURAS_MENSAJE.map((r) => (
-              <div key={r.key} className="rounded-xl border border-border bg-panel p-4">
+              <div key={r.key} className="rounded-xl border border-white/10 glass p-4">
                 <div className="mb-1 flex items-center justify-between gap-2">
                   <div>
                     <span className="font-mono text-xs text-accent-2">{r.key}</span>
@@ -1112,7 +1112,7 @@ export function ProductoWizard({ producto }: { producto?: Producto }) {
                   </div>
                   <button
                     onClick={() => generar([r.key])}
-                    className="shrink-0 rounded border border-border px-2 py-1 text-xs text-muted hover:text-text"
+                    className="shrink-0 rounded border border-white/10 px-2 py-1 text-xs text-muted hover:text-text"
                   >
                     Regenerar
                   </button>
@@ -1121,13 +1121,13 @@ export function ProductoWizard({ producto }: { producto?: Producto }) {
                   value={p.mensajes[r.key] ?? ""}
                   onChange={(e) => setMensaje(r.key, e.target.value)}
                   rows={3}
-                  className="w-full rounded-lg border border-border bg-bg px-3 py-2 text-sm text-text outline-none focus:border-accent"
+                  className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-text outline-none focus:border-accent"
                 />
               </div>
             ))}
           </div>
 
-          <div className="rounded-xl border border-border bg-panel p-4">
+          <div className="rounded-xl border border-white/10 glass p-4">
             <h3 className="mb-3 text-sm font-medium">Overlays (texto sobre las imágenes)</h3>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               {TIPOS_IMAGEN.map((t) => (
@@ -1137,14 +1137,14 @@ export function ProductoWizard({ producto }: { producto?: Producto }) {
                     value={p.overlays[t] ?? ""}
                     onChange={(e) => setOverlay(t, e.target.value)}
                     rows={1}
-                    className="rounded-lg border border-border bg-bg px-3 py-2 text-text outline-none focus:border-accent"
+                    className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-text outline-none focus:border-accent"
                   />
                 </label>
               ))}
             </div>
           </div>
 
-          <div className="sticky bottom-0 flex items-center gap-3 border-t border-border bg-bg/80 py-4 backdrop-blur">
+          <div className="sticky bottom-0 flex items-center gap-3 border-t border-white/10 bg-bg/80 py-4 backdrop-blur">
             <button
               onClick={guardar}
               disabled={estado === "guardando"}
@@ -1160,7 +1160,7 @@ export function ProductoWizard({ producto }: { producto?: Producto }) {
 
       {paso === "imagenes" && (
         <section className="space-y-5">
-          <div className="flex flex-wrap items-center gap-3 rounded-xl border border-border bg-panel p-4">
+          <div className="flex flex-wrap items-center gap-3 rounded-xl border border-white/10 glass p-4">
             <button
               onClick={() => generarImagenes()}
               className="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-white"
@@ -1176,7 +1176,7 @@ export function ProductoWizard({ producto }: { producto?: Producto }) {
 
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {TIPOS_IMAGEN.map((t) => (
-              <div key={t} className="overflow-hidden rounded-xl border border-border bg-panel">
+              <div key={t} className="overflow-hidden rounded-xl border border-white/10 glass">
                 <div className="flex aspect-square items-center justify-center bg-bg">
                   {p.imagenes[t] ? (
                     // eslint-disable-next-line @next/next/no-img-element
@@ -1191,7 +1191,7 @@ export function ProductoWizard({ producto }: { producto?: Producto }) {
                     {p.imagenes[t] && (
                       <button
                         onClick={() => eliminarImagenTipo(t)}
-                        className="rounded border border-border px-2 py-1 text-xs text-muted hover:border-red-400 hover:text-red-400"
+                        className="rounded border border-white/10 px-2 py-1 text-xs text-muted hover:border-red-400 hover:text-red-400"
                         title="Eliminar esta imagen"
                       >
                         🗑 Eliminar
@@ -1199,7 +1199,7 @@ export function ProductoWizard({ producto }: { producto?: Producto }) {
                     )}
                     <button
                       onClick={() => generarImagenes([t])}
-                      className="rounded border border-border px-2 py-1 text-xs text-muted hover:text-text"
+                      className="rounded border border-white/10 px-2 py-1 text-xs text-muted hover:text-text"
                     >
                       Regenerar
                     </button>
@@ -1209,7 +1209,7 @@ export function ProductoWizard({ producto }: { producto?: Producto }) {
             ))}
           </div>
 
-          <div className="sticky bottom-0 flex items-center gap-3 border-t border-border bg-bg/80 py-4 backdrop-blur">
+          <div className="sticky bottom-0 flex items-center gap-3 border-t border-white/10 bg-bg/80 py-4 backdrop-blur">
             <button
               onClick={guardar}
               disabled={estado === "guardando"}
@@ -1225,7 +1225,7 @@ export function ProductoWizard({ producto }: { producto?: Producto }) {
 
       {paso === "ebook" && (
         <section className="space-y-5">
-          <div className="flex flex-wrap items-center gap-3 rounded-xl border border-border bg-panel p-4">
+          <div className="flex flex-wrap items-center gap-3 rounded-xl border border-white/10 glass p-4">
             <button
               onClick={generarEbook}
               className="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-white"
@@ -1237,7 +1237,7 @@ export function ProductoWizard({ producto }: { producto?: Producto }) {
               <select
                 value={ebookTema}
                 onChange={(e) => setEbookTema(e.target.value)}
-                className="rounded-lg border border-border bg-bg px-2 py-1 text-text outline-none focus:border-accent"
+                className="rounded-lg border border-white/10 bg-white/5 px-2 py-1 text-text outline-none focus:border-accent"
               >
                 {TEMAS_EBOOK.map((t) => (
                   <option key={t} value={t}>
@@ -1254,7 +1254,7 @@ export function ProductoWizard({ producto }: { producto?: Producto }) {
                 max={80}
                 value={ebookPages}
                 onChange={(e) => setEbookPages(Number(e.target.value))}
-                className="w-20 rounded-lg border border-border bg-bg px-2 py-1 text-text outline-none focus:border-accent"
+                className="w-20 rounded-lg border border-white/10 bg-white/5 px-2 py-1 text-text outline-none focus:border-accent"
               />
             </label>
             <span className="text-sm text-muted">{ebookEstado}</span>
