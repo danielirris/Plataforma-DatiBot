@@ -76,6 +76,7 @@ export function ProductoWizard({ producto }: { producto?: Producto }) {
   const [paso, setPaso] = useState<string>("identidad");
   const [estado, setEstado] = useState<"idle" | "guardando" | "ok" | "error">("idle");
   const [genEstado, setGenEstado] = useState<string>("");
+  const [anguloMensajes, setAnguloMensajes] = useState<string>("");
   const [imgEstado, setImgEstado] = useState<string>("");
   const [avatarEstado, setAvatarEstado] = useState<string>("");
   const [angulosEstado, setAngulosEstado] = useState<string>("");
@@ -347,7 +348,11 @@ export function ProductoWizard({ producto }: { producto?: Producto }) {
       const res = await fetch("/api/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ producto: p, soloRanuras }),
+        body: JSON.stringify({
+          producto: p,
+          soloRanuras,
+          angulo_id: anguloMensajes || undefined,
+        }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -1001,8 +1006,29 @@ export function ProductoWizard({ producto }: { producto?: Producto }) {
             >
               ✨ Generar mensajes con IA
             </button>
+            <label className="flex items-center gap-2 text-sm text-muted">
+              Ángulo:
+              <select
+                value={anguloMensajes}
+                onChange={(e) => setAnguloMensajes(e.target.value)}
+                className="rounded-lg border border-border bg-bg px-2 py-1 text-text outline-none focus:border-accent"
+              >
+                <option value="">Sin ángulo específico</option>
+                {p.angulos.map((a) => (
+                  <option key={a.id} value={a.id}>
+                    {a.tipo} · {a.nombre}
+                  </option>
+                ))}
+              </select>
+            </label>
             <span className="text-sm text-muted">{genEstado}</span>
           </div>
+          {p.oferta && (
+            <p className="text-xs text-accent-2">
+              ✓ Usando la oferta: mensaje_3 listará “qué incluye” y mensaje_4 los
+              bonos.
+            </p>
+          )}
 
           <div className="space-y-3">
             {RANURAS_MENSAJE.map((r) => (
