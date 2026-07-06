@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { Sidebar } from "./_components/Sidebar";
+import { Fondo } from "./_components/Fondo";
 
 export const metadata: Metadata = {
   title: "Datibot",
@@ -16,6 +17,7 @@ export default function RootLayout({
   return (
     <html lang="es">
       <body>
+        <Fondo />
         <div className="flex h-screen overflow-hidden">
           <Sidebar />
           <main className="flex-1 overflow-y-auto">{children}</main>

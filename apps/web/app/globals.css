@@ -29,13 +29,8 @@ body {
   font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
 }
 
-/* Fondo premium: negro con glows sutiles violeta/lila (estilo Syntios). */
 body {
-  background:
-    radial-gradient(900px 520px at 108% -10%, rgba(16, 185, 129, 0.16), transparent 60%),
-    radial-gradient(820px 480px at -12% 112%, rgba(45, 212, 191, 0.12), transparent 60%),
-    var(--bg);
-  background-attachment: fixed;
+  background: var(--bg);
 }
 
 /* Utilidad de vidrio esmerilado reutilizable. */
@@ -43,4 +38,60 @@ body {
   background: color-mix(in srgb, var(--panel) 70%, transparent);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
+}
+
+/* ── Fondo animado global (aurora verde) ──────────────────────
+   Manchas de luz verde/teal que se mueven muy lento detrás de TODA la app,
+   para que Datibot se sienta como un solo producto unificado. */
+.aurora {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
+  pointer-events: none;
+}
+.aurora-blob {
+  position: absolute;
+  border-radius: 9999px;
+  filter: blur(100px);
+  will-change: transform;
+}
+.aurora-a {
+  width: 42vw;
+  height: 42vw;
+  top: -12vw;
+  right: -8vw;
+  background: rgba(16, 185, 129, 0.22);
+  animation: aurora-a 20s ease-in-out infinite;
+}
+.aurora-b {
+  width: 40vw;
+  height: 40vw;
+  bottom: -14vw;
+  left: -8vw;
+  background: rgba(45, 212, 191, 0.16);
+  animation: aurora-b 26s ease-in-out infinite;
+}
+.aurora-c {
+  width: 32vw;
+  height: 32vw;
+  top: 35%;
+  left: 45%;
+  background: rgba(16, 185, 129, 0.1);
+  animation: aurora-c 32s ease-in-out infinite;
+}
+@keyframes aurora-a {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  50% { transform: translate(-8%, 12%) scale(1.18); }
+}
+@keyframes aurora-b {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  50% { transform: translate(12%, -10%) scale(1.12); }
+}
+@keyframes aurora-c {
+  0%, 100% { transform: translate(0, 0) scale(1); opacity: 0.8; }
+  50% { transform: translate(-10%, -6%) scale(1.25); opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .aurora-blob { animation: none; }
 }
