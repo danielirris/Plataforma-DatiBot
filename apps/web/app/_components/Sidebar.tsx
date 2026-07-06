@@ -3,18 +3,19 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { NAV_ITEMS, cn } from "@plataforma/ui";
+import { ThemeToggle } from "./ThemeToggle";
 
 export function Sidebar() {
   const pathname = usePathname();
 
   return (
-    <aside className="glass flex w-60 shrink-0 flex-col border-r border-white/5">
+    <aside className="glass flex w-60 shrink-0 flex-col border-r border-[var(--hairline)]">
       {/* Marca */}
       <Link href="/" className="flex items-center gap-2.5 px-5 py-6">
         <span className="grid h-9 w-9 place-items-center rounded-xl bg-gradient-to-br from-accent to-accent-2 text-base font-bold text-white shadow-lg shadow-accent/30 ring-1 ring-white/20">
           D
         </span>
-        <span className="bg-gradient-to-r from-white to-white/70 bg-clip-text text-lg font-bold tracking-tight text-transparent">
+        <span className="bg-gradient-to-r from-accent to-accent-2 bg-clip-text text-lg font-bold tracking-tight text-transparent">
           Datibot
         </span>
       </Link>
@@ -33,8 +34,8 @@ export function Sidebar() {
               className={cn(
                 "group relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition-all",
                 active
-                  ? "bg-white/[0.07] text-text ring-1 ring-white/10"
-                  : "text-muted hover:bg-white/[0.04] hover:text-text",
+                  ? "bg-[var(--hover)] text-text ring-1 ring-[var(--hairline)]"
+                  : "text-muted hover:bg-[var(--hover)] hover:text-text",
               )}
             >
               {/* barra de sección activa */}
@@ -47,7 +48,7 @@ export function Sidebar() {
               <span className="text-base">{item.icon}</span>
               <span className="flex-1">{item.label}</span>
               {item.comingSoon && (
-                <span className="rounded bg-white/5 px-1.5 py-0.5 text-[10px] text-muted">
+                <span className="rounded bg-[var(--field)] px-1.5 py-0.5 text-[10px] text-muted">
                   pronto
                 </span>
               )}
@@ -56,7 +57,10 @@ export function Sidebar() {
         })}
       </nav>
 
-      <div className="px-5 py-4 text-xs text-muted/70">Datibot · v0.1</div>
+      <div className="flex flex-col gap-3 px-3 py-4">
+        <ThemeToggle />
+        <span className="px-2 text-xs text-muted/70">Datibot · v0.1</span>
+      </div>
     </aside>
   );
 }

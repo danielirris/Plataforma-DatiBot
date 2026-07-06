@@ -52,14 +52,14 @@ export function ConfigForm({ initial }: { initial: ConfigStore }) {
     <div className="space-y-10">
       {sections.map((section) => (
         <div key={section.name} className="space-y-4">
-          <h2 className="border-b border-white/10 pb-1 text-sm font-semibold uppercase tracking-wide text-muted">
+          <h2 className="border-b border-[var(--hairline)] pb-1 text-sm font-semibold uppercase tracking-wide text-muted">
             {section.name}
           </h2>
 
           {section.groups.map((group) => (
             <section
               key={group.id}
-              className="rounded-xl border border-white/10 glass p-5"
+              className="rounded-xl border border-[var(--hairline)] glass p-5"
             >
               <div className="mb-1 flex items-baseline justify-between gap-3">
                 <h3 className="font-medium">{group.title}</h3>
@@ -90,7 +90,7 @@ export function ConfigForm({ initial }: { initial: ConfigStore }) {
                         onChange={(e) =>
                           setField(group.id, field.key, e.target.value)
                         }
-                        className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-text outline-none focus:border-accent"
+                        className="rounded-lg border border-[var(--hairline)] bg-[var(--field)] px-3 py-2 text-text outline-none focus:border-accent"
                       />
                     ) : field.type === "select" ? (
                       <select
@@ -102,7 +102,7 @@ export function ConfigForm({ initial }: { initial: ConfigStore }) {
                         onChange={(e) =>
                           setField(group.id, field.key, e.target.value)
                         }
-                        className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-text outline-none focus:border-accent"
+                        className="rounded-lg border border-[var(--hairline)] bg-[var(--field)] px-3 py-2 text-text outline-none focus:border-accent"
                       >
                         {field.options?.map((opt) => (
                           <option key={opt} value={opt}>
@@ -124,7 +124,7 @@ export function ConfigForm({ initial }: { initial: ConfigStore }) {
                         onChange={(e) =>
                           setField(group.id, field.key, e.target.value)
                         }
-                        className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-text outline-none focus:border-accent"
+                        className="rounded-lg border border-[var(--hairline)] bg-[var(--field)] px-3 py-2 text-text outline-none focus:border-accent"
                       />
                     )}
                     {field.help && (
@@ -138,7 +138,7 @@ export function ConfigForm({ initial }: { initial: ConfigStore }) {
         </div>
       ))}
 
-      <div className="sticky bottom-0 flex items-center gap-3 border-t border-white/10 bg-bg/80 py-4 backdrop-blur">
+      <div className="sticky bottom-0 flex items-center gap-3 border-t border-[var(--hairline)] bg-bg/80 py-4 backdrop-blur">
         <button
           onClick={save}
           disabled={status === "saving"}

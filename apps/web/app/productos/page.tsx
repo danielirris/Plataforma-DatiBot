@@ -41,7 +41,7 @@ export default function ProductosPage() {
       {productos === null ? (
         <p className="text-muted">Cargando…</p>
       ) : productos.length === 0 ? (
-        <div className="rounded-xl border border-dashed border-white/10 p-10 text-center text-muted">
+        <div className="rounded-xl border border-dashed border-[var(--hairline)] p-10 text-center text-muted">
           Aún no hay productos. Crea el primero con “+ Nuevo producto”.
         </div>
       ) : (
@@ -49,7 +49,7 @@ export default function ProductosPage() {
           {productos.map((p) => (
             <div
               key={p.id}
-              className="flex flex-col overflow-hidden rounded-xl border border-white/10 glass"
+              className="flex flex-col overflow-hidden rounded-xl border border-[var(--hairline)] glass"
             >
               <Link href={`/productos/${p.id}`} className="block">
                 <div className="flex aspect-video items-center justify-center bg-bg">
@@ -82,7 +82,7 @@ export default function ProductosPage() {
                   )}
                 </div>
               </Link>
-              <div className="mt-auto flex items-center gap-2 border-t border-white/10 px-4 py-2 text-sm">
+              <div className="mt-auto flex items-center gap-2 border-t border-[var(--hairline)] px-4 py-2 text-sm">
                 <Link
                   href={`/flujos?producto=${p.id}`}
                   className="text-accent-2 hover:underline"

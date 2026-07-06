@@ -12,7 +12,7 @@ export function Placeholder({
       <div className="flex items-center gap-3">
         <span className="text-3xl">{icon}</span>
         <h1 className="text-2xl font-semibold">{title}</h1>
-        <span className="rounded bg-white/5 px-2 py-0.5 text-xs text-muted">
+        <span className="rounded bg-[var(--field)] px-2 py-0.5 text-xs text-muted">
           pendiente de migrar
         </span>
       </div>
