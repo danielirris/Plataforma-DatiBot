@@ -9,7 +9,7 @@
 //   3. (Opcional) agrúpalo visualmente con `section`.
 // ─────────────────────────────────────────────────────────────
 
-export type FieldType = "text" | "password" | "number" | "url" | "select";
+export type FieldType = "text" | "password" | "number" | "url" | "select" | "textarea";
 
 export interface ConfigField {
   /** clave canónica dentro del grupo, ej. "openai_api_key" */
@@ -128,6 +128,14 @@ export const CONFIG_GROUPS: ConfigGroup[] = [
     fields: [
       { key: "gemini_api_key", label: "Gemini API Key", type: "password", help: "Con acceso a generación de imágenes." },
       { key: "text_provider", label: "Proveedor de texto", type: "select", options: ["Gemini", "OpenAI"], help: "Quién redacta los mensajes. Default: Gemini." },
+      {
+        key: "image_estilo",
+        label: "Estilo y calidad de las imágenes (prompt)",
+        type: "textarea",
+        help: "Se añade a CADA prompt de imagen para fijar estilo, calidad y formato. Déjalo vacío para usar el estilo por defecto.",
+        placeholder:
+          "Fotografía/gráfico publicitario de alta conversión, 1080×1080, colores vibrantes, alto contraste, iluminación profesional, optimizado para celular, SIN texto, sin logos, sin marcas de agua.",
+      },
     ],
   },
 

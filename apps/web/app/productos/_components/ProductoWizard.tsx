@@ -110,6 +110,32 @@ export function ProductoWizard({ producto }: { producto?: Producto }) {
   function setOverlay(key: TipoImagen, valor: string) {
     setP((prev) => ({ ...prev, overlays: { ...prev.overlays, [key]: valor } }));
   }
+  function setImagen(key: TipoImagen, valor: string) {
+    setP((prev) => ({ ...prev, imagenes: { ...prev.imagenes, [key]: valor } }));
+  }
+
+  // Elimina la imagen de un tipo: la quita del producto y borra el archivo del VPS.
+  async function eliminarImagenTipo(tipo: TipoImagen) {
+    const url = p.imagenes[tipo];
+    if (!url) return;
+    setImagen(tipo, ""); // se quita del UI de inmediato
+    setImgEstado(`Eliminando ${tipo}…`);
+    try {
+      const res = await fetch("/api/images/delete", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url }),
+      });
+      const data = await res.json().catch(() => ({}));
+      setImgEstado(
+        res.ok
+          ? `✓ ${tipo} eliminada. Guarda para conservar el cambio.`
+          : `⚠️ Quitada del producto, pero el borrado en el VPS falló: ${data.error ?? res.status}`,
+      );
+    } catch {
+      setImgEstado(`⚠️ ${tipo} quitada del producto (no se pudo confirmar el borrado en el VPS).`);
+    }
+  }
   function setAvatarSeccion(key: keyof Avatar, valor: string) {
     setP((prev) => ({ ...prev, avatar: { ...prev.avatar, [key]: valor } }));
   }
@@ -1161,12 +1187,23 @@ export function ProductoWizard({ producto }: { producto?: Producto }) {
                 </div>
                 <div className="flex items-center justify-between gap-2 p-3">
                   <span className="font-mono text-xs text-muted">{t}</span>
-                  <button
-                    onClick={() => generarImagenes([t])}
-                    className="rounded border border-border px-2 py-1 text-xs text-muted hover:text-text"
-                  >
-                    Regenerar
-                  </button>
+                  <div className="flex gap-1">
+                    {p.imagenes[t] && (
+                      <button
+                        onClick={() => eliminarImagenTipo(t)}
+                        className="rounded border border-border px-2 py-1 text-xs text-muted hover:border-red-400 hover:text-red-400"
+                        title="Eliminar esta imagen"
+                      >
+                        🗑 Eliminar
+                      </button>
+                    )}
+                    <button
+                      onClick={() => generarImagenes([t])}
+                      className="rounded border border-border px-2 py-1 text-xs text-muted hover:text-text"
+                    >
+                      Regenerar
+                    </button>
+                  </div>
                 </div>
               </div>
             ))}

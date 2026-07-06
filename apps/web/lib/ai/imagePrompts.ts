@@ -4,7 +4,10 @@ import type { TipoImagen } from "@plataforma/products";
 // (sin texto); el servidor superpone el overlay con sharp. Cada prompt deja
 // espacio reservado para el titular.
 
-const REGLAS =
+// Estilo/calidad por defecto que se añade a cada prompt. Se puede sobrescribir
+// desde Configuración (grupo «Generación con IA» → «Estilo y calidad de las
+// imágenes»), que llega como `reglas` a promptDeEscena.
+export const REGLAS_IMAGEN_DEFAULT =
   "Fotografía/gráfico publicitario de alta conversión, formato cuadrado 1080×1080, colores vibrantes, alto contraste, optimizado para pantalla de celular, SIN texto, sin logos, sin marcas de agua.";
 
 const PROMPTS: Record<TipoImagen, string> = {
@@ -24,9 +27,10 @@ export function promptDeEscena(
   tipo: TipoImagen,
   producto: string,
   identidad: string,
+  reglas?: string,
 ): string {
   const base = PROMPTS[tipo]
     .replace(/\{\{PRODUCTO\}\}/g, producto || "el producto")
     .replace(/\{\{IDENTIDAD\}\}/g, identidad || "");
-  return `${base} ${REGLAS}`;
+  return `${base} ${reglas?.trim() || REGLAS_IMAGEN_DEFAULT}`;
 }

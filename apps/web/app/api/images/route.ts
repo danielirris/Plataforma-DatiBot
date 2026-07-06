@@ -31,7 +31,9 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Falta el producto." }, { status: 400 });
   }
 
-  const geminiKey = (await readConfig())["ia"]?.["gemini_api_key"] ?? "";
+  const store = await readConfig();
+  const geminiKey = store["ia"]?.["gemini_api_key"] ?? "";
+  const reglasImagen = store["ia"]?.["image_estilo"] ?? "";
   if (!geminiKey) {
     return NextResponse.json(
       { error: "Falta la Gemini API Key (grupo «Generación con IA»)." },
@@ -60,7 +62,7 @@ export async function POST(req: Request) {
   // Secuencial: evita rate limits y da errores claros por tipo.
   for (const tipo of tipos) {
     try {
-      const prompt = promptDeEscena(tipo, p.nombre, identidad);
+      const prompt = promptDeEscena(tipo, p.nombre, identidad, reglasImagen);
       const escena = await generarEscena(prompt, geminiKey);
       const conTexto = await superponerOverlay(escena, p.overlays?.[tipo] ?? "");
       const nombre = `${baseId}-${tipo}-${stamp}.jpg`.replace(/[^a-zA-Z0-9._-]/g, "");

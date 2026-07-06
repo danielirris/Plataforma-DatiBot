@@ -42,12 +42,7 @@ export function faltantesVps(c: VpsConfig): string[] {
  * `auth` se interpreta como ruta a clave privada si el archivo existe;
  * si no, como contraseña.
  */
-export async function subirImagen(
-  buffer: Buffer,
-  nombreArchivo: string,
-  cfg: VpsConfig,
-): Promise<string> {
-  const sftp = new SftpClient();
+async function construirConexion(cfg: VpsConfig): Promise<Record<string, unknown>> {
   const conexion: Record<string, unknown> = {
     host: cfg.host,
     port: cfg.port,
@@ -59,12 +54,37 @@ export async function subirImagen(
   } else {
     conexion.password = cfg.auth;
   }
+  return conexion;
+}
 
+export async function subirImagen(
+  buffer: Buffer,
+  nombreArchivo: string,
+  cfg: VpsConfig,
+): Promise<string> {
+  const sftp = new SftpClient();
   try {
-    await sftp.connect(conexion);
+    await sftp.connect(await construirConexion(cfg));
     const remoto = `${cfg.remoteDir.replace(/\/+$/, "")}/${nombreArchivo}`;
     await sftp.put(buffer, remoto);
     return `${cfg.publicBaseUrl}/${nombreArchivo}`;
+  } finally {
+    await sftp.end().catch(() => {});
+  }
+}
+
+/**
+ * Borra del VPS la imagen de una URL pública (deriva el nombre del último
+ * segmento de la URL y borra remoteDir/nombre). Si el archivo no existe, no falla.
+ */
+export async function eliminarImagen(url: string, cfg: VpsConfig): Promise<void> {
+  const nombre = (url.split("?")[0].split("/").pop() ?? "").trim();
+  if (!nombre) return;
+  const sftp = new SftpClient();
+  try {
+    await sftp.connect(await construirConexion(cfg));
+    const remoto = `${cfg.remoteDir.replace(/\/+$/, "")}/${nombre}`;
+    await sftp.delete(remoto).catch(() => {});
   } finally {
     await sftp.end().catch(() => {});
   }
