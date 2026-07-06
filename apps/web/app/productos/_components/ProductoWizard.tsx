@@ -36,6 +36,7 @@ const PASOS = [
   { key: "oferta", label: "4 · Oferta" },
   { key: "mensajes", label: "5 · Mensajes" },
   { key: "imagenes", label: "6 · Imágenes" },
+  { key: "ebook", label: "7 · Ebook" },
 ] as const;
 
 // Pasos ya implementados.
@@ -46,7 +47,11 @@ const DISPONIBLES = new Set([
   "oferta",
   "mensajes",
   "imagenes",
+  "ebook",
 ]);
+
+// Temas disponibles en el servicio de ebooks (carpetas en themes/).
+const TEMAS_EBOOK = ["amigurumi", "arcade", "capital", "impulso", "sabores", "sereno"];
 
 // Campos de texto largos de cada ángulo (nombre y tipo van aparte en el header).
 const CAMPOS_ANGULO: { key: keyof Angulo; label: string; rows: number }[] = [
@@ -85,6 +90,9 @@ export function ProductoWizard({ producto }: { producto?: Producto }) {
   const [incluyeVideo, setIncluyeVideo] = useState<boolean>(
     producto?.oferta?.incluye_video ?? false,
   );
+  const [ebookTema, setEbookTema] = useState<string>("amigurumi");
+  const [ebookPages, setEbookPages] = useState<number>(40);
+  const [ebookEstado, setEbookEstado] = useState<string>("");
 
   const esNuevo = !p.id;
 
@@ -391,6 +399,42 @@ export function ProductoWizard({ producto }: { producto?: Producto }) {
       );
     } catch {
       setImgEstado("⚠️ No se pudo generar.");
+    }
+  }
+
+  async function generarEbook() {
+    if (!p.id) {
+      setEbookEstado("⚠️ Guarda el producto primero (paso Identidad).");
+      return;
+    }
+    if (!p.nombre.trim()) {
+      setEbookEstado("⚠️ El producto necesita nombre/promesa (paso Identidad).");
+      return;
+    }
+    setEbookEstado("Generando ebook con IA (índice + módulos)… puede tardar 1-2 min.");
+    try {
+      const res = await fetch(`/api/productos/${p.id}/generar-ebook`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ producto: p, tema: ebookTema, pages: ebookPages }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setEbookEstado("⚠️ " + (data.error ?? `Error ${res.status}`));
+        return;
+      }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${(p.nombre || "ebook").toLowerCase().replace(/[^a-z0-9]+/g, "-")}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+      setEbookEstado("✓ Ebook generado y descargado.");
+    } catch {
+      setEbookEstado("⚠️ No se pudo generar el ebook.");
     }
   }
 
@@ -1139,6 +1183,50 @@ export function ProductoWizard({ producto }: { producto?: Producto }) {
             {estado === "ok" && <span className="text-sm text-accent-2">✓ Guardado</span>}
             {estado === "error" && <span className="text-sm text-red-400">Error al guardar</span>}
           </div>
+        </section>
+      )}
+
+      {paso === "ebook" && (
+        <section className="space-y-5">
+          <div className="flex flex-wrap items-center gap-3 rounded-xl border border-border bg-panel p-4">
+            <button
+              onClick={generarEbook}
+              className="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-white"
+            >
+              📕 Generar ebook
+            </button>
+            <label className="flex items-center gap-2 text-sm text-muted">
+              Tema:
+              <select
+                value={ebookTema}
+                onChange={(e) => setEbookTema(e.target.value)}
+                className="rounded-lg border border-border bg-bg px-2 py-1 text-text outline-none focus:border-accent"
+              >
+                {TEMAS_EBOOK.map((t) => (
+                  <option key={t} value={t}>
+                    {t}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="flex items-center gap-2 text-sm text-muted">
+              Páginas:
+              <input
+                type="number"
+                min={8}
+                max={80}
+                value={ebookPages}
+                onChange={(e) => setEbookPages(Number(e.target.value))}
+                className="w-20 rounded-lg border border-border bg-bg px-2 py-1 text-text outline-none focus:border-accent"
+              />
+            </label>
+            <span className="text-sm text-muted">{ebookEstado}</span>
+          </div>
+          <p className="text-xs text-muted">
+            Genera un ebook (PDF) sobre el <b>tema del producto</b> (nombre + promesa +
+            público) con la IA del shell, y lo maqueta con el tema elegido. El contenido
+            se crea módulo a módulo, así que tarda un poco; al terminar se descarga.
+          </p>
         </section>
       )}
     </div>

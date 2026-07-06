@@ -87,7 +87,13 @@ Necesita las URLs de los 3 subdominios de arriba, así que va después.
   DASHBOARD_URL=https://dashboard.tudominio.com
   EXTRACTOR_URL=https://extractor.tudominio.com
   EBOOKFORGE_URL=https://ebooks.tudominio.com
+  # URL INTERNA del servicio ebooks (para el botón "Generar ebook" de Productos).
+  # Debe ser la interna, no la pública (la pública lleva Basic Auth).
+  EBOOK_RENDER_URL=http://ebooks:8600
   ```
+  > El botón **Generar ebook** (en Productos) crea el contenido con la IA del
+  > shell (Gemini/OpenAI) y lo manda al servicio `ebooks` a renderizar el PDF.
+  > Por eso `web` necesita alcanzar a `ebooks` por la red interna del proyecto.
 
 ---
 
