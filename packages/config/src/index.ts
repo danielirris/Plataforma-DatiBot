@@ -27,18 +27,58 @@ const DATA_DIR = process.env.DATA_DIR || findRepoRoot();
 const REPO_ROOT = findRepoRoot();
 const STORE_PATH = path.join(DATA_DIR, ".config-store.json");
 
+/**
+ * Nombre de la variable de entorno para un campo: `<GRUPO>_<CAMPO>` en mayúsculas.
+ * Ej.: grupo "ia" + campo "gemini_api_key"  ->  IA_GEMINI_API_KEY.
+ * Ej.: grupo "vps" + campo "vps_host"        ->  VPS_VPS_HOST.
+ */
+export function envVarName(groupId: string, fieldKey: string): string {
+  return `${groupId}_${fieldKey}`.toUpperCase().replace(/[^A-Z0-9]/g, "_");
+}
+
+/**
+ * Superpone valores del ENTORNO sobre el almacén guardado. El entorno GANA:
+ * así, en producción (EasyPanel), poner las claves como variables de entorno del
+ * servicio las hace persistir entre redeploys sin depender del volumen /data.
+ * Si una variable no está definida (o vacía), se usa el valor del panel.
+ */
+function superponerEntorno(store: ConfigStore): ConfigStore {
+  const out: ConfigStore = { ...store };
+  for (const group of CONFIG_GROUPS) {
+    for (const field of group.fields) {
+      const v = process.env[envVarName(group.id, field.key)];
+      if (v !== undefined && v !== "") {
+        out[group.id] = { ...(out[group.id] ?? {}), [field.key]: v };
+      }
+    }
+  }
+  return out;
+}
+
 export async function readConfig(): Promise<ConfigStore> {
+  let store: ConfigStore = {};
   try {
     const raw = await fs.readFile(STORE_PATH, "utf8");
-    return JSON.parse(raw) as ConfigStore;
+    store = JSON.parse(raw) as ConfigStore;
   } catch {
-    return {};
+    /* el almacén es opcional: puede venir todo del entorno */
   }
+  return superponerEntorno(store);
 }
 
 export async function writeConfig(store: ConfigStore): Promise<void> {
+  // Asegura que el directorio de datos exista (volumen /data en producción).
+  await fs.mkdir(path.dirname(STORE_PATH), { recursive: true });
   await fs.writeFile(STORE_PATH, JSON.stringify(store, null, 2), "utf8");
-  await regenerateEnvFiles(store);
+
+  // La regeneración de .env solo sirve en despliegue de UN host (monorepo local).
+  // En multi-contenedor esos .env se ignoran y el destino puede no ser escribible;
+  // que su fallo NUNCA tumbe el guardado real (el .config-store.json de arriba).
+  try {
+    await regenerateEnvFiles(store);
+  } catch {
+    /* no-op: en prod (multi-contenedor) esto no aplica */
+  }
 }
 
 /**
