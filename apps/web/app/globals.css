@@ -4,13 +4,13 @@
 @source "../../../packages/ui/src";
 
 :root {
-  --bg: #08080d;
-  --panel: #131320;
-  --border: #262435;
-  --text: #ededf3;
-  --muted: #9a97ab;
-  --accent: #7c5cff;
-  --accent-2: #c77dff;
+  --bg: #06090b;
+  --panel: #0f171a;
+  --border: #223029;
+  --text: #eaf1ed;
+  --muted: #93a39b;
+  --accent: #10b981;
+  --accent-2: #2dd4bf;
 }
 
 @theme inline {
@@ -32,8 +32,8 @@ body {
 /* Fondo premium: negro con glows sutiles violeta/lila (estilo Syntios). */
 body {
   background:
-    radial-gradient(900px 520px at 108% -10%, rgba(124, 92, 255, 0.16), transparent 60%),
-    radial-gradient(820px 480px at -12% 112%, rgba(199, 125, 255, 0.12), transparent 60%),
+    radial-gradient(900px 520px at 108% -10%, rgba(16, 185, 129, 0.16), transparent 60%),
+    radial-gradient(820px 480px at -12% 112%, rgba(45, 212, 191, 0.12), transparent 60%),
     var(--bg);
   background-attachment: fixed;
 }
