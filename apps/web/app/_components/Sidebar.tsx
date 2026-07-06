@@ -9,10 +9,17 @@ export function Sidebar() {
 
   return (
     <aside className="flex w-60 shrink-0 flex-col border-r border-border bg-panel">
-      <div className="px-5 py-5">
-        <span className="text-lg font-semibold tracking-tight">Mi Plataforma</span>
-      </div>
-      <nav className="flex flex-1 flex-col gap-1 px-3">
+      {/* Marca */}
+      <Link href="/" className="flex items-center gap-2.5 px-5 py-5">
+        <span className="grid h-8 w-8 place-items-center rounded-lg bg-gradient-to-br from-accent to-accent-2 text-sm font-bold text-white shadow-lg shadow-accent/20">
+          D
+        </span>
+        <span className="bg-gradient-to-r from-accent to-accent-2 bg-clip-text text-lg font-bold tracking-tight text-transparent">
+          Datibot
+        </span>
+      </Link>
+
+      <nav className="flex flex-1 flex-col gap-0.5 px-3">
         {NAV_ITEMS.map((item) => {
           const active =
             item.href === "/"
@@ -22,13 +29,21 @@ export function Sidebar() {
             <Link
               key={item.href}
               href={item.href}
+              title={item.description}
               className={cn(
-                "flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors",
+                "group relative flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors",
                 active
                   ? "bg-accent/15 text-text"
                   : "text-muted hover:bg-white/5 hover:text-text",
               )}
             >
+              {/* barra de sección activa */}
+              <span
+                className={cn(
+                  "absolute left-0 top-1/2 h-5 w-0.5 -translate-y-1/2 rounded-full bg-accent transition-opacity",
+                  active ? "opacity-100" : "opacity-0",
+                )}
+              />
               <span className="text-base">{item.icon}</span>
               <span className="flex-1">{item.label}</span>
               {item.comingSoon && (
@@ -40,7 +55,8 @@ export function Sidebar() {
           );
         })}
       </nav>
-      <div className="px-5 py-4 text-xs text-muted">v0.1 · monorepo</div>
+
+      <div className="px-5 py-4 text-xs text-muted">Datibot · v0.1</div>
     </aside>
   );
 }

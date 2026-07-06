@@ -3,8 +3,9 @@ import "./globals.css";
 import { Sidebar } from "./_components/Sidebar";
 
 export const metadata: Metadata = {
-  title: "Mi Plataforma",
-  description: "Shell unificado — Flujos, Dashboard ads y Editor de videos",
+  title: "Datibot",
+  description:
+    "Datibot — tu centro de mando: Productos, Ebooks, Flujos, Dashboard de ads y Editor de videos en un solo lugar.",
 };
 
 export default function RootLayout({
