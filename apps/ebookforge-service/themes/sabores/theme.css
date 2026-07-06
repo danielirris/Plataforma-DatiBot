@@ -1,0 +1,7 @@
+@font-face{font-family:'Fraunces';font-weight:700;src:url('FONTS/Fraunces-Display.ttf')}
+@font-face{font-family:'Fraunces';font-weight:600;src:url('FONTS/Fraunces-Head.ttf')}
+@font-face{font-family:'Fraunces';font-weight:500;src:url('FONTS/Fraunces-Head.ttf')}
+@font-face{font-family:'Lora';font-weight:400;src:url('FONTS/Lora-Regular.ttf')}
+@font-face{font-family:'Lora';font-weight:500;src:url('FONTS/Lora-SemiBold.ttf')}
+@font-face{font-family:'Lora';font-weight:700;src:url('FONTS/Lora-Bold.ttf')}
+:root{--bg:#FBF4EA;--ink:#3A2E25;--ink2:#8A7A68;--accent:#C6472F;--accent2:#B4551E;--accent-ink:#FBF4EA;--soft:#CBA96B;--wash:#F5EAD8;--line:#E6D8C4;--sell:#B98A2A;--sell-wash:#F6ECD4;--danger:#B24A3A;--danger-wash:#F5E3DE;--radius:5mm;--pill:26px;--dot:50%;--title-ls:0;--font-display:'Fraunces';--font-body:'Lora';}

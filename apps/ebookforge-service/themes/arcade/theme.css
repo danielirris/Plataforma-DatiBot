@@ -1,0 +1,7 @@
+@font-face{font-family:'Orbitron';font-weight:700;src:url('FONTS/Orbitron-Bold.ttf')}
+@font-face{font-family:'Orbitron';font-weight:600;src:url('FONTS/Orbitron-SemiBold.ttf')}
+@font-face{font-family:'Orbitron';font-weight:500;src:url('FONTS/Orbitron-SemiBold.ttf')}
+@font-face{font-family:'Poppins';font-weight:400;src:url('FONTS/Poppins-Regular.ttf')}
+@font-face{font-family:'Poppins';font-weight:500;src:url('FONTS/Poppins-Medium.ttf')}
+@font-face{font-family:'Poppins';font-weight:700;src:url('FONTS/Poppins-Bold.ttf')}
+:root{--bg:#0E1020;--ink:#E8EAF5;--ink2:#9AA0C0;--accent:#38E1FF;--accent2:#FF4D8D;--accent-ink:#0B0D18;--soft:#5A6699;--wash:#181B30;--line:#2C3152;--sell:#B6FF3C;--sell-wash:#182415;--danger:#FF6B6B;--danger-wash:#2A1622;--radius:3px;--pill:4px;--dot:1px;--title-ls:.03em;--font-display:'Orbitron';--font-body:'Poppins';}

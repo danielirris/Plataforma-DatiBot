@@ -1,0 +1,7 @@
+@font-face{font-family:'SpaceGrotesk';font-weight:700;src:url('FONTS/SpaceGrotesk-Bold.ttf')}
+@font-face{font-family:'SpaceGrotesk';font-weight:600;src:url('FONTS/SpaceGrotesk-Bold.ttf')}
+@font-face{font-family:'SpaceGrotesk';font-weight:500;src:url('FONTS/SpaceGrotesk-Medium.ttf')}
+@font-face{font-family:'Poppins';font-weight:400;src:url('FONTS/Poppins-Regular.ttf')}
+@font-face{font-family:'Poppins';font-weight:500;src:url('FONTS/Poppins-Medium.ttf')}
+@font-face{font-family:'Poppins';font-weight:700;src:url('FONTS/Poppins-Bold.ttf')}
+:root{--bg:#FFFFFF;--ink:#141416;--ink2:#6A6A72;--accent:#5B34E0;--accent2:#FF5A1F;--accent-ink:#FFFFFF;--soft:#B9A9F2;--wash:#F1ECFE;--line:#ECEAF6;--sell:#FF5A1F;--sell-wash:#FFF1E9;--danger:#E23B3B;--danger-wash:#FCEBEB;--radius:4px;--pill:7px;--dot:2px;--title-ls:-.02em;--font-display:'SpaceGrotesk';--font-body:'Poppins';}

@@ -1,0 +1,7 @@
+@font-face{font-family:'Fraunces';font-weight:700;src:url('FONTS/Fraunces-Display.ttf')}
+@font-face{font-family:'Fraunces';font-weight:600;src:url('FONTS/Fraunces-Head.ttf')}
+@font-face{font-family:'Fraunces';font-weight:500;src:url('FONTS/Fraunces-Head.ttf')}
+@font-face{font-family:'Poppins';font-weight:400;src:url('FONTS/Poppins-Regular.ttf')}
+@font-face{font-family:'Poppins';font-weight:500;src:url('FONTS/Poppins-Medium.ttf')}
+@font-face{font-family:'Poppins';font-weight:700;src:url('FONTS/Poppins-Bold.ttf')}
+:root{--bg:#F6F5F1;--ink:#16202E;--ink2:#5A6472;--accent:#16324F;--accent2:#B0872E;--accent-ink:#F6F5F1;--soft:#9AA3AC;--wash:#ECEAE2;--line:#DBD8CE;--sell:#B0872E;--sell-wash:#F3EDDD;--danger:#9E3B3B;--danger-wash:#F1E4E2;--radius:2px;--pill:3px;--dot:0;--title-ls:-.01em;--font-display:'Fraunces';--font-body:'Poppins';}

@@ -1,0 +1,7 @@
+@font-face{font-family:'Fredoka';font-weight:700;src:url('FONTS/Fredoka-Bold.ttf')}
+@font-face{font-family:'Fredoka';font-weight:600;src:url('FONTS/Fredoka-SemiBold.ttf')}
+@font-face{font-family:'Fredoka';font-weight:500;src:url('FONTS/Fredoka-Medium.ttf')}
+@font-face{font-family:'Poppins';font-weight:400;src:url('FONTS/Poppins-Regular.ttf')}
+@font-face{font-family:'Poppins';font-weight:500;src:url('FONTS/Poppins-Medium.ttf')}
+@font-face{font-family:'Poppins';font-weight:700;src:url('FONTS/Poppins-Bold.ttf')}
+:root{--bg:#F3F1EA;--ink:#3E4640;--ink2:#7E867C;--accent:#6F9A78;--accent2:#C08A82;--accent-ink:#FCFCF8;--soft:#B4C3A6;--wash:#EBECE2;--line:#DEE0D2;--sell:#C29A48;--sell-wash:#F2ECD9;--danger:#C0796A;--danger-wash:#F1E3DE;--radius:6mm;--pill:28px;--dot:50%;--title-ls:0;--font-display:'Fredoka';--font-body:'Poppins';}
