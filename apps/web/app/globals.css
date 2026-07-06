@@ -4,13 +4,13 @@
 @source "../../../packages/ui/src";
 
 :root {
-  --bg: #0f1115;
-  --panel: #1a1d24;
-  --border: #262a33;
-  --text: #e8eaed;
-  --muted: #9aa0aa;
+  --bg: #08080d;
+  --panel: #131320;
+  --border: #262435;
+  --text: #ededf3;
+  --muted: #9a97ab;
   --accent: #7c5cff;
-  --accent-2: #00d4ff;
+  --accent-2: #c77dff;
 }
 
 @theme inline {
@@ -25,7 +25,22 @@
 
 html,
 body {
-  background: var(--bg);
   color: var(--text);
   font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+
+/* Fondo premium: negro con glows sutiles violeta/lila (estilo Syntios). */
+body {
+  background:
+    radial-gradient(900px 520px at 108% -10%, rgba(124, 92, 255, 0.16), transparent 60%),
+    radial-gradient(820px 480px at -12% 112%, rgba(199, 125, 255, 0.12), transparent 60%),
+    var(--bg);
+  background-attachment: fixed;
+}
+
+/* Utilidad de vidrio esmerilado reutilizable. */
+.glass {
+  background: color-mix(in srgb, var(--panel) 70%, transparent);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
 }
