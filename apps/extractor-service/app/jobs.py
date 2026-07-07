@@ -72,7 +72,7 @@ class Job:
     error: str = ""
     aviso: str = ""
     n_clips: int = 0
-    mode: str = "montage"  # montage | ad
+    mode: str = "montage"  # montage | ad | full (recorta + edita en un solo flujo)
     created_at: float = field(default_factory=time.time)
     output_dir: str | None = None
 
@@ -89,8 +89,8 @@ class Job:
             if done and self.n_clips > 0 else []
         )
         d["download_url"] = f"/api/jobs/{self.id}/download" if done else None
-        # En modo anuncio, además: proyecto editable + previsualización en vivo.
-        is_ad = done and self.mode == "ad"
+        # En modo anuncio (o flujo completo): proyecto editable + preview en vivo.
+        is_ad = done and self.mode in ("ad", "full")
         d["project_url"] = f"/api/jobs/{self.id}/project" if is_ad else None
         d["preview_url"] = f"/preview/{self.id}" if is_ad else None
         d.pop("output_dir", None)
@@ -108,6 +108,8 @@ class JobManager:
         self._guias: dict[str, list[Path]] = {}  # videos de guía por job (PiP)
         self._voz: dict[str, Path] = {}
         self._req_clips: dict[str, int] = {}  # nº de clips pedido (0 = por defecto)
+        self._use_music: dict[str, bool] = {}  # música de fondo opcional por job
+        self._intro: dict[str, Path] = {}  # sonido de inicio opcional por job
         self._lock = threading.Lock()
         self._queue: "queue.Queue[tuple[str, str]]" = queue.Queue()
         self._worker = threading.Thread(target=self._run_worker, daemon=True)
@@ -141,6 +143,9 @@ class JobManager:
                 job = Job(id=row["id"], filenames=json.loads(row["filenames"]),
                           created_at=row["created_at"], status=JobStatus.QUEUED,
                           mode=row["mode"], message="Reanudado tras reinicio")
+                cols = row.keys()
+                use_music = bool(row["use_music"]) if "use_music" in cols and row["use_music"] is not None else True
+                intro = Path(row["intro"]) if "intro" in cols and row["intro"] else None
                 with self._lock:
                     self._jobs[job.id] = job
                     self._sources[job.id] = sources
@@ -152,6 +157,9 @@ class JobManager:
                         self._voz[job.id] = voz
                     if row["num_clips_req"]:
                         self._req_clips[job.id] = int(row["num_clips_req"])
+                    self._use_music[job.id] = use_music
+                    if intro is not None and intro.exists():
+                        self._intro[job.id] = intro
                 self._store.update(row["id"], {"status": "queued", "progress": 0,
                                                "message": "Reanudado tras reinicio"})
                 self._queue.put(("job", job.id))
@@ -168,6 +176,8 @@ class JobManager:
         voz_tmp: tuple[Path, str] | None = None,
         num_clips: int = 0,
         guias_tmps: list[tuple[Path, str]] | None = None,
+        use_music: bool = True,
+        intro_tmp: tuple[Path, str] | None = None,
     ) -> str:
         """Registra un nuevo job, mueve los uploads a su carpeta y lo encola.
 
@@ -213,6 +223,13 @@ class JobManager:
             shutil.move(str(gtmp), str(gdest))
             guia_paths.append(gdest)
 
+        intro_path: Path | None = None
+        if intro_tmp is not None:
+            itmp, iname = intro_tmp
+            iext = Path(iname).suffix.lower() or ".mp3"
+            intro_path = sources_dir / f"intro{iext}"
+            shutil.move(str(itmp), str(intro_path))
+
         job = Job(id=job_id, filenames=filenames, mode=mode)
         with self._lock:
             self._jobs[job_id] = job
@@ -225,19 +242,22 @@ class JobManager:
                 self._voz[job_id] = voz_path
             if num_clips:
                 self._req_clips[job_id] = int(num_clips)
+            self._use_music[job_id] = bool(use_music)
+            if intro_path is not None:
+                self._intro[job_id] = intro_path
         self._store.save(id=job_id, filenames=filenames, status=JobStatus.QUEUED.value,
                          created_at=job.created_at, sources=paths, music=music_paths,
                          mode=mode, voz=voz_path, num_clips_req=int(num_clips or 0),
-                         guias=guia_paths)
+                         guias=guia_paths, use_music=bool(use_music), intro=intro_path)
         self._queue.put(("job", job_id))
         logger.info("Job %s encolado (modo=%s, %d videos, %d pistas)",
                     job_id, mode, len(paths), len(music_paths))
         return job_id
 
     def request_render(self, job_id: str) -> bool:
-        """Encola el render del proyecto Remotion ya generado (modo anuncio)."""
+        """Encola el render del proyecto Remotion ya generado (anuncio o flujo completo)."""
         job = self.get(job_id)
-        if not job or job.mode != "ad" or not job.output_dir:
+        if not job or job.mode not in ("ad", "full") or not job.output_dir:
             return False
         if not (Path(job.output_dir) / "remotion-ad").exists():
             return False
@@ -336,7 +356,7 @@ class JobManager:
                 continue
             clips = [f"/api/jobs/{job.id}/download/{i}"
                      for i in range(1, job.n_clips + 1) if self.clip_path(job.id, i)]
-            is_ad = job.mode == "ad"
+            is_ad = job.mode in ("ad", "full")
             has_proj = is_ad and self.ad_project_dir(job.id) is not None
             if not clips and not has_proj:
                 continue  # nada que mostrar (output ya purgado)
@@ -419,90 +439,21 @@ class JobManager:
         if job and job.mode == "ad":
             self._process_ad(job_id, sources, work_dir, output_dir)
             return
+        if job and job.mode == "full":
+            self._process_full(job_id, sources, work_dir, output_dir)
+            return
 
         try:
-            # 1) Extraer audio + medir duración + 2) transcribir, por video.
-            videos: list[VideoSource] = []
-            segments_by_video: dict[int, list] = {}
-            for vid, src in enumerate(sources):
-                self._update(
-                    job_id, status=JobStatus.EXTRACTING,
-                    message=f"Procesando audio {vid + 1}/{len(sources)}",
-                )
-                duration = audio.probe_duration(src)
-                if audio.has_audio(src):
-                    audio_path = work_dir / f"audio_{vid:03d}.wav"
-                    audio.extract_audio(src, audio_path)
-
-                    self._update(
-                        job_id, status=JobStatus.TRANSCRIBING,
-                        message=f"Transcribiendo {vid + 1}/{len(sources)}",
-                    )
-                    segs = transcribe.transcribe_audio(audio_path)
-                    audio_path.unlink(missing_ok=True)  # ya no se necesita
-                else:
-                    logger.info("Video %d sin pista de audio: se omite la transcripción", vid)
-                    segs = []
-
-                videos.append(VideoSource(id=vid, path=src, duration=duration,
-                                          name=self.get(job_id).filenames[vid], segments=segs))
-                segments_by_video[vid] = segs
-
-            # 3) Analizar ganchos (impactantes) sobre todos los videos.
-            self._update(job_id, status=JobStatus.ANALYZING, message="Detectando ganchos")
-            moments = analyze.analyze_hooks([v.segments for v in videos])
-
-            # Construir pool y componer N clips (cortes de duración variable).
-            rng = random.Random(f"{settings.seed}:{job_id}")
-            pool = build_pool(videos, rng, settings.beat_min_s, settings.beat_max_s)
-            n_clips = max(1, self._req_clips.get(job_id) or settings.num_clips)
-            # Las transiciones (xfade) solapan y acortan el clip; compensamos
-            # componiendo un poco más de material para acabar cerca de la duración.
-            buffer_s = 0.0
-            if settings.transiciones:
-                avg_trans = (settings.trans_min + settings.trans_max) / 2
-                buffer_s = avg_trans * settings.trans_dur_s
-            clips = compose_clips(
-                pool, moments, videos, rng,
-                num_clips=n_clips,
-                duracion_total_s=settings.duracion_total_s + buffer_s,
-                hook_beats=settings.hook_beats,
-                beat_min=settings.beat_min_s,
-                beat_max=settings.beat_max_s,
+            clip_paths, aviso, result = self._montage_stage(
+                job_id, sources, work_dir, output_dir,
+                music_paths=self._music.get(job_id, []),
             )
 
-            # 4) Render de los N clips (beats cacheados, transiciones, música).
-            self._update(
-                job_id, status=JobStatus.RENDERING,
-                message=f"Renderizando {n_clips} clips",
-            )
-            music_paths = self._music.get(job_id, [])
-            video_names = {v.id: v.name for v in videos}
-            result = render.render_clips(
-                clips, segments_by_video, video_names, work_dir, output_dir, rng,
-                modo_fondo=settings.modo_fondo,
-                subtitulos=settings.subtitulos_recortes,  # Apartado 1: sin subtítulos
-                transiciones=settings.transiciones,
-                trans_min=settings.trans_min,
-                trans_max=settings.trans_max,
-                modo_transicion=settings.modo_transicion,
-                trans_dur=settings.trans_dur_s,
-                music_paths=music_paths,
-                threads=settings.effective_ffmpeg_threads,
-            )
-
-            # 5) Exportar proyecto Remotion editable.
+            # Exportar proyecto Remotion editable.
             if settings.remotion_export:
                 self._update(job_id, status=JobStatus.RENDERING,
                              message="Exportando proyecto Remotion")
                 export_remotion(output_dir, result)
-
-            aviso = ""
-            if len(pool) < settings.min_fragmentos:
-                aviso = (
-                    f"Pool de {len(pool)} fragmentos (< {settings.min_fragmentos} "
-                    f"recomendado): los clips reutilizan más material."
-                )
 
             self._update(
                 job_id, status=JobStatus.DONE, message="Completado",
@@ -522,21 +473,156 @@ class JobManager:
         finally:
             # Limpieza: borra temporales y videos fuente (deja solo los clips).
             cleanup.cleanup_job_dir(work_dir)
-            with self._lock:
-                self._sources.pop(job_id, None)
-                self._music.pop(job_id, None)
-                self._guias.pop(job_id, None)
-                self._voz.pop(job_id, None)
-                self._req_clips.pop(job_id, None)
+            self._pop_job_state(job_id)
             cleanup.purge_keep_recent(settings.outputs_dir, settings.galeria_max)
+
+    def _pop_job_state(self, job_id: str) -> None:
+        """Libera el estado en memoria asociado a un job ya procesado."""
+        with self._lock:
+            for d in (self._sources, self._music, self._guias, self._voz,
+                      self._req_clips, self._use_music, self._intro):
+                d.pop(job_id, None)
+
+    def _montage_stage(
+        self,
+        job_id: str,
+        sources: list[Path],
+        work_dir: Path,
+        clips_out_dir: Path,
+        music_paths: list[Path],
+    ) -> tuple[list[Path], str, Any]:
+        """Etapa de RECORTE: transcribe, detecta ganchos, compone y renderiza N clips.
+
+        Devuelve (rutas de los clips, aviso, RenderResult). Con ``music_paths``
+        vacío los clips conservan el audio original (necesario para encadenar la
+        edición del flujo completo, que transcribe esa voz).
+        """
+        settings = self._settings
+
+        # 1) Extraer audio + medir duración + 2) transcribir, por video.
+        videos: list[VideoSource] = []
+        segments_by_video: dict[int, list] = {}
+        for vid, src in enumerate(sources):
+            self._update(
+                job_id, status=JobStatus.EXTRACTING,
+                message=f"Procesando audio {vid + 1}/{len(sources)}",
+            )
+            duration = audio.probe_duration(src)
+            if audio.has_audio(src):
+                audio_path = work_dir / f"audio_{vid:03d}.wav"
+                audio.extract_audio(src, audio_path)
+
+                self._update(
+                    job_id, status=JobStatus.TRANSCRIBING,
+                    message=f"Transcribiendo {vid + 1}/{len(sources)}",
+                )
+                segs = transcribe.transcribe_audio(audio_path)
+                audio_path.unlink(missing_ok=True)  # ya no se necesita
+            else:
+                logger.info("Video %d sin pista de audio: se omite la transcripción", vid)
+                segs = []
+
+            videos.append(VideoSource(id=vid, path=src, duration=duration,
+                                      name=self.get(job_id).filenames[vid], segments=segs))
+            segments_by_video[vid] = segs
+
+        # 3) Analizar ganchos (impactantes) sobre todos los videos.
+        self._update(job_id, status=JobStatus.ANALYZING, message="Detectando ganchos")
+        moments = analyze.analyze_hooks([v.segments for v in videos])
+
+        # Construir pool y componer N clips (cortes de duración variable).
+        rng = random.Random(f"{settings.seed}:{job_id}")
+        pool = build_pool(videos, rng, settings.beat_min_s, settings.beat_max_s)
+        n_clips = max(1, self._req_clips.get(job_id) or settings.num_clips)
+        # Las transiciones (xfade) solapan y acortan el clip; compensamos
+        # componiendo un poco más de material para acabar cerca de la duración.
+        buffer_s = 0.0
+        if settings.transiciones:
+            avg_trans = (settings.trans_min + settings.trans_max) / 2
+            buffer_s = avg_trans * settings.trans_dur_s
+        clips = compose_clips(
+            pool, moments, videos, rng,
+            num_clips=n_clips,
+            duracion_total_s=settings.duracion_total_s + buffer_s,
+            hook_beats=settings.hook_beats,
+            beat_min=settings.beat_min_s,
+            beat_max=settings.beat_max_s,
+        )
+
+        # 4) Render de los N clips (beats cacheados, transiciones, música).
+        self._update(
+            job_id, status=JobStatus.RENDERING,
+            message=f"Renderizando {n_clips} clips",
+        )
+        video_names = {v.id: v.name for v in videos}
+        result = render.render_clips(
+            clips, segments_by_video, video_names, work_dir, clips_out_dir, rng,
+            modo_fondo=settings.modo_fondo,
+            subtitulos=settings.subtitulos_recortes,  # sin subtítulos (los pone la edición)
+            transiciones=settings.transiciones,
+            trans_min=settings.trans_min,
+            trans_max=settings.trans_max,
+            modo_transicion=settings.modo_transicion,
+            trans_dur=settings.trans_dur_s,
+            music_paths=music_paths,
+            threads=settings.effective_ffmpeg_threads,
+        )
+
+        aviso = ""
+        if len(pool) < settings.min_fragmentos:
+            aviso = (
+                f"Pool de {len(pool)} fragmentos (< {settings.min_fragmentos} "
+                f"recomendado): los clips reutilizan más material."
+            )
+
+        clip_paths = [clips_out_dir / f"clip_{i}.mp4"
+                      for i in range(1, len(result.clips) + 1)]
+        return [p for p in clip_paths if p.exists()], aviso, result
+
+    def _process_full(self, job_id: str, sources: list[Path],
+                      work_dir: Path, output_dir: Path) -> None:
+        """Flujo COMPLETO (una sola fase): recorta los mejores momentos y pasa los
+        clips directo a la edición del anuncio (subtítulos, animaciones, CTA)."""
+        montage_dir = work_dir / "montage"
+        try:
+            # Recorte SIN música: los clips conservan la voz original, que es la
+            # que transcribe y subtitula la edición. La música va en la edición.
+            clip_paths, aviso, _ = self._montage_stage(
+                job_id, sources, work_dir, montage_dir, music_paths=[],
+            )
+            if not clip_paths:
+                raise RuntimeError("El recorte no produjo clips")
+        except Exception as exc:  # noqa: BLE001
+            logger.exception("Fallo en el recorte del flujo completo (%s)", job_id)
+            self._update(job_id, status=JobStatus.ERROR,
+                         message="Error en el recorte", error=str(exc))
+            cleanup.cleanup_job_dir(work_dir)
+            self._pop_job_state(job_id)
+            return
+
+        if aviso:
+            self._update(job_id, aviso=aviso)
+
+        # Los clips del recorte pasan a ser los videos de la edición.
+        nombres = [f"Anuncio {i + 1}" for i in range(len(clip_paths))]
+        with self._lock:
+            j = self._jobs.get(job_id)
+            if j:
+                j.filenames = nombres
+        self._store.update(job_id, {"filenames": json.dumps(nombres)})
+
+        self._process_ad(job_id, clip_paths, work_dir, output_dir)
 
     def _process_ad(self, job_id: str, sources: list[Path],
                     work_dir: Path, output_dir: Path) -> None:
         """Modo anuncio: genera un proyecto Remotion (1 composición por video)."""
         settings = self._settings
-        # Música: la del job si la subió; si no, la biblioteca (libre de derechos).
-        music_paths = self._music.get(job_id) or library.list_music()
+        # Música: OPCIONAL. Si el job la desactivó va sin música; si la activó,
+        # usa la subida o, en su defecto, la biblioteca (libre de derechos).
+        use_music = self._use_music.get(job_id, True)
+        music_paths = (self._music.get(job_id) or library.list_music()) if use_music else []
         sfx = library.ensure_sfx()  # whoosh/pop/ding generados, sin copyright
+        intro = self._intro.get(job_id)  # sonido de inicio opcional
         voz = self._voz.get(job_id)  # locución subida para ponerle al video
         # Si hay locución, se transcribe ESA (es el audio que se oirá) una sola vez.
         voz_words = None
@@ -595,6 +681,7 @@ class JobManager:
                 cta_texto=settings.cta_texto, whatsapp=settings.whatsapp_link,
                 vol=settings.musica_volumen, vol_duck=settings.musica_volumen_ducking,
                 sfx=sfx, guides=self._guias.get(job_id, []),
+                intro=intro,
             )
             # Empaquetar el proyecto editable (.zip).
             shutil.make_archive(str(output_dir / "anuncio-remotion"), "zip",
@@ -614,12 +701,7 @@ class JobManager:
                          message="Error en el procesamiento", error=str(exc))
         finally:
             cleanup.cleanup_job_dir(work_dir)
-            with self._lock:
-                self._sources.pop(job_id, None)
-                self._music.pop(job_id, None)
-                self._guias.pop(job_id, None)
-                self._voz.pop(job_id, None)
-                self._req_clips.pop(job_id, None)
+            self._pop_job_state(job_id)
             cleanup.purge_keep_recent(settings.outputs_dir, settings.galeria_max)
 
     def _render_existing_ad(self, job_id: str, output_dir: Path | None = None,

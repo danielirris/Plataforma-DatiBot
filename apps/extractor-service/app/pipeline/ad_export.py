@@ -69,6 +69,7 @@ def build_ad_project(
     vol_duck: float,
     sfx: dict[str, Path] | None = None,
     guides: list[Path] | None = None,
+    intro: Path | None = None,
 ) -> Path:
     """Escribe el proyecto Remotion del anuncio. Devuelve la carpeta del proyecto."""
     from app.pipeline import audio  # import perezoso (evita ciclos)
@@ -87,6 +88,13 @@ def build_ad_project(
         if p and p.exists():
             shutil.copy(p, sfx_out / p.name)
             sfx_names[name] = f"audio/sfx/{p.name}"
+
+    # Sonido de inicio opcional (golpe de apertura del video).
+    intro_name: str | None = None
+    if intro is not None and intro.exists():
+        iext = intro.suffix.lower() or ".mp3"
+        shutil.copy(intro, audio_dir / f"intro{iext}")
+        intro_name = f"audio/intro{iext}"
 
     # Guías del trabajo: se copian al proyecto y se asignan POR VIDEO (cada video
     # usa la guía en su misma posición). Se muestran como video sobrepuesto (PiP).
@@ -147,6 +155,7 @@ def build_ad_project(
         "cta": {"texto": cta_texto, "whatsapp": whatsapp},
         "musica": {"volumen": vol, "ducking": vol_duck},
         "sfx": sfx_names,
+        "intro": intro_name,
         "videos": entries,
     }
     (root / "ad.json").write_text(json.dumps(ad, ensure_ascii=False, indent=2),
@@ -210,7 +219,7 @@ export const RemotionRoot: React.FC = () => (
         fps={ad.fps}
         width={v.width}
         height={v.height}
-        defaultProps={{ v, cta: ad.cta, musica: ad.musica, sfx: ad.sfx }}
+        defaultProps={{ v, cta: ad.cta, musica: ad.musica, sfx: ad.sfx, intro: ad.intro }}
       />
     ))}
   </>
@@ -234,7 +243,7 @@ import { GuidePiP } from './Guide';
 
 const CARD_S = 2.0;
 
-export const Ad: React.FC<{ v: any; cta: any; musica: any; sfx: any }> = ({ v, cta, musica, sfx }) => {
+export const Ad: React.FC<{ v: any; cta: any; musica: any; sfx: any; intro?: any }> = ({ v, cta, musica, sfx, intro }) => {
   const { fps, durationInFrames } = useVideoConfig();
   const frame = useCurrentFrame();
   const plan = v.plan || {};
@@ -268,6 +277,13 @@ export const Ad: React.FC<{ v: any; cta: any; musica: any; sfx: any }> = ({ v, c
       {v.music ? (
         <Audio src={staticFile(v.music)} loop
                volume={(f) => (isSpeaking(f) ? musica.ducking : musica.volumen)} />
+      ) : null}
+
+      {/* Sonido de inicio opcional (golpe de apertura). */}
+      {intro ? (
+        <Sequence from={0} durationInFrames={Math.round(1.6 * fps)}>
+          <Audio src={staticFile(intro)} volume={0.75} />
+        </Sequence>
       ) : null}
 
       {/* SFX */}

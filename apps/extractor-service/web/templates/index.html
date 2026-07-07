@@ -3,16 +3,17 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Clip Generator — clips verticales automáticos</title>
+  <title>Editor de videos — anuncios listos en una sola pasada</title>
   <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
   <main class="container">
     <header>
-      <h1>🎬 Clip Generator</h1>
+      <h1>🎬 Editor de videos</h1>
       <p class="subtitle">
-        Dos herramientas: <b>1 · Recortes</b> (une los mejores momentos) y
-        <b>2 · Edición Remotion</b> (deja tu video bonito: subtítulos, animaciones y CTA).
+        Sube tus videos largos y sale el anuncio terminado en <b>una sola pasada</b>:
+        la app recorta los mejores momentos y los edita (subtítulos sincronizados,
+        animaciones y CTA a WhatsApp). Antes de renderizar puedes previsualizar.
       </p>
       <p class="subtitle" style="margin-top:8px">
         <a href="/config" style="color:var(--accent-2)">⚙️ Configuración</a>
@@ -23,75 +24,46 @@
 
     <section id="upload-card" class="card">
       <form id="upload-form">
-        <div class="mode-select">
-          <label class="mode-opt">
-            <input type="radio" name="mode" value="montage" checked>
-            <span><b>1 · Recortes</b> — varios videos → clips con los mejores momentos
-            (<b>sin subtítulos</b>; los pone bonitos el Apartado 2)</span>
-          </label>
-          <label class="mode-opt">
-            <input type="radio" name="mode" value="ad">
-            <span><b>2 · Edición Remotion</b> — sube tu video (ya con su audio) y queda bonito:
-            subtítulos sincronizados, animaciones full-screen y CTA a WhatsApp</span>
-          </label>
-        </div>
-
-        <label class="count-row" id="count-row">
-          🔢 <b>¿Cuántos clips?</b>
-          <input type="number" id="num_clips" name="num_clips" min="1" max="20" value="5">
-        </label>
-
         <label for="file" class="dropzone" id="dropzone">
           <span class="dz-icon">⬆️</span>
-          <span class="dz-text">Arrastra tus videos aquí o haz clic para elegir</span>
+          <span class="dz-text">Arrastra tus videos largos aquí o haz clic para elegir</span>
           <span class="dz-hint">varios mp4, mov o mkv · máx {{ max_upload_mb }} MB c/u</span>
           <input type="file" id="file" name="file" accept=".mp4,.mov,.mkv" multiple hidden>
         </label>
         <p id="filename" class="filename"></p>
 
-        <label for="voz" class="music-row" id="voz-row" style="display:none">
-          🎙️ <b>Locución / audio (Apartado 2):</b> opcional. Se le pone al video
-          (el video se silencia y se repite para cubrir la voz) y de esa voz salen
-          los subtítulos sincronizados.
-          <input type="file" id="voz" name="voz" accept=".mp3,.m4a,.wav,.aac,.ogg">
+        <label class="count-row" id="count-row">
+          🔢 <b>¿Cuántos anuncios?</b>
+          <input type="number" id="num_clips" name="num_clips" min="1" max="20" value="5">
         </label>
 
-        <div class="music-row" id="tts-row" style="display:none">
-          🗣️ <b>…o genera la voz con IA (texto → voz):</b> escribe el guion (gancho,
-          cuerpo y cierre). Si escribes aquí, <b>no</b> hace falta subir locución: la
-          app genera la voz con ElevenLabs y de ahí salen los subtítulos.
-          <textarea id="tts_texto" name="tts_texto" rows="4"
-            placeholder="Gancho: ¿Sabías que…?&#10;Cuerpo: explica el beneficio…&#10;Cierre: escríbenos por WhatsApp."
-            style="width:100%;margin-top:8px;padding:9px;border-radius:8px;border:1px solid #2a2f3a;background:#0f1115;color:#e8eaed;box-sizing:border-box;font-family:inherit"></textarea>
-          <div style="display:flex;gap:10px;align-items:center;margin-top:8px;flex-wrap:wrap">
-            <label style="display:flex;align-items:center;gap:6px">🎚️ Voz
-              <select id="tts_voz" name="tts_voz"
-                style="padding:7px;border-radius:8px;border:1px solid #2a2f3a;background:#0f1115;color:#e8eaed"></select>
-            </label>
-            <label style="display:flex;align-items:center;gap:6px">⚡ Velocidad
-              <input type="number" id="tts_velocidad" name="tts_velocidad"
-                min="0.7" max="1.2" step="0.05" value="1.1"
-                style="width:80px;padding:7px;border-radius:8px;border:1px solid #2a2f3a;background:#0f1115;color:#e8eaed">
-            </label>
+        <div class="music-row">
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
+            <input type="checkbox" id="con_musica">
+            🎵 <b>Música de fondo</b> (opcional) — va por debajo de la voz, con ducking automático.
+          </label>
+          <div id="musica-extra" style="display:none;margin-top:8px">
+            <input type="file" id="music" name="music" accept=".mp3,.m4a,.wav,.aac,.ogg" multiple>
+            <p style="color:var(--muted);font-size:.82rem;margin:6px 0 0">
+              Si no subes ninguna pista, usamos la biblioteca del servidor (libre de derechos).
+            </p>
           </div>
-          <p id="tts-hint" style="color:var(--muted);font-size:.82rem;margin-top:6px"></p>
         </div>
 
-        <label for="guias" class="music-row" id="guias-row" style="display:none">
-          📘 <b>Video(s) de la guía (Apartado 2):</b> opcional. Cuando la IA detecte
-          que el audio ofrece una guía/recurso, mostrará este video <b>sobrepuesto</b>
-          (moderado, centrado, fondo difuminado). Sube uno por cada video, en el mismo
-          orden, y a cada video le tocará su guía.
-          <input type="file" id="guias" name="guias" accept=".mp4,.mov,.webm,.m4v,.mkv" multiple>
-        </label>
+        <div class="music-row">
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
+            <input type="checkbox" id="con_intro">
+            🔔 <b>Sonido de inicio</b> (opcional) — un golpe de apertura al arrancar el video.
+          </label>
+          <div id="intro-extra" style="display:none;margin-top:8px">
+            <input type="file" id="intro" name="intro" accept=".mp3,.m4a,.wav,.aac,.ogg">
+            <p style="color:var(--muted);font-size:.82rem;margin:6px 0 0">
+              Si no subes un sonido, usamos un whoosh por defecto.
+            </p>
+          </div>
+        </div>
 
-        <label for="music" class="music-row" id="music-row">
-          🎵 <b>Música de fondo</b> (opcional): <span id="music-hint">en Recortes se
-          quita el audio original y se usa esta (varias pistas = una por clip).</span>
-          <input type="file" id="music" name="music" accept=".mp3,.m4a,.wav,.aac,.ogg" multiple>
-        </label>
-
-        <button type="submit" id="submit-btn" disabled>Generar clips</button>
+        <button type="submit" id="submit-btn" disabled>✨ Crear anuncios</button>
       </form>
     </section>
 
@@ -103,7 +75,7 @@
     </section>
 
     <section id="result-card" class="card hidden">
-      <h2 id="result-title">✅ ¡Tus clips están listos!</h2>
+      <h2 id="result-title">✅ ¡Tus anuncios están listos!</h2>
       <div id="clips-grid" class="clips-grid"></div>
       <a id="download-all" class="download-btn" href="#">⬇️ Descargar todos (.zip)</a>
       <button id="new-btn" class="secondary">Generar otros</button>
@@ -116,10 +88,10 @@
     </section>
 
     <footer>
-      <p>La IA pesada corre en la nube (Groq + Gemini). El servidor solo orquesta y usa FFmpeg.</p>
+      <p>La IA pesada corre en la nube. El servidor orquesta, recorta con FFmpeg y edita con Remotion.</p>
     </footer>
   </main>
 
-  <script src="/static/app.js?v=tts-1"></script>
+  <script src="/static/app.js?v=full-1"></script>
 </body>
 </html>

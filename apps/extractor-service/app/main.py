@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import io
 import logging
+import shutil
 import tempfile
 import uuid
 import zipfile
@@ -185,8 +186,11 @@ async def create_job(
     music: list[UploadFile] = File(None),
     voz: UploadFile | None = File(None),
     guias: list[UploadFile] = File(None),
+    intro: UploadFile | None = File(None),
     mode: str = Form("montage"),
     num_clips: int = Form(0),
+    use_music: str = Form("1"),
+    use_intro: str = Form("0"),
     tts_texto: str = Form(""),
     tts_voz: str = Form(""),
     tts_velocidad: float = Form(0.0),
@@ -198,8 +202,8 @@ async def create_job(
     """
     if not files:
         raise HTTPException(status_code=400, detail="No se enviaron videos.")
-    if mode not in ("montage", "ad"):
-        raise HTTPException(status_code=400, detail="Modo inválido (montage|ad).")
+    if mode not in ("montage", "ad", "full"):
+        raise HTTPException(status_code=400, detail="Modo inválido (montage|ad|full).")
 
     settings.ensure_dirs()
     max_bytes = settings.max_upload_mb * 1024 * 1024
@@ -207,6 +211,7 @@ async def create_job(
     music_saved: list[tuple[Path, str]] = []
     guias_saved: list[tuple[Path, str]] = []
     voz_saved: tuple[Path, str] | None = None
+    intro_saved: tuple[Path, str] | None = None
     try:
         for file in files:
             saved.append(await _save_upload(file, max_bytes))
@@ -216,6 +221,17 @@ async def create_job(
         for g in (guias or []):
             if g and g.filename:
                 guias_saved.append(await _save_upload(g, max_bytes, ALLOWED_GUIDE_EXT))
+        # Sonido de inicio: el subido o, si solo marcó la casilla, el whoosh de
+        # la biblioteca (se copia a un temporal porque submit() lo MUEVE al job).
+        if intro is not None and intro.filename:
+            intro_saved = await _save_upload(intro, max_bytes, ALLOWED_AUDIO_EXT)
+        elif use_intro == "1":
+            whoosh = library.ensure_sfx().get("whoosh")
+            if whoosh and whoosh.exists():
+                itmp = Path(tempfile.mkstemp(suffix=whoosh.suffix,
+                                             dir=str(settings.storage_dir))[1])
+                shutil.copy(whoosh, itmp)
+                intro_saved = (itmp, f"intro{whoosh.suffix}")
         if voz is not None and voz.filename:
             voz_saved = await _save_upload(voz, max_bytes, ALLOWED_AUDIO_EXT)
         elif tts_texto.strip():
@@ -244,10 +260,13 @@ async def create_job(
             tmp.unlink(missing_ok=True)
         if voz_saved:
             voz_saved[0].unlink(missing_ok=True)
+        if intro_saved:
+            intro_saved[0].unlink(missing_ok=True)
         raise
 
     num_clips = max(0, min(20, num_clips))  # tope sano
-    job_id = manager.submit(saved, music_saved, mode, voz_saved, num_clips, guias_saved)
+    job_id = manager.submit(saved, music_saved, mode, voz_saved, num_clips, guias_saved,
+                            use_music=(use_music != "0"), intro_tmp=intro_saved)
     return JSONResponse(
         {"job_id": job_id, "n_videos": len(saved), "music": len(music_saved),
          "guias": len(guias_saved), "voz": voz_saved is not None, "mode": mode},

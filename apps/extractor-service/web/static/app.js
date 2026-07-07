@@ -1,4 +1,6 @@
-// Frontend mínimo: subida múltiple, barra de progreso por polling y descarga.
+// Frontend del flujo ÚNICO: subes videos largos → la app recorta los mejores
+// momentos y los edita (subtítulos, animaciones, CTA) en una sola pasada.
+// Música de fondo y sonido de inicio son opcionales (checkboxes).
 (() => {
   "use strict";
 
@@ -28,9 +30,9 @@
   const STATUS_TEXT = {
     queued: "En cola…",
     extracting: "Extrayendo audio…",
-    transcribing: "Transcribiendo (OpenAI)…",
-    analyzing: "Detectando ganchos…",
-    rendering: "Renderizando los clips…",
+    transcribing: "Transcribiendo…",
+    analyzing: "Analizando (IA)…",
+    rendering: "Recortando y editando…",
     done: "¡Listo!",
     error: "Error",
   };
@@ -73,6 +75,14 @@
     }
   });
 
+  // Checkboxes de opciones: muestran/ocultan sus campos.
+  $("con_musica").addEventListener("change", () => {
+    $("musica-extra").style.display = $("con_musica").checked ? "block" : "none";
+  });
+  $("con_intro").addEventListener("change", () => {
+    $("intro-extra").style.display = $("con_intro").checked ? "block" : "none";
+  });
+
   form.addEventListener("submit", async (e) => {
     e.preventDefault();
     const files = fileInput.files;
@@ -80,16 +90,23 @@
 
     const data = new FormData();
     for (const f of files) data.append("files", f);
-    for (const m of $("music").files) data.append("music", m);
-    const mode = document.querySelector('input[name="mode"]:checked').value;
-    data.append("mode", mode);
+    data.append("mode", "full");
     data.append("num_clips", $("num_clips").value || "5");
-    const voz = $("voz").files[0];
-    if (voz) data.append("voz", voz);
-    for (const g of $("guias").files) data.append("guias", g);
-    data.append("tts_texto", $("tts_texto").value || "");
-    data.append("tts_voz", $("tts_voz").value || "");
-    data.append("tts_velocidad", $("tts_velocidad").value || "1.1");
+
+    // Música de fondo: opcional. Sin la casilla, el anuncio va sin música.
+    const conMusica = $("con_musica").checked;
+    data.append("use_music", conMusica ? "1" : "0");
+    if (conMusica) {
+      for (const m of $("music").files) data.append("music", m);
+    }
+
+    // Sonido de inicio: opcional (con archivo propio o el whoosh por defecto).
+    const conIntro = $("con_intro").checked;
+    data.append("use_intro", conIntro ? "1" : "0");
+    if (conIntro) {
+      const intro = $("intro").files[0];
+      if (intro) data.append("intro", intro);
+    }
 
     show(progressCard);
     setProgress("queued", 2, "Subiendo videos…");
@@ -181,7 +198,7 @@
     if (old) old.remove();
 
     const clips = job.clips || [];
-    const isAd = job.mode === "ad";
+    const isAd = job.mode === "ad" || job.mode === "full";
 
     if (clips.length) {
       // Hay video(s) terminado(s): previsualiza y descarga.
@@ -193,19 +210,19 @@
       downloadAll.textContent = "⬇️ Descargar todos (.zip)";
       downloadAll.href = job.download_url;
     } else if (isAd) {
-      // Modo anuncio: aún sin render -> a previsualizar en vivo.
-      $("result-title").textContent = "🎬 Anuncio listo para previsualizar";
+      // Aún sin render -> a previsualizar en vivo.
+      $("result-title").textContent = "🎬 Anuncios listos para previsualizar";
       const info = document.createElement("p");
       info.className = "ad-note";
       info.innerHTML =
-        "Mira tu anuncio <b>en vivo</b> (sin esperar el render) y, si te gusta, " +
+        "Mira tus anuncios <b>en vivo</b> (sin esperar el render) y, si te gustan, " +
         "renderiza el video final desde ahí.";
       clipsGrid.appendChild(info);
       downloadAll.textContent = "👁️ Previsualizar y renderizar";
       downloadAll.href = job.preview_url || job.download_url;
     }
 
-    // En modo anuncio, ofrecemos también el proyecto editable.
+    // Ofrecemos también el proyecto editable.
     if (isAd && job.project_url) {
       const pl = document.createElement("a");
       pl.id = "project-link";
@@ -240,45 +257,10 @@
     submitBtn.disabled = true;
     avisoEl.classList.add("hidden");
     clipsGrid.innerHTML = "";
+    $("musica-extra").style.display = "none";
+    $("intro-extra").style.display = "none";
     show(uploadCard);
   }
-
-  // Mostrar el campo de locución solo en el Apartado 2 (Edición Remotion).
-  function syncModeUI() {
-    const mode = document.querySelector('input[name="mode"]:checked').value;
-    $("voz-row").style.display = mode === "ad" ? "block" : "none";
-    $("guias-row").style.display = mode === "ad" ? "block" : "none";
-    $("tts-row").style.display = mode === "ad" ? "block" : "none";
-    $("count-row").style.display = mode === "ad" ? "none" : "flex";
-    $("music-hint").textContent =
-      mode === "ad"
-        ? "música por debajo de la voz (con ducking automático)."
-        : "en Recortes se quita el audio original y se usa esta (varias pistas = una por clip).";
-  }
-  document.querySelectorAll('input[name="mode"]').forEach((r) =>
-    r.addEventListener("change", syncModeUI)
-  );
-  syncModeUI();
-
-  // Cargar el catálogo de voces para el menú de "texto -> voz".
-  (async () => {
-    try {
-      const r = await fetch("/api/voces");
-      const { voces, disponible } = await r.json();
-      const sel = $("tts_voz");
-      sel.innerHTML = "";
-      (voces || []).forEach((nombre) => {
-        const o = document.createElement("option");
-        o.value = nombre; o.textContent = nombre;
-        sel.append(o);
-      });
-      $("tts-hint").textContent = disponible
-        ? "La voz se genera al crear el anuncio (tarda unos segundos)."
-        : "⚠️ Falta ELEVENLABS_API_KEY en el servidor: sube una locución o configúrala.";
-    } catch (e) {
-      $("tts-hint").textContent = "No se pudo cargar el catálogo de voces.";
-    }
-  })();
 
   // Al cargar la página: si había un trabajo en curso (p.ej. se cortó la luz),
   // reanuda el seguimiento automáticamente.

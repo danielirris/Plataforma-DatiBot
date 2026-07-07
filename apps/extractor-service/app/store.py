@@ -56,6 +56,10 @@ class JobStore:
             self._conn.execute("ALTER TABLE jobs ADD COLUMN num_clips_req INTEGER DEFAULT 0")
         if "guias" not in cols:
             self._conn.execute("ALTER TABLE jobs ADD COLUMN guias TEXT")
+        if "use_music" not in cols:
+            self._conn.execute("ALTER TABLE jobs ADD COLUMN use_music INTEGER DEFAULT 1")
+        if "intro" not in cols:
+            self._conn.execute("ALTER TABLE jobs ADD COLUMN intro TEXT")
         self._conn.commit()
 
     def save(
@@ -71,20 +75,24 @@ class JobStore:
         voz: Path | None = None,
         num_clips_req: int = 0,
         guias: list[Path] | None = None,
+        use_music: bool = True,
+        intro: Path | None = None,
     ) -> None:
         """Inserta (o reemplaza) un job recién creado. ``music`` es una lista de pistas."""
         with self._lock:
             self._conn.execute(
                 "INSERT OR REPLACE INTO jobs "
                 "(id, filenames, status, progress, message, error, aviso, n_clips, "
-                " created_at, output_dir, sources, music, mode, voz, num_clips_req, guias) "
-                "VALUES (?, ?, ?, 0, 'En cola', '', '', 0, ?, NULL, ?, ?, ?, ?, ?, ?)",
+                " created_at, output_dir, sources, music, mode, voz, num_clips_req, guias, "
+                " use_music, intro) "
+                "VALUES (?, ?, ?, 0, 'En cola', '', '', 0, ?, NULL, ?, ?, ?, ?, ?, ?, ?, ?)",
                 (
                     id, json.dumps(filenames), status, created_at,
                     json.dumps([str(p) for p in sources]),
                     json.dumps([str(p) for p in music]), mode,
                     str(voz) if voz else None, int(num_clips_req),
                     json.dumps([str(p) for p in (guias or [])]),
+                    int(bool(use_music)), str(intro) if intro else None,
                 ),
             )
             self._conn.commit()
@@ -92,7 +100,7 @@ class JobStore:
     def update(self, job_id: str, fields: dict[str, Any]) -> None:
         """Actualiza columnas de un job."""
         allowed = {"status", "progress", "message", "error", "aviso",
-                   "n_clips", "output_dir"}
+                   "n_clips", "output_dir", "filenames"}
         fields = {k: v for k, v in fields.items() if k in allowed}
         if not fields:
             return
