@@ -16,6 +16,9 @@ import {
   MAX_BONOS,
   ofertaVacia,
   bonoVacio,
+  ebookVacio,
+  type EbookProducto,
+  type EbookCapitulo,
   type Angulo,
   type Gancho,
   type Avatar,
@@ -95,6 +98,7 @@ export function ProductoWizard({ producto }: { producto?: Producto }) {
       oferta: producto.oferta ?? null,
       overlays: { ...base.overlays, ...(producto.overlays ?? {}) },
       imagenes: { ...base.imagenes, ...(producto.imagenes ?? {}) },
+      ebook: { ...ebookVacio(), ...(producto.ebook ?? {}) },
     };
   });
   const [paso, setPaso] = useState<string>("identidad");
@@ -108,9 +112,13 @@ export function ProductoWizard({ producto }: { producto?: Producto }) {
   const [incluyeVideo, setIncluyeVideo] = useState<boolean>(
     producto?.oferta?.incluye_video ?? false,
   );
-  const [ebookTema, setEbookTema] = useState<string>("amigurumi");
-  const [ebookPages, setEbookPages] = useState<number>(40);
-  const [ebookEstado, setEbookEstado] = useState<string>("");
+  // Estado del flujo de ebook por fases.
+  const [ideaEstado, setIdeaEstado] = useState<string>("");
+  const [indiceEstado, setIndiceEstado] = useState<string>("");
+  const [numCapitulos, setNumCapitulos] = useState<number>(10);
+  const [capEstado, setCapEstado] = useState<Record<number, string>>({});
+  const [fotosEstado, setFotosEstado] = useState<Record<string, string>>({});
+  const [renderEstado, setRenderEstado] = useState<string>("");
 
   const esNuevo = !p.id;
 
@@ -446,39 +454,150 @@ export function ProductoWizard({ producto }: { producto?: Producto }) {
     }
   }
 
-  async function generarEbook() {
+  // ── Ebook por fases (idea → índice → redacción + fotos → PDF) ──
+  function setEbook(fn: (e: EbookProducto) => EbookProducto) {
+    setP((prev) => ({ ...prev, ebook: fn(prev.ebook) }));
+  }
+  function setIdeaCampo(campo: string, valor: string) {
+    setEbook((e) => (e.idea ? { ...e, idea: { ...e.idea, [campo]: valor } } : e));
+  }
+  function setCapitulo(i: number, campo: keyof EbookCapitulo, valor: unknown) {
+    setEbook((e) => {
+      const capitulos = [...e.capitulos];
+      capitulos[i] = { ...capitulos[i], [campo]: valor };
+      return { ...e, capitulos };
+    });
+  }
+  function removeCapitulo(i: number) {
+    setEbook((e) => ({ ...e, capitulos: e.capitulos.filter((_, k) => k !== i) }));
+  }
+
+  async function generarIdeaEbook() {
     if (!p.id) {
-      setEbookEstado("⚠️ Guarda el producto primero (paso Identidad).");
+      setIdeaEstado("⚠️ Guarda el producto primero (paso Identidad).");
       return;
     }
-    if (!p.nombre.trim()) {
-      setEbookEstado("⚠️ El producto necesita nombre/promesa (paso Identidad).");
+    if (!p.oferta) {
+      setIdeaEstado("⚠️ El ebook nace de la oferta: genera la oferta primero (paso 4).");
       return;
     }
-    setEbookEstado("Generando ebook con IA (índice + módulos)… puede tardar 1-2 min.");
+    setIdeaEstado("Generando la idea desde la oferta…");
     try {
-      const res = await fetch(`/api/productos/${p.id}/generar-ebook`, {
+      const res = await fetch(`/api/productos/${p.id}/ebook/idea`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ producto: p, tema: ebookTema, pages: ebookPages }),
+        body: JSON.stringify({ producto: p }),
       });
       if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        setEbookEstado("⚠️ " + (data.error ?? `Error ${res.status}`));
+        setIdeaEstado("⚠️ " + (await mensajeDeError(res)));
+        return;
+      }
+      const data = await res.json();
+      setEbook((e) => ({ ...e, idea: data.idea }));
+      setIdeaEstado("✓ Idea lista. Ajústala a tu gusto y pasa a la Fase 2.");
+    } catch (e) {
+      setIdeaEstado("⚠️ " + errorDeRed(e));
+    }
+  }
+
+  async function generarIndiceEbook() {
+    if (!p.ebook.idea?.titulo) {
+      setIndiceEstado("⚠️ Genera la idea primero (Fase 1).");
+      return;
+    }
+    setIndiceEstado(`Generando índice de ${numCapitulos} capítulos…`);
+    try {
+      const res = await fetch(`/api/productos/${p.id}/ebook/indice`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ producto: p, capitulos: numCapitulos }),
+      });
+      if (!res.ok) {
+        setIndiceEstado("⚠️ " + (await mensajeDeError(res)));
+        return;
+      }
+      const data = await res.json();
+      setEbook((e) => ({ ...e, capitulos: data.capitulos }));
+      setIndiceEstado("✓ Índice listo. Edítalo y redacta capítulo a capítulo (Fase 3).");
+    } catch (e) {
+      setIndiceEstado("⚠️ " + errorDeRed(e));
+    }
+  }
+
+  async function redactarCapitulo(i: number) {
+    setCapEstado((s) => ({ ...s, [i]: "Redactando…" }));
+    try {
+      const res = await fetch(`/api/productos/${p.id}/ebook/capitulo`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ producto: p, index: i }),
+      });
+      if (!res.ok) {
+        const msg = await mensajeDeError(res);
+        setCapEstado((s) => ({ ...s, [i]: "⚠️ " + msg }));
+        return;
+      }
+      const data = await res.json();
+      setCapitulo(i, "bloques", data.bloques);
+      setCapEstado((s) => ({ ...s, [i]: "✓ Redactado. Guarda para conservarlo." }));
+    } catch (e) {
+      setCapEstado((s) => ({ ...s, [i]: "⚠️ " + errorDeRed(e) }));
+    }
+  }
+
+  // i === -1 → foto de portada; si no, fotos del capítulo i (según num_fotos).
+  async function generarFotosEbook(i: number) {
+    const key = i === -1 ? "portada" : String(i);
+    setFotosEstado((s) => ({ ...s, [key]: "Generando foto(s) realistas…" }));
+    try {
+      const res = await fetch(`/api/productos/${p.id}/ebook/fotos`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ producto: p, index: i }),
+      });
+      if (!res.ok) {
+        const msg = await mensajeDeError(res);
+        setFotosEstado((s) => ({ ...s, [key]: "⚠️ " + msg }));
+        return;
+      }
+      const data = await res.json();
+      if (i === -1) setEbook((e) => ({ ...e, foto_portada: data.fotos[0] ?? null }));
+      else setCapitulo(i, "fotos", data.fotos);
+      setFotosEstado((s) => ({
+        ...s,
+        [key]:
+          (data.errores?.length ? "⚠️ Algunas fallaron. " : "✓ ") +
+          "Foto(s) lista(s). Guarda para conservarlas.",
+      }));
+    } catch (e) {
+      setFotosEstado((s) => ({ ...s, [key]: "⚠️ " + errorDeRed(e) }));
+    }
+  }
+
+  async function descargarEbook() {
+    setRenderEstado("Ensamblando capítulos y fotos… maquetando el PDF.");
+    try {
+      const res = await fetch(`/api/productos/${p.id}/ebook/render`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ producto: p }),
+      });
+      if (!res.ok) {
+        setRenderEstado("⚠️ " + (await mensajeDeError(res)));
         return;
       }
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `${(p.nombre || "ebook").toLowerCase().replace(/[^a-z0-9]+/g, "-")}.pdf`;
+      a.download = `${(p.ebook.idea?.titulo || p.nombre || "ebook").toLowerCase().replace(/[^a-z0-9]+/g, "-")}.pdf`;
       document.body.appendChild(a);
       a.click();
       a.remove();
       URL.revokeObjectURL(url);
-      setEbookEstado("✓ Ebook generado y descargado.");
-    } catch {
-      setEbookEstado("⚠️ No se pudo generar el ebook.");
+      setRenderEstado("✓ Ebook generado y descargado.");
+    } catch (e) {
+      setRenderEstado("⚠️ " + errorDeRed(e));
     }
   }
 
@@ -1243,18 +1362,226 @@ export function ProductoWizard({ producto }: { producto?: Producto }) {
 
       {paso === "ebook" && (
         <section className="space-y-5">
+          <p className="text-xs text-muted">
+            El ebook nace de la <b>oferta</b> (ej. «120 recetas para desparasitar tu
+            cuerpo» → ese es el libro). Tres fases: idea → índice → redacción capítulo
+            a capítulo, con fotos realistas generadas con IA.
+          </p>
+
+          {/* ── Fase 1: Idea ─────────────────────────────── */}
+          <div className="space-y-3 rounded-xl border border-[var(--hairline)] glass p-5">
+            <div className="flex flex-wrap items-center gap-3">
+              <span className="rounded bg-accent/15 px-2 py-0.5 text-xs font-medium text-accent-2">
+                Fase 1 · Idea
+              </span>
+              <button
+                onClick={generarIdeaEbook}
+                className="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-white"
+              >
+                💡 {p.ebook.idea ? "Regenerar idea" : "Generar idea (desde la oferta)"}
+              </button>
+              <span className="text-sm text-muted">{ideaEstado}</span>
+            </div>
+            {p.ebook.idea && (
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                {(
+                  [
+                    { k: "titulo", l: "Título del libro" },
+                    { k: "subtitulo", l: "Subtítulo" },
+                    { k: "concepto", l: "Concepto (guía toda la redacción)" },
+                    { k: "publico", l: "Público" },
+                  ] as const
+                ).map((f) => (
+                  <label
+                    key={f.k}
+                    className={cn("flex flex-col gap-1 text-sm", f.k === "concepto" && "sm:col-span-2")}
+                  >
+                    <span className="text-muted">{f.l}</span>
+                    <AutoTextarea
+                      value={p.ebook.idea?.[f.k] ?? ""}
+                      onChange={(e) => setIdeaCampo(f.k, e.target.value)}
+                      rows={f.k === "concepto" ? 2 : 1}
+                      className="rounded-lg border border-[var(--hairline)] bg-[var(--field)] px-3 py-2 text-text outline-none focus:border-accent"
+                    />
+                  </label>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* ── Fase 2: Índice ───────────────────────────── */}
+          <div className="space-y-3 rounded-xl border border-[var(--hairline)] glass p-5">
+            <div className="flex flex-wrap items-center gap-3">
+              <span className="rounded bg-accent/15 px-2 py-0.5 text-xs font-medium text-accent-2">
+                Fase 2 · Índice
+              </span>
+              <button
+                onClick={generarIndiceEbook}
+                disabled={!p.ebook.idea}
+                className="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
+              >
+                📑 {p.ebook.capitulos.length ? "Regenerar índice" : "Generar índice"}
+              </button>
+              <label className="flex items-center gap-2 text-sm text-muted">
+                Capítulos:
+                <input
+                  type="number"
+                  min={4}
+                  max={20}
+                  value={numCapitulos}
+                  onChange={(e) => setNumCapitulos(Number(e.target.value))}
+                  className="w-16 rounded-lg border border-[var(--hairline)] bg-[var(--field)] px-2 py-1 text-text outline-none focus:border-accent"
+                />
+              </label>
+              <span className="text-sm text-muted">{indiceEstado}</span>
+            </div>
+            {p.ebook.capitulos.length > 0 && (
+              <p className="text-xs text-muted">
+                Edita títulos y resúmenes antes de redactar. Regenerar el índice
+                descarta los capítulos ya redactados.
+              </p>
+            )}
+          </div>
+
+          {/* ── Fase 3: Redacción + fotos ────────────────── */}
+          {p.ebook.capitulos.length > 0 && (
+            <div className="space-y-3">
+              <div className="flex flex-wrap items-center gap-3 rounded-xl border border-[var(--hairline)] glass p-4">
+                <span className="rounded bg-accent/15 px-2 py-0.5 text-xs font-medium text-accent-2">
+                  Fase 3 · Redacción
+                </span>
+                <span className="text-sm text-muted">
+                  {p.ebook.capitulos.filter((c) => c.bloques?.length).length}/
+                  {p.ebook.capitulos.length} capítulos redactados
+                </span>
+                <div className="ml-auto flex items-center gap-2">
+                  <button
+                    onClick={() => generarFotosEbook(-1)}
+                    className="rounded border border-[var(--hairline)] px-3 py-1.5 text-xs text-muted hover:text-text"
+                  >
+                    {p.ebook.foto_portada ? "🖼 Regenerar portada" : "🖼 Foto de portada"}
+                  </button>
+                  {fotosEstado["portada"] && (
+                    <span className="text-xs text-muted">{fotosEstado["portada"]}</span>
+                  )}
+                </div>
+              </div>
+              {p.ebook.foto_portada && (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={p.ebook.foto_portada.url}
+                  alt="portada"
+                  className="h-32 w-32 rounded-xl border border-[var(--hairline)] object-cover"
+                />
+              )}
+
+              {p.ebook.capitulos.map((cap, i) => (
+                <div
+                  key={i}
+                  className="space-y-2 rounded-xl border border-[var(--hairline)] glass p-4"
+                >
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span
+                      className={cn(
+                        "rounded px-2 py-0.5 text-xs",
+                        cap.bloques?.length
+                          ? "bg-accent/20 text-accent-2"
+                          : "bg-[var(--field)] text-muted",
+                      )}
+                    >
+                      {i + 1} {cap.bloques?.length ? "✓" : "· pendiente"}
+                    </span>
+                    <AutoTextarea
+                      value={cap.titulo}
+                      onChange={(e) => setCapitulo(i, "titulo", e.target.value)}
+                      rows={1}
+                      placeholder="Título del capítulo"
+                      className="min-w-[12rem] flex-1 rounded border border-[var(--hairline)] bg-[var(--field)] px-2 py-1 text-sm font-medium text-text outline-none focus:border-accent"
+                    />
+                    <button
+                      onClick={() => redactarCapitulo(i)}
+                      className="rounded-lg bg-accent px-3 py-1.5 text-xs font-medium text-white"
+                    >
+                      {cap.bloques?.length ? "Re-redactar" : "✍️ Redactar"}
+                    </button>
+                    <button
+                      onClick={() => removeCapitulo(i)}
+                      className="rounded border border-[var(--hairline)] px-2 py-1 text-xs text-muted hover:text-red-400"
+                      title="Quitar capítulo"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                  <AutoTextarea
+                    value={cap.resumen}
+                    onChange={(e) => setCapitulo(i, "resumen", e.target.value)}
+                    rows={1}
+                    placeholder="Resumen: qué cubre este capítulo"
+                    className="w-full rounded border border-[var(--hairline)] bg-[var(--field)] px-2 py-1 text-sm text-text outline-none focus:border-accent"
+                  />
+                  <div className="flex flex-wrap items-center gap-2">
+                    <label className="flex items-center gap-1.5 text-xs text-muted">
+                      Fotos:
+                      <select
+                        value={cap.num_fotos}
+                        onChange={(e) => setCapitulo(i, "num_fotos", Number(e.target.value))}
+                        className="rounded border border-[var(--hairline)] bg-[var(--field)] px-1.5 py-0.5 text-xs text-text outline-none focus:border-accent"
+                      >
+                        {[0, 1, 2, 3, 4].map((n) => (
+                          <option key={n} value={n}>
+                            {n}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    {cap.num_fotos > 0 && (
+                      <button
+                        onClick={() => generarFotosEbook(i)}
+                        className="rounded border border-[var(--hairline)] px-2 py-1 text-xs text-muted hover:text-text"
+                      >
+                        📷 {cap.fotos?.length ? "Regenerar fotos" : "Generar fotos"}
+                      </button>
+                    )}
+                    {capEstado[i] && <span className="text-xs text-muted">{capEstado[i]}</span>}
+                    {fotosEstado[String(i)] && (
+                      <span className="text-xs text-muted">{fotosEstado[String(i)]}</span>
+                    )}
+                  </div>
+                  {(cap.fotos?.length ?? 0) > 0 && (
+                    <div className="flex flex-wrap gap-2">
+                      {cap.fotos.map((f, k) => (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          key={k}
+                          src={f.url}
+                          alt={f.nombre}
+                          className="h-20 w-20 rounded-lg border border-[var(--hairline)] object-cover"
+                        />
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* ── PDF final ────────────────────────────────── */}
           <div className="flex flex-wrap items-center gap-3 rounded-xl border border-[var(--hairline)] glass p-4">
             <button
-              onClick={generarEbook}
-              className="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-white"
+              onClick={descargarEbook}
+              disabled={
+                !p.ebook.capitulos.length ||
+                p.ebook.capitulos.some((c) => !c.bloques?.length)
+              }
+              className="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
             >
-              📕 Generar ebook
+              📕 Generar PDF
             </button>
             <label className="flex items-center gap-2 text-sm text-muted">
-              Tema:
+              Tema de diseño:
               <select
-                value={ebookTema}
-                onChange={(e) => setEbookTema(e.target.value)}
+                value={p.ebook.tema}
+                onChange={(e) => setEbook((eb) => ({ ...eb, tema: e.target.value }))}
                 className="rounded-lg border border-[var(--hairline)] bg-[var(--field)] px-2 py-1 text-text outline-none focus:border-accent"
               >
                 {TEMAS_EBOOK.map((t) => (
@@ -1264,24 +1591,20 @@ export function ProductoWizard({ producto }: { producto?: Producto }) {
                 ))}
               </select>
             </label>
-            <label className="flex items-center gap-2 text-sm text-muted">
-              Páginas:
-              <input
-                type="number"
-                min={8}
-                max={80}
-                value={ebookPages}
-                onChange={(e) => setEbookPages(Number(e.target.value))}
-                className="w-20 rounded-lg border border-[var(--hairline)] bg-[var(--field)] px-2 py-1 text-text outline-none focus:border-accent"
-              />
-            </label>
-            <span className="text-sm text-muted">{ebookEstado}</span>
+            <span className="text-sm text-muted">{renderEstado}</span>
           </div>
-          <p className="text-xs text-muted">
-            Genera un ebook (PDF) sobre el <b>tema del producto</b> (nombre + promesa +
-            público) con la IA del shell, y lo maqueta con el tema elegido. El contenido
-            se crea módulo a módulo, así que tarda un poco; al terminar se descarga.
-          </p>
+
+          <div className="sticky bottom-0 flex items-center gap-3 border-t border-[var(--hairline)] bg-bg/80 py-4 backdrop-blur">
+            <button
+              onClick={guardar}
+              disabled={estado === "guardando"}
+              className="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-white disabled:opacity-60"
+            >
+              {estado === "guardando" ? "Guardando…" : "Guardar ebook"}
+            </button>
+            {estado === "ok" && <span className="text-sm text-accent-2">✓ Guardado</span>}
+            {estado === "error" && <span className="text-sm text-red-400">Error al guardar</span>}
+          </div>
         </section>
       )}
     </div>

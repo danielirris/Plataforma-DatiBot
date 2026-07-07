@@ -1,15 +1,14 @@
-// Generación del CONTENIDO de un ebook (índice → módulo a módulo → bloques).
-//
-// Portado de ebookforge/generator (llm.py + pipeline.py) a TypeScript, pero
-// usando el proveedor de texto del shell (Gemini/OpenAI de /configuracion) en
-// vez de Anthropic. Produce SOLO datos (bloques); el diseño lo pone el tema al
-// renderizar en el servicio de ebooks.
+// Generación del ebook POR FASES, conectada a la OFERTA del producto:
+//   Fase 1: IDEA (qué libro es, desde la oferta)  →  editable
+//   Fase 2: ÍNDICE en capítulos                    →  editable
+//   Fase 3: REDACCIÓN capítulo a capítulo (bloques del motor)
+// Usa el proveedor de texto del shell (Gemini/OpenAI de la config).
 
 import { generarTexto } from "@/lib/ai/textProvider";
+import type { EbookIdea, EbookCapitulo, Producto } from "@plataforma/products";
 
-// La generación es módulo a módulo (muchas llamadas seguidas). Los proveedores
-// devuelven 503/429 transitorios con frecuencia, y una sola falla arruinaría el
-// ebook entero. Reintentamos con backoff exponencial ante errores transitorios.
+// Los proveedores devuelven 503/429 transitorios; una falla no debe tumbar la
+// fase. Reintentos con backoff exponencial.
 const TRANSITORIO =
   /\b(429|500|502|503|504)\b|UNAVAILABLE|overloaded|high demand|rate.?limit|timeout|ETIMEDOUT|ECONNRESET/i;
 
@@ -22,38 +21,22 @@ async function generarConReintentos(prompt: string, reintentos = 4): Promise<str
       ultimo = e;
       const msg = e instanceof Error ? e.message : String(e);
       if (i === reintentos || !TRANSITORIO.test(msg)) throw e;
-      // backoff: 1.5s, 3s, 6s, 12s
-      await new Promise((r) => setTimeout(r, 1500 * 2 ** i));
+      await new Promise((r) => setTimeout(r, 1500 * 2 ** i)); // 1.5s, 3s, 6s, 12s
     }
   }
   throw ultimo;
 }
 
-export interface ModuloIndice {
-  title: string;
-  summary: string;
-}
-export interface Indice {
-  title: string;
-  subtitle: string;
-  intro: string[];
-  modules: ModuloIndice[];
-}
-export type Bloque = Record<string, unknown>;
-export interface DocumentoEbook {
-  title: string;
-  theme: string;
-  blocks: Bloque[];
-}
-
 // Bloques que el modelo puede usar (los mismos que entiende el motor).
-const SCHEMA = `Devuelves SOLO JSON válido (sin markdown, sin texto extra). Bloques disponibles:
-- {"type":"section","eyebrow":"Módulo 0X","title":"..."}
+const SCHEMA_BLOQUES = `Devuelves SOLO JSON válido (sin markdown, sin texto extra). Bloques disponibles:
+- {"type":"section","eyebrow":"Capítulo 0X","title":"..."}
 - {"type":"paragraph","text":"..."}   (puedes usar <strong>...</strong>)
 - {"type":"list","items":["...","..."]}
-- {"type":"card","name":"...","link":"https://...","link_text":"...","body":"..."}
 - {"type":"callout","kind":"note|sell|danger","tag":"...","text":"..."}
+- {"type":"chips","items":["...","..."]}
 - {"type":"divider"}`;
+
+export type Bloque = Record<string, unknown>;
 
 function limpiar(raw: string): string {
   return raw.trim().replace(/^```(?:json)?/i, "").replace(/```$/i, "").trim();
@@ -92,85 +75,115 @@ function parseBloques(raw: string): Bloque[] {
 
 const pad2 = (n: number) => String(n).padStart(2, "0");
 
-// ── 1) ÍNDICE ─────────────────────────────────────────────────
-export async function generarIndice(brief: string, pages = 55): Promise<Indice> {
-  const min = Math.max(3, Math.floor(pages / 7));
-  const max = Math.max(min + 1, Math.floor(pages / 5));
-  const prompt = `Eres un editor experto que estructura ebooks. Devuelves SOLO JSON.
+/** Contexto del producto que alimenta todas las fases (la OFERTA manda). */
+function contextoProducto(p: Producto): string {
+  const o = p.oferta;
+  const partes = [
+    `Producto: ${p.nombre}`,
+    p.identidad?.promesa ? `Promesa: ${p.identidad.promesa}` : "",
+    p.identidad?.dirigidoA ? `Dirigido a: ${p.identidad.dirigidoA}` : "",
+  ];
+  if (o) {
+    partes.push(
+      `OFERTA (el ebook ES este entregable — el libro debe cumplirla):`,
+      `- Nombre de la oferta: ${o.nombre_oferta}`,
+      `- Promesa grande: ${o.promesa_grande}`,
+      `- Producto principal: ${o.producto_principal.titulo}`,
+      ...o.producto_principal.que_incluye.filter(Boolean).map((x) => `  · ${x}`),
+    );
+  }
+  const a = p.avatar;
+  if (a?.deseos || a?.compradores) {
+    partes.push(
+      `Avatar (para el tono):`,
+      a.compradores ? `- Quiénes compran: ${a.compradores.slice(0, 400)}` : "",
+      a.deseos ? `- Deseos: ${a.deseos.slice(0, 400)}` : "",
+    );
+  }
+  return partes.filter(Boolean).join("\n");
+}
 
-Crea el ÍNDICE de un ebook sobre: ${brief}.
-Debe alcanzar ~${pages} páginas, así que propón entre ${min} y ${max} módulos.
-Español neutral, claro y práctico.
-Devuelve JSON exacto: {"title":"...", "subtitle":"...", "intro":["parrafo1","parrafo2"], "modules":[{"title":"...","summary":"..."}, ...]}`;
+// ── FASE 1: IDEA ──────────────────────────────────────────────
+export async function generarIdea(p: Producto): Promise<EbookIdea> {
+  const prompt = `Eres un editor experto en infoproductos de respuesta directa. Devuelves SOLO JSON.
 
-  const raw = await generarConReintentos(prompt);
-  const o = parseObjeto(raw);
+${contextoProducto(p)}
+
+Define la IDEA del ebook que materializa esa oferta (es el entregable que el cliente compra). Español neutral.
+- "titulo": el título vendedor del libro (puede ser el de la oferta, mejorado).
+- "subtitulo": una línea que amplía la promesa.
+- "concepto": 2-4 frases: qué es el libro, qué logra el lector y cómo lo entrega.
+- "publico": a quién le habla, en una línea.
+
+Devuelve JSON exacto: {"titulo":"...","subtitulo":"...","concepto":"...","publico":"..."}`;
+
+  const o = parseObjeto(await generarConReintentos(prompt));
   return {
-    title: String(o.title ?? "Ebook"),
-    subtitle: String(o.subtitle ?? ""),
-    intro: Array.isArray(o.intro) ? (o.intro as unknown[]).map(String) : [],
-    modules: Array.isArray(o.modules)
-      ? (o.modules as Record<string, unknown>[]).map((m) => ({
-          title: String(m.title ?? ""),
-          summary: String(m.summary ?? ""),
-        }))
-      : [],
+    titulo: String(o.titulo ?? ""),
+    subtitulo: String(o.subtitulo ?? ""),
+    concepto: String(o.concepto ?? ""),
+    publico: String(o.publico ?? ""),
   };
 }
 
-// ── 2) MÓDULO A MÓDULO ────────────────────────────────────────
-export async function generarModulo(
-  brief: string,
-  mod: ModuloIndice,
-  index = 1,
-): Promise<Bloque[]> {
-  const prompt = `${SCHEMA}
+// ── FASE 2: ÍNDICE (capítulos) ────────────────────────────────
+export async function generarIndice(
+  p: Producto,
+  idea: EbookIdea,
+  numCapitulos = 10,
+): Promise<EbookCapitulo[]> {
+  const prompt = `Eres un editor experto que estructura ebooks. Devuelves SOLO JSON.
 
-Escribe el contenido del módulo «${mod.title}» (${mod.summary}) para un ebook sobre: ${brief}.
-Empieza con un bloque section (eyebrow='Módulo ${pad2(index)}', title=el módulo).
-Extensión: unas 5-6 páginas (varios párrafos, alguna lista y alguna caja destacada).
-Español neutral. Devuelve SOLO la lista JSON de bloques.`;
+${contextoProducto(p)}
 
-  return parseBloques(await generarConReintentos(prompt));
+IDEA del libro (ya aprobada):
+- Título: ${idea.titulo}
+- Subtítulo: ${idea.subtitulo}
+- Concepto: ${idea.concepto}
+- Público: ${idea.publico}
+
+Crea el ÍNDICE: EXACTAMENTE ${numCapitulos} capítulos que cumplen la promesa del libro de principio a fin, con progresión lógica (de fundamentos a resultados). Si la oferta promete una cantidad (ej. 120 recetas), repártela entre los capítulos de forma creíble. Español neutral.
+
+Devuelve JSON exacto: {"capitulos":[{"titulo":"...","resumen":"1-2 frases de qué cubre"}, ...]}`;
+
+  const o = parseObjeto(await generarConReintentos(prompt));
+  const arr = Array.isArray(o.capitulos) ? (o.capitulos as Record<string, unknown>[]) : [];
+  return arr.map((c) => ({
+    titulo: String(c.titulo ?? ""),
+    resumen: String(c.resumen ?? ""),
+    num_fotos: 1,
+    fotos: [],
+    bloques: null,
+  }));
 }
 
-// ── 3) DOCUMENTO COMPLETO ─────────────────────────────────────
-export async function generarDocumento(
-  brief: string,
-  tema = "amigurumi",
-  pages = 40,
-  brand = "Entregado por [ TU MARCA ]",
-  onProgreso?: (msg: string) => void,
-): Promise<DocumentoEbook> {
-  const log = (m: string) => onProgreso?.(m);
+// ── FASE 3: REDACCIÓN de un capítulo ──────────────────────────
+export async function generarCapitulo(
+  p: Producto,
+  idea: EbookIdea,
+  capitulos: EbookCapitulo[],
+  index: number,
+): Promise<Bloque[]> {
+  const cap = capitulos[index];
+  const indice = capitulos
+    .map((c, i) => `${i + 1}. ${c.titulo}`)
+    .join("\n");
+  const prompt = `${SCHEMA_BLOQUES}
 
-  log("Generando índice…");
-  const o = await generarIndice(brief, pages);
-  log(`Índice: ${o.modules.length} módulos.`);
+Libro: «${idea.titulo}» — ${idea.subtitulo}
+Concepto: ${idea.concepto}
+Público: ${idea.publico}
 
-  const blocks: Bloque[] = [
-    {
-      type: "cover",
-      title: o.title,
-      subtitle: o.subtitle,
-      welcome: o.intro,
-      brand,
-      brand_sub: "Edición 2026",
-    },
-  ];
+ÍNDICE COMPLETO (para no repetir contenido de otros capítulos):
+${indice}
 
-  for (let i = 0; i < o.modules.length; i++) {
-    log(`Generando módulo ${i + 1}/${o.modules.length}: ${o.modules[i].title}…`);
-    blocks.push(...(await generarModulo(brief, o.modules[i], i + 1)));
-    if (i < o.modules.length - 1) blocks.push({ type: "divider" });
-  }
+Redacta SOLO el capítulo ${index + 1}: «${cap.titulo}» (${cap.resumen}).
+- Empieza con un bloque section (eyebrow='Capítulo ${pad2(index + 1)}', title='${cap.titulo.replace(/'/g, "’")}').
+- Extensión: unas 4-6 páginas (párrafos claros, listas prácticas y alguna caja destacada).
+- Contenido ACCIONABLE y específico (si son recetas: ingredientes y pasos reales), español neutral, sin relleno.
+- NO menciones precios ni links.
 
-  blocks.push({
-    type: "closing",
-    big: "¡Gracias!",
-    small: "Esperamos que esta guía te sea muy útil.",
-    brand,
-  });
+Devuelve SOLO la lista JSON de bloques.`;
 
-  return { title: o.title, theme: tema, blocks };
+  return parseBloques(await generarConReintentos(prompt));
 }

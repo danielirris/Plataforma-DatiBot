@@ -279,6 +279,43 @@ export interface Oferta {
 export const MIN_BONOS = 3;
 export const MAX_BONOS = 4;
 
+// ── EBOOK (se crea por fases desde la OFERTA) ──────────────────
+// Fase 1: idea · Fase 2: índice en capítulos · Fase 3: redacción capítulo a
+// capítulo (+ fotos realistas por capítulo generadas con Gemini).
+export interface EbookIdea {
+  titulo: string;
+  subtitulo: string;
+  /** qué es el libro y qué promete (2-4 frases; guía toda la redacción) */
+  concepto: string;
+  publico: string;
+}
+export interface EbookFoto {
+  /** URL pública (servidor de imágenes) */
+  url: string;
+  /** nombre de archivo (es el `src` que referencia el bloque image del motor) */
+  nombre: string;
+  caption?: string;
+}
+export interface EbookCapitulo {
+  titulo: string;
+  resumen: string;
+  /** cuántas fotos generar para este capítulo (0-4) */
+  num_fotos: number;
+  fotos: EbookFoto[];
+  /** bloques redactados por la IA (null = capítulo aún sin redactar) */
+  bloques: Record<string, unknown>[] | null;
+}
+export interface EbookProducto {
+  idea: EbookIdea | null;
+  capitulos: EbookCapitulo[];
+  /** tema de diseño del motor (amigurumi, capital, …) */
+  tema: string;
+  foto_portada: EbookFoto | null;
+}
+export function ebookVacio(): EbookProducto {
+  return { idea: null, capitulos: [], tema: "capital", foto_portada: null };
+}
+
 export function bonoVacio(): BonoOferta {
   return {
     titulo: "",
@@ -317,6 +354,8 @@ export interface Producto {
   angulos: Angulo[];
   /** paquete de venta (Grand Slam Offer); null hasta que se genera */
   oferta: Oferta | null;
+  /** ebook del producto (se crea por fases desde la oferta) */
+  ebook: EbookProducto;
   /** ranuras del motor (mensaje_1..8, mensaje_rmk_*, ob_mensaje_*, …) en español neutral */
   mensajes: Record<string, string>;
   /** líneas cortas de texto que el servidor superpone en cada imagen */
@@ -358,6 +397,7 @@ export function crearProductoBorrador(parcial: Partial<Producto> = {}): Producto
     },
     angulos: [],
     oferta: null,
+    ebook: ebookVacio(),
     mensajes: {},
     overlays: overlaysVacios(),
     imagenes: overlaysVacios(),
