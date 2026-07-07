@@ -316,6 +316,19 @@ export function ebookVacio(): EbookProducto {
   return { idea: null, capitulos: [], tema: "capital", foto_portada: null };
 }
 
+// ── VIDEOS del producto (materia prima para editar los anuncios) ──
+// Videos largos (de TikTok/grabaciones) que el editor analiza y recorta.
+export interface VideoProducto {
+  /** URL pública (servidor de archivos) */
+  url: string;
+  /** nombre de archivo en el servidor */
+  nombre: string;
+  /** nombre original que subió el usuario (para mostrar) */
+  original: string;
+  /** tamaño en bytes (informativo) */
+  bytes: number;
+}
+
 export function bonoVacio(): BonoOferta {
   return {
     titulo: "",
@@ -356,6 +369,8 @@ export interface Producto {
   oferta: Oferta | null;
   /** ebook del producto (se crea por fases desde la oferta) */
   ebook: EbookProducto;
+  /** videos largos adjuntos (materia prima para editar los anuncios) */
+  videos: VideoProducto[];
   /** ranuras del motor (mensaje_1..8, mensaje_rmk_*, ob_mensaje_*, …) en español neutral */
   mensajes: Record<string, string>;
   /** líneas cortas de texto que el servidor superpone en cada imagen */
@@ -398,6 +413,7 @@ export function crearProductoBorrador(parcial: Partial<Producto> = {}): Producto
     angulos: [],
     oferta: null,
     ebook: ebookVacio(),
+    videos: [],
     mensajes: {},
     overlays: overlaysVacios(),
     imagenes: overlaysVacios(),

@@ -19,6 +19,7 @@ import {
   ebookVacio,
   type EbookProducto,
   type EbookCapitulo,
+  type VideoProducto,
   type Angulo,
   type Gancho,
   type Avatar,
@@ -40,6 +41,7 @@ const PASOS = [
   { key: "mensajes", label: "5 · Mensajes" },
   { key: "imagenes", label: "6 · Imágenes" },
   { key: "ebook", label: "7 · Ebook" },
+  { key: "videos", label: "8 · Videos" },
 ] as const;
 
 // Pasos ya implementados.
@@ -51,6 +53,7 @@ const DISPONIBLES = new Set([
   "mensajes",
   "imagenes",
   "ebook",
+  "videos",
 ]);
 
 // Temas disponibles en el servicio de ebooks (carpetas en themes/).
@@ -99,6 +102,7 @@ export function ProductoWizard({ producto }: { producto?: Producto }) {
       overlays: { ...base.overlays, ...(producto.overlays ?? {}) },
       imagenes: { ...base.imagenes, ...(producto.imagenes ?? {}) },
       ebook: { ...ebookVacio(), ...(producto.ebook ?? {}) },
+      videos: producto.videos ?? [],
     };
   });
   const [paso, setPaso] = useState<string>("identidad");
@@ -119,6 +123,8 @@ export function ProductoWizard({ producto }: { producto?: Producto }) {
   const [capEstado, setCapEstado] = useState<Record<number, string>>({});
   const [fotosEstado, setFotosEstado] = useState<Record<string, string>>({});
   const [renderEstado, setRenderEstado] = useState<string>("");
+  const [videoEstado, setVideoEstado] = useState<string>("");
+  const [subiendoVideo, setSubiendoVideo] = useState<boolean>(false);
 
   const esNuevo = !p.id;
 
@@ -599,6 +605,53 @@ export function ProductoWizard({ producto }: { producto?: Producto }) {
     } catch (e) {
       setRenderEstado("⚠️ " + errorDeRed(e));
     }
+  }
+
+  // ── Videos del producto (materia prima para editar los anuncios) ──
+  async function subirVideos(files: FileList | null) {
+    if (!files?.length) return;
+    if (!p.id) {
+      setVideoEstado("⚠️ Guarda el producto primero (paso Identidad).");
+      return;
+    }
+    setSubiendoVideo(true);
+    const lista = Array.from(files);
+    for (let i = 0; i < lista.length; i++) {
+      const file = lista[i];
+      setVideoEstado(`Subiendo ${i + 1}/${lista.length}: ${file.name}…`);
+      try {
+        const fd = new FormData();
+        fd.append("file", file);
+        const res = await fetch(`/api/productos/${p.id}/videos`, { method: "POST", body: fd });
+        if (!res.ok) {
+          setVideoEstado("⚠️ " + (await mensajeDeError(res)));
+          setSubiendoVideo(false);
+          return;
+        }
+        const data = await res.json();
+        setP((prev) => ({ ...prev, videos: [...(prev.videos ?? []), data.video as VideoProducto] }));
+      } catch (e) {
+        setVideoEstado("⚠️ " + errorDeRed(e));
+        setSubiendoVideo(false);
+        return;
+      }
+    }
+    setVideoEstado("✓ Videos subidos. Guarda para conservarlos.");
+    setSubiendoVideo(false);
+  }
+
+  async function quitarVideo(url: string) {
+    setP((prev) => ({ ...prev, videos: (prev.videos ?? []).filter((v) => v.url !== url) }));
+    try {
+      await fetch("/api/images/delete", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url }),
+      });
+    } catch {
+      /* aunque falle el borrado remoto, ya se quitó del producto */
+    }
+    setVideoEstado("✓ Video quitado. Guarda para conservar el cambio.");
   }
 
   return (
@@ -1601,6 +1654,88 @@ export function ProductoWizard({ producto }: { producto?: Producto }) {
               className="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-white disabled:opacity-60"
             >
               {estado === "guardando" ? "Guardando…" : "Guardar ebook"}
+            </button>
+            {estado === "ok" && <span className="text-sm text-accent-2">✓ Guardado</span>}
+            {estado === "error" && <span className="text-sm text-red-400">Error al guardar</span>}
+          </div>
+        </section>
+      )}
+
+      {paso === "videos" && (
+        <section className="space-y-5">
+          <p className="text-xs text-muted">
+            Adjunta aquí los <b>videos largos de TikTok</b> del producto. Más adelante,
+            el <b>Editor de videos</b> los analiza y saca los mejores momentos para tus
+            anuncios. Quedan guardados en el producto, junto con todo lo demás.
+          </p>
+
+          <div className="flex flex-wrap items-center gap-3 rounded-xl border border-[var(--hairline)] glass p-4">
+            <label className="cursor-pointer rounded-lg bg-accent px-4 py-2 text-sm font-medium text-white">
+              {subiendoVideo ? "Subiendo…" : "⬆️ Subir videos"}
+              <input
+                type="file"
+                accept="video/*"
+                multiple
+                disabled={subiendoVideo}
+                onChange={(e) => {
+                  subirVideos(e.target.files);
+                  e.target.value = "";
+                }}
+                className="hidden"
+              />
+            </label>
+            <span className="text-sm text-muted">
+              {videoEstado || `${p.videos?.length ?? 0} video(s) adjunto(s)`}
+            </span>
+          </div>
+
+          {(p.videos?.length ?? 0) === 0 ? (
+            <div className="rounded-xl border border-dashed border-[var(--hairline)] p-8 text-center text-muted">
+              Aún no hay videos. Súbelos con el botón de arriba (se procesan al editar).
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {p.videos.map((v) => (
+                <div
+                  key={v.url}
+                  className="flex items-center gap-3 rounded-xl border border-[var(--hairline)] glass p-3"
+                >
+                  <span className="grid h-10 w-10 shrink-0 place-items-center rounded-lg border border-[var(--hairline)] bg-[var(--field)] text-lg">
+                    🎬
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm text-text">{v.original || v.nombre}</p>
+                    <p className="text-xs text-muted">
+                      {(v.bytes / (1024 * 1024)).toFixed(1)} MB
+                    </p>
+                  </div>
+                  <a
+                    href={v.url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="rounded border border-[var(--hairline)] px-2 py-1 text-xs text-muted hover:text-text"
+                  >
+                    Ver
+                  </a>
+                  <button
+                    onClick={() => quitarVideo(v.url)}
+                    className="rounded border border-[var(--hairline)] px-2 py-1 text-xs text-muted hover:text-red-400"
+                    title="Quitar video"
+                  >
+                    ✕
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <div className="sticky bottom-0 flex items-center gap-3 border-t border-[var(--hairline)] bg-bg/80 py-4 backdrop-blur">
+            <button
+              onClick={guardar}
+              disabled={estado === "guardando" || subiendoVideo}
+              className="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-white disabled:opacity-60"
+            >
+              {estado === "guardando" ? "Guardando…" : "Guardar videos"}
             </button>
             {estado === "ok" && <span className="text-sm text-accent-2">✓ Guardado</span>}
             {estado === "error" && <span className="text-sm text-red-400">Error al guardar</span>}
