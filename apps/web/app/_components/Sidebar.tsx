@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { NAV_ITEMS, cn } from "@plataforma/ui";
 import { ThemeToggle } from "./ThemeToggle";
+import { Logo } from "./Logo";
 
 export function Sidebar() {
   const pathname = usePathname();
@@ -12,9 +13,7 @@ export function Sidebar() {
     <aside className="glass flex w-60 shrink-0 flex-col border-r border-[var(--hairline)]">
       {/* Marca */}
       <Link href="/" className="flex items-center gap-2.5 px-5 py-6">
-        <span className="grid h-9 w-9 place-items-center rounded-xl bg-gradient-to-br from-accent to-accent-2 text-base font-bold text-white shadow-lg shadow-accent/30 ring-1 ring-white/20">
-          D
-        </span>
+        <Logo size={34} />
         <span className="bg-gradient-to-r from-accent to-accent-2 bg-clip-text text-lg font-bold tracking-tight text-transparent">
           Datibot
         </span>
