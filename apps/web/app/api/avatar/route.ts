@@ -142,6 +142,7 @@ export async function POST(req: Request) {
       }
     }
   } catch (e) {
+    console.error("[avatar] fallo:", e);
     return NextResponse.json(
       { error: e instanceof Error ? e.message : "Error en la investigación" },
       { status: 502 },

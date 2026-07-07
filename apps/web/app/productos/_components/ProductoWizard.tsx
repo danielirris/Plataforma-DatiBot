@@ -53,6 +53,24 @@ const DISPONIBLES = new Set([
 // Temas disponibles en el servicio de ebooks (carpetas en themes/).
 const TEMAS_EBOOK = ["amigurumi", "arcade", "capital", "impulso", "sabores", "sereno"];
 
+// Extrae un mensaje legible de una respuesta fallida: usa {error} si vino JSON,
+// si no, muestra el código de estado y el texto crudo (401, 504, HTML, etc.).
+// Así el usuario ve la causa REAL en vez de un "no se pudo contactar" genérico.
+async function mensajeDeError(res: Response): Promise<string> {
+  const raw = await res.text().catch(() => "");
+  try {
+    const d = JSON.parse(raw);
+    if (d?.error) return String(d.error);
+  } catch {
+    /* la respuesta no era JSON (401 de login, 504 del proxy, HTML de error…) */
+  }
+  return `Error ${res.status}${raw ? `: ${raw.slice(0, 160)}` : ""}`;
+}
+
+function errorDeRed(e: unknown): string {
+  return "Fallo de red: " + (e instanceof Error ? e.message : "desconocido");
+}
+
 // Campos de texto largos de cada ángulo (nombre y tipo van aparte en el header).
 const CAMPOS_ANGULO: { key: keyof Angulo; label: string; rows: number }[] = [
   { key: "promesa_central", label: "Promesa central", rows: 2 },
@@ -192,11 +210,11 @@ export function ProductoWizard({ producto }: { producto?: Producto }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ producto: p }),
       });
-      const data = await res.json();
       if (!res.ok) {
-        setAngulosEstado("⚠️ " + (data.error ?? "Error al generar ángulos"));
+        setAngulosEstado("⚠️ " + (await mensajeDeError(res)));
         return;
       }
+      const data = await res.json();
       const nuevos = data.angulos as Angulo[];
       if (soloIndice == null) {
         setP((prev) => ({ ...prev, angulos: nuevos }));
@@ -209,8 +227,8 @@ export function ProductoWizard({ producto }: { producto?: Producto }) {
         });
         setAngulosEstado(`✓ Ángulo ${soloIndice + 1} regenerado.`);
       }
-    } catch {
-      setAngulosEstado("⚠️ No se pudo contactar al proveedor.");
+    } catch (e) {
+      setAngulosEstado("⚠️ " + errorDeRed(e));
     }
   }
 
@@ -322,15 +340,15 @@ export function ProductoWizard({ producto }: { producto?: Producto }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ producto: p, incluye_video: incluyeVideo }),
       });
-      const data = await res.json();
       if (!res.ok) {
-        setOfertaEstado("⚠️ " + (data.error ?? "Error al generar oferta"));
+        setOfertaEstado("⚠️ " + (await mensajeDeError(res)));
         return;
       }
+      const data = await res.json();
       setP((prev) => ({ ...prev, oferta: data.oferta }));
       setOfertaEstado("✓ Oferta generada. Revisa y ajusta.");
-    } catch {
-      setOfertaEstado("⚠️ No se pudo contactar al proveedor.");
+    } catch (e) {
+      setOfertaEstado("⚠️ " + errorDeRed(e));
     }
   }
 
@@ -342,17 +360,17 @@ export function ProductoWizard({ producto }: { producto?: Producto }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ producto: p }),
       });
-      const data = await res.json();
       if (!res.ok) {
-        setAvatarEstado("⚠️ " + (data.error ?? "Error en la investigación"));
+        setAvatarEstado("⚠️ " + (await mensajeDeError(res)));
         return;
       }
+      const data = await res.json();
       setP((prev) => ({ ...prev, avatar: data.avatar }));
       setAvatarEstado(
         `✓ Investigación lista (${data.avatar.fuentes?.length ?? 0} fuentes). Revisa y ajusta.`,
       );
-    } catch {
-      setAvatarEstado("⚠️ No se pudo contactar al proveedor.");
+    } catch (e) {
+      setAvatarEstado("⚠️ " + errorDeRed(e));
     }
   }
 
@@ -387,19 +405,19 @@ export function ProductoWizard({ producto }: { producto?: Producto }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ producto: p, soloRanuras }),
       });
-      const data = await res.json();
       if (!res.ok) {
-        setGenEstado("⚠️ " + (data.error ?? "Error al generar"));
+        setGenEstado("⚠️ " + (await mensajeDeError(res)));
         return;
       }
+      const data = await res.json();
       setP((prev) => ({
         ...prev,
         mensajes: { ...prev.mensajes, ...(data.mensajes ?? {}) },
         overlays: { ...prev.overlays, ...(data.overlays ?? {}) },
       }));
       setGenEstado("✓ Listo. Revisa y ajusta antes de guardar.");
-    } catch {
-      setGenEstado("⚠️ No se pudo contactar al proveedor.");
+    } catch (e) {
+      setGenEstado("⚠️ " + errorDeRed(e));
     }
   }
 
