@@ -10,6 +10,15 @@ interface ProductoItem {
   videos: VideoProducto[];
 }
 
+// Los 5 estilos de edición (ver extractor: app/pipeline/styles.py).
+const ESTILOS: { id: string; nombre: string; desc: string }[] = [
+  { id: "modo_bestia", nombre: "Modo Bestia", desc: "Hype puro, máxima energía. Fitness, ofertas, retos." },
+  { id: "editorial_mono", nombre: "Editorial Mono", desc: "Minimalista, sobrio. B2B, consultoría, salud seria." },
+  { id: "premium_noir", nombre: "Premium Noir", desc: "Lujo oscuro, cinematográfico. Belleza, joyería, high-ticket." },
+  { id: "afiche_retro", nombre: "Afiche Retro", desc: "Cartel bold, tipografía protagonista. Moda, comida, eventos." },
+  { id: "relato_doc", nombre: "Relato Doc", desc: "Storytelling documental. Testimonios, historias, casos." },
+];
+
 const ESTADO_TXT: Record<string, string> = {
   queued: "En cola…",
   extracting: "Descargando y extrayendo audio…",
@@ -38,6 +47,7 @@ export function EditorVideos({ productos }: { productos: ProductoItem[] }) {
     () => new Set(productos[0]?.videos.map((v) => v.url) ?? []),
   );
   const [numClips, setNumClips] = useState<number>(5);
+  const [estilo, setEstilo] = useState<string>("modo_bestia");
   const [useMusic, setUseMusic] = useState<boolean>(false);
   const [useIntro, setUseIntro] = useState<boolean>(false);
 
@@ -79,6 +89,7 @@ export function EditorVideos({ productos }: { productos: ProductoItem[] }) {
         body: JSON.stringify({
           video_urls: urls,
           num_clips: numClips,
+          style: estilo,
           use_music: useMusic,
           use_intro: useIntro,
         }),
@@ -185,6 +196,38 @@ export function EditorVideos({ productos }: { productos: ProductoItem[] }) {
               </label>
             ))}
           </div>
+        </div>
+      </div>
+
+      {/* Estilo de edición */}
+      <div className="mt-4 space-y-3 rounded-2xl border border-[var(--hairline)] glass p-5">
+        <p className="text-sm text-muted">Estilo de edición</p>
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+          {ESTILOS.map((s) => {
+            const activo = estilo === s.id;
+            return (
+              <button
+                key={s.id}
+                onClick={() => setEstilo(s.id)}
+                className={
+                  "rounded-xl border p-3 text-left transition-all " +
+                  (activo
+                    ? "border-accent bg-accent/10 ring-1 ring-accent/40"
+                    : "border-[var(--hairline)] bg-[var(--field)] hover:border-accent/40")
+                }
+              >
+                <div className="flex items-center gap-2">
+                  <span
+                    className={
+                      "h-2 w-2 rounded-full " + (activo ? "bg-accent-2" : "bg-muted/40")
+                    }
+                  />
+                  <span className="text-sm font-medium text-text">{s.nombre}</span>
+                </div>
+                <p className="mt-1 text-xs text-muted">{s.desc}</p>
+              </button>
+            );
+          })}
         </div>
       </div>
 

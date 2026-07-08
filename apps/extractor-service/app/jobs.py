@@ -110,6 +110,7 @@ class JobManager:
         self._req_clips: dict[str, int] = {}  # nº de clips pedido (0 = por defecto)
         self._use_music: dict[str, bool] = {}  # música de fondo opcional por job
         self._intro: dict[str, Path] = {}  # sonido de inicio opcional por job
+        self._style: dict[str, str] = {}  # estilo de edición por job (5 estilos)
         self._lock = threading.Lock()
         self._queue: "queue.Queue[tuple[str, str]]" = queue.Queue()
         self._worker = threading.Thread(target=self._run_worker, daemon=True)
@@ -146,6 +147,7 @@ class JobManager:
                 cols = row.keys()
                 use_music = bool(row["use_music"]) if "use_music" in cols and row["use_music"] is not None else True
                 intro = Path(row["intro"]) if "intro" in cols and row["intro"] else None
+                style = row["style"] if "style" in cols and row["style"] else ""
                 with self._lock:
                     self._jobs[job.id] = job
                     self._sources[job.id] = sources
@@ -160,6 +162,8 @@ class JobManager:
                     self._use_music[job.id] = use_music
                     if intro is not None and intro.exists():
                         self._intro[job.id] = intro
+                    if style:
+                        self._style[job.id] = style
                 self._store.update(row["id"], {"status": "queued", "progress": 0,
                                                "message": "Reanudado tras reinicio"})
                 self._queue.put(("job", job.id))
@@ -178,6 +182,7 @@ class JobManager:
         guias_tmps: list[tuple[Path, str]] | None = None,
         use_music: bool = True,
         intro_tmp: tuple[Path, str] | None = None,
+        style: str = "",
     ) -> str:
         """Registra un nuevo job, mueve los uploads a su carpeta y lo encola.
 
@@ -245,10 +250,13 @@ class JobManager:
             self._use_music[job_id] = bool(use_music)
             if intro_path is not None:
                 self._intro[job_id] = intro_path
+            if style:
+                self._style[job_id] = style
         self._store.save(id=job_id, filenames=filenames, status=JobStatus.QUEUED.value,
                          created_at=job.created_at, sources=paths, music=music_paths,
                          mode=mode, voz=voz_path, num_clips_req=int(num_clips or 0),
-                         guias=guia_paths, use_music=bool(use_music), intro=intro_path)
+                         guias=guia_paths, use_music=bool(use_music), intro=intro_path,
+                         style=style)
         self._queue.put(("job", job_id))
         logger.info("Job %s encolado (modo=%s, %d videos, %d pistas)",
                     job_id, mode, len(paths), len(music_paths))
@@ -480,7 +488,7 @@ class JobManager:
         """Libera el estado en memoria asociado a un job ya procesado."""
         with self._lock:
             for d in (self._sources, self._music, self._guias, self._voz,
-                      self._req_clips, self._use_music, self._intro):
+                      self._req_clips, self._use_music, self._intro, self._style):
                 d.pop(job_id, None)
 
     def _montage_stage(
@@ -666,13 +674,22 @@ class JobManager:
             # plan completo por video (estilo, full-screen, píldoras, emojis...).
             self._update(job_id, status=JobStatus.ANALYZING,
                          message="Diseñando la edición (IA)")
-            prompt_text = library.read_prompt()
+            from app.pipeline import styles
+            style_id = self._style.get(job_id, "")
+            usar_estilo = bool(styles.STYLES.get(style_id))
+            # Con estilo elegido: sus lineamientos guían a la IA. Sin estilo
+            # (flujo viejo): el prompt genérico + paleta aleatoria, como antes.
+            prompt_text = styles.style_prompt(style_id) if usar_estilo else library.read_prompt()
             for v in videos:
                 v.plan = analyze.plan_ad(v.words, v.duration, prompt_text)
-                # Colores AL AZAR (independientes del tema): paleta barajada por video.
-                pal = analyze.random_palette(f"{settings.seed}:{job_id}:{v.id}")
-                v.plan["palette"] = pal
-                v.plan["accent"] = pal[0]
+                seed = f"{settings.seed}:{job_id}:{v.id}"
+                if usar_estilo:
+                    # El estilo FUERZA subtítulo, intensidad, topes y paleta.
+                    styles.apply_style(v.plan, style_id, seed)
+                else:
+                    pal = analyze.random_palette(seed)
+                    v.plan["palette"] = pal
+                    v.plan["accent"] = pal[0]
 
             self._update(job_id, status=JobStatus.RENDERING,
                          message="Generando proyecto Remotion (anuncio)")

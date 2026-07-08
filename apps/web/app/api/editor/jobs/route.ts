@@ -12,6 +12,7 @@ export async function POST(req: Request) {
     num_clips?: number;
     use_music?: boolean;
     use_intro?: boolean;
+    style?: string;
   };
   try {
     body = (await req.json()) as typeof body;
@@ -32,6 +33,7 @@ export async function POST(req: Request) {
         num_clips: body.num_clips ?? 0,
         use_music: !!body.use_music,
         use_intro: !!body.use_intro,
+        style: body.style ?? "",
         mode: "full",
       }),
     });
