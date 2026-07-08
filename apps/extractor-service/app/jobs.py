@@ -26,7 +26,7 @@ from typing import Any
 from app.config import Settings, get_settings, BASE_DIR
 from app.pipeline import audio, transcribe, analyze, render, cleanup
 from app.pipeline.compose import compose_clips
-from app.pipeline.fragments import VideoSource, build_pool
+from app.pipeline.fragments import Beat, VideoSource, build_pool
 from app.pipeline.remotion_export import export_remotion
 from app.pipeline.ad_export import build_ad_project, AdVideo
 from app.pipeline import ad_render
@@ -559,6 +559,16 @@ class JobManager:
         if settings.transiciones:
             avg_trans = (settings.trans_min + settings.trans_max) / 2
             buffer_s = avg_trans * settings.trans_dur_s
+        # Gancho VISUAL elegido por el usuario (Fase 4): abre todos los clips.
+        forced_hook = None
+        hook = (self._params.get(job_id, {}) or {}).get("hook")
+        if isinstance(hook, dict):
+            vi = int(hook.get("video_idx", -1))
+            if 0 <= vi < len(sources):
+                start = max(0.0, float(hook.get("start", 0.0)))
+                dur = max(0.6, min(5.0, float(hook.get("dur", 2.0))))
+                forced_hook = Beat(vi, sources[vi], round(start, 3), round(dur, 3))
+
         clips = compose_clips(
             pool, moments, videos, rng,
             num_clips=n_clips,
@@ -566,6 +576,7 @@ class JobManager:
             hook_beats=settings.hook_beats,
             beat_min=settings.beat_min_s,
             beat_max=settings.beat_max_s,
+            forced_hook=forced_hook,
         )
 
         # 4) Render de los N clips (beats cacheados, transiciones, música).

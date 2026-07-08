@@ -243,6 +243,13 @@ async def create_job_from_urls(payload: dict = Body(...)) -> JSONResponse:
         "highlight": str(payload.get("highlight") or ""),
         "font": str(payload.get("font") or "Anton"),
     }
+    hook = payload.get("hook")
+    if isinstance(hook, dict) and "video_idx" in hook:
+        params["hook"] = {
+            "video_idx": int(hook.get("video_idx", 0)),
+            "start": float(hook.get("start", 0.0)),
+            "dur": float(hook.get("dur", 2.0)),
+        }
 
     settings.ensure_dirs()
     max_bytes = settings.max_upload_mb * 1024 * 1024
@@ -278,6 +285,107 @@ async def list_styles() -> JSONResponse:
     from app.pipeline import styles
     items = [{"id": k, "nombre": v["nombre"]} for k, v in styles.STYLES.items()]
     return JSONResponse({"styles": items, "default": styles.DEFAULT_STYLE})
+
+
+@app.post("/api/hooks")
+async def hook_candidates(payload: dict = Body(...)) -> JSONResponse:
+    """Analiza los videos y devuelve CANDIDATOS de gancho con miniatura.
+
+    Es el "marco de referencia" del Hook visual (Fase 4): antes de generar, el
+    usuario ve los momentos más potentes de sus videos y elige cuál abre el clip.
+    """
+    import subprocess
+
+    from app.pipeline import analyze as _an
+    from app.pipeline import audio as _audio
+    from app.pipeline import transcribe as _tr
+
+    urls = [u for u in (payload.get("video_urls") or []) if isinstance(u, str) and u.strip()]
+    if not urls:
+        raise HTTPException(status_code=400, detail="No se enviaron videos.")
+
+    settings.ensure_dirs()
+    max_bytes = settings.max_upload_mb * 1024 * 1024
+    session = uuid.uuid4().hex[:12]
+    sess_dir = settings.storage_dir / "hooks" / session
+    sess_dir.mkdir(parents=True, exist_ok=True)
+
+    paths: list[Path] = []
+    try:
+        for url in urls[:20]:
+            tmp, _name = await _download_url(url, max_bytes)
+            paths.append(tmp)
+    except HTTPException:
+        for p in paths:
+            p.unlink(missing_ok=True)
+        shutil.rmtree(sess_dir, ignore_errors=True)
+        raise
+
+    def _work() -> list[dict]:
+        segs_by_video: list[list] = []
+        for i, src in enumerate(paths):
+            if _audio.has_audio(src):
+                ap = sess_dir / f"a{i}.wav"
+                try:
+                    _audio.extract_audio(src, ap)
+                    segs_by_video.append(_tr.transcribe_audio(ap))
+                except Exception:  # noqa: BLE001 — si falla, ese video va sin texto
+                    segs_by_video.append([])
+                finally:
+                    ap.unlink(missing_ok=True)
+            else:
+                segs_by_video.append([])
+
+        moments = _an.analyze_hooks(segs_by_video)
+        cands: list[dict] = []
+        for idx, m in enumerate(moments[:8]):
+            if not (0 <= m.video_id < len(paths)):
+                continue
+            thumb_ok = False
+            thumb = sess_dir / f"t{idx}.jpg"
+            try:
+                subprocess.run(
+                    ["ffmpeg", "-y", "-ss", f"{max(0.0, m.start):.2f}",
+                     "-i", str(paths[m.video_id]), "-frames:v", "1",
+                     "-vf", "scale=270:-2", str(thumb)],
+                    capture_output=True, check=True,
+                )
+                thumb_ok = thumb.is_file()
+            except Exception:  # noqa: BLE001 — sin miniatura, seguimos con texto
+                thumb_ok = False
+            cands.append({
+                "i": idx,
+                "video_idx": m.video_id,
+                "start": round(float(m.start), 2),
+                "end": round(float(m.end), 2),
+                "dur": round(max(0.6, float(m.end) - float(m.start)), 2),
+                "score": round(float(m.score), 2),
+                "razon": (m.razon or "").strip()[:140],
+                "thumb": f"/api/hooks/{session}/thumb/{idx}" if thumb_ok else None,
+            })
+        return cands
+
+    try:
+        candidates = await run_in_threadpool(_work)
+    finally:
+        for p in paths:  # los videos ya no se necesitan; las miniaturas quedan
+            p.unlink(missing_ok=True)
+
+    if not candidates:
+        shutil.rmtree(sess_dir, ignore_errors=True)
+        raise HTTPException(status_code=422,
+                            detail="No se encontraron ganchos claros en estos videos.")
+    return JSONResponse({"session": session, "candidates": candidates})
+
+
+@app.get("/api/hooks/{session}/thumb/{i}")
+async def hook_thumb(session: str, i: int) -> FileResponse:
+    """Sirve la miniatura de un candidato de gancho."""
+    base = (settings.storage_dir / "hooks").resolve()
+    thumb = (base / session / f"t{i}.jpg").resolve()
+    if not str(thumb).startswith(str(base)) or not thumb.is_file():
+        raise HTTPException(status_code=404, detail="Miniatura no encontrada.")
+    return FileResponse(path=str(thumb), media_type="image/jpeg")
 
 
 @app.post("/api/jobs")

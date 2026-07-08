@@ -5,19 +5,10 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const maxDuration = 120;
 
-// Crea un job de edición en el extractor a partir de los videos del producto.
+// Devuelve los candidatos de gancho (con miniatura) de los videos elegidos,
+// para que el usuario arme el "marco de referencia" del Hook visual (Fase 4).
 export async function POST(req: Request) {
-  let body: {
-    video_urls?: string[];
-    num_clips?: number;
-    use_music?: boolean;
-    use_intro?: boolean;
-    style?: string;
-    subtitle_style?: string;
-    highlight?: string;
-    font?: string;
-    hook?: { video_idx: number; start: number; dur: number } | null;
-  };
+  let body: { video_urls?: string[] };
   try {
     body = (await req.json()) as typeof body;
   } catch {
@@ -29,21 +20,10 @@ export async function POST(req: Request) {
 
   let res: Response;
   try {
-    res = await fetch(`${extractorUrl()}/api/jobs/from-urls`, {
+    res = await fetch(`${extractorUrl()}/api/hooks`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        video_urls: urls,
-        num_clips: body.num_clips ?? 0,
-        use_music: !!body.use_music,
-        use_intro: !!body.use_intro,
-        style: body.style ?? "",
-        subtitle_style: body.subtitle_style ?? "",
-        highlight: body.highlight ?? "",
-        font: body.font ?? "Anton",
-        hook: body.hook ?? null,
-        mode: "full",
-      }),
+      body: JSON.stringify({ video_urls: urls }),
     });
   } catch {
     return NextResponse.json(

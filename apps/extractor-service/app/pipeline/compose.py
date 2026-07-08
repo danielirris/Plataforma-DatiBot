@@ -86,6 +86,7 @@ def compose_clips(
     hook_beats: int,
     beat_min: float,
     beat_max: float,
+    forced_hook: Beat | None = None,
 ) -> list[list[Beat]]:
     """Compone ``num_clips`` listas de beats (una por clip).
 
@@ -106,8 +107,11 @@ def compose_clips(
 
     clips: list[list[Beat]] = []
     for k in range(num_clips):
-        hooks = [hook_pool[(k * max(1, hook_n) + j) % len(hook_pool)]
-                 for j in range(hook_n)] if hook_n and hook_pool else []
+        # Gancho VISUAL elegido por el usuario: abre TODOS los clips.
+        forzados = [forced_hook] if forced_hook is not None else []
+        restantes = max(0, hook_n - len(forzados))
+        hooks = forzados + ([hook_pool[(k * max(1, restantes) + j) % len(hook_pool)]
+                             for j in range(restantes)] if restantes and hook_pool else [])
         body_offset = (k * aprox_beats) % len(pool)
         clip = _fill_clip(hooks, pool, body_offset, duracion_total_s)
         clips.append(clip)

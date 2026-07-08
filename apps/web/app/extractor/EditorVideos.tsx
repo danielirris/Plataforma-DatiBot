@@ -49,6 +49,17 @@ const ESTADO_TXT: Record<string, string> = {
   error: "Error",
 };
 
+interface HookCandidato {
+  i: number;
+  video_idx: number;
+  start: number;
+  end: number;
+  dur: number;
+  score: number;
+  razon: string;
+  thumb: string | null;
+}
+
 interface JobState {
   status: string;
   progress: number;
@@ -75,10 +86,31 @@ export function EditorVideos({ productos }: { productos: ProductoItem[] }) {
   const [useMusic, setUseMusic] = useState<boolean>(false);
   const [useIntro, setUseIntro] = useState<boolean>(false);
 
+  // Fase 4 — Hook visual: candidatos (marco de referencia) y el elegido.
+  const [hookCands, setHookCands] = useState<HookCandidato[]>([]);
+  const [hookBase, setHookBase] = useState<string>("");
+  const [hookSel, setHookSel] = useState<number | null>(null);
+  const [buscandoHook, setBuscandoHook] = useState<boolean>(false);
+  const [hookMsg, setHookMsg] = useState<string>("");
+
   const [estado, setEstado] = useState<string>("");
   const [job, setJob] = useState<JobState | null>(null);
   const [publicBase, setPublicBase] = useState<string>("");
   const [trabajando, setTrabajando] = useState<boolean>(false);
+
+  // Los candidatos de gancho van atados al orden/selección de videos; si cambia
+  // la selección, hay que descartarlos (el video_idx ya no coincidiría).
+  function limpiarGanchos() {
+    setHookCands([]);
+    setHookSel(null);
+    setHookMsg("");
+  }
+
+  // URLs de los videos elegidos, en el mismo orden que ve el extractor. El
+  // video_idx de cada gancho apunta a esta lista.
+  function urlsSeleccionadas() {
+    return (producto?.videos ?? []).filter((v) => seleccion.has(v.url)).map((v) => v.url);
+  }
 
   function cambiarProducto(id: string) {
     setProductoId(id);
@@ -86,6 +118,7 @@ export function EditorVideos({ productos }: { productos: ProductoItem[] }) {
     setSeleccion(new Set(p?.videos.map((v) => v.url) ?? []));
     setJob(null);
     setEstado("");
+    limpiarGanchos();
   }
 
   function toggleVideo(url: string) {
@@ -95,14 +128,52 @@ export function EditorVideos({ productos }: { productos: ProductoItem[] }) {
       else s.add(url);
       return s;
     });
+    limpiarGanchos();
+  }
+
+  async function buscarGanchos() {
+    const urls = urlsSeleccionadas();
+    if (!urls.length) {
+      setHookMsg("⚠️ Marca al menos un video del producto.");
+      return;
+    }
+    setBuscandoHook(true);
+    setHookMsg("Analizando los videos para proponer ganchos…");
+    setHookCands([]);
+    setHookSel(null);
+    try {
+      const res = await fetch("/api/editor/hooks", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ video_urls: urls }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setHookMsg("⚠️ " + (data.error ?? `Error ${res.status}`));
+        setBuscandoHook(false);
+        return;
+      }
+      setHookBase(data.publicBase ?? "");
+      setHookCands((data.candidates ?? []) as HookCandidato[]);
+      setHookMsg(
+        (data.candidates ?? []).length
+          ? "Elige el fragmento que abrirá tus anuncios (o deja Automático)."
+          : "No se encontraron ganchos claros.",
+      );
+    } catch (e) {
+      setHookMsg("⚠️ Fallo de red: " + (e instanceof Error ? e.message : "?"));
+    }
+    setBuscandoHook(false);
   }
 
   async function generar() {
-    const urls = (producto?.videos ?? []).filter((v) => seleccion.has(v.url)).map((v) => v.url);
+    const urls = urlsSeleccionadas();
     if (!urls.length) {
       setEstado("⚠️ Marca al menos un video del producto.");
       return;
     }
+    const cand = hookSel != null ? hookCands.find((c) => c.i === hookSel) : null;
+    const hook = cand ? { video_idx: cand.video_idx, start: cand.start, dur: cand.dur } : null;
     setTrabajando(true);
     setJob(null);
     setEstado("Enviando al editor…");
@@ -119,6 +190,7 @@ export function EditorVideos({ productos }: { productos: ProductoItem[] }) {
           font: fuente,
           use_music: useMusic,
           use_intro: useIntro,
+          hook,
         }),
       });
       const data = await res.json().catch(() => ({}));
@@ -171,6 +243,11 @@ export function EditorVideos({ productos }: { productos: ProductoItem[] }) {
   }
 
   const abs = (u?: string | null) => (u ? `${publicBase}${u}` : "#");
+  const mmss = (s: number) => {
+    const m = Math.floor(s / 60);
+    const sec = Math.floor(s % 60);
+    return `${m}:${sec.toString().padStart(2, "0")}`;
+  };
 
   return (
     <div className="mx-auto max-w-3xl px-8 py-10">
@@ -334,6 +411,97 @@ export function EditorVideos({ productos }: { productos: ProductoItem[] }) {
           <input type="checkbox" checked={useIntro} onChange={(e) => setUseIntro(e.target.checked)} />
           🔔 Sonido de inicio (opcional) — un golpe de apertura al arrancar.
         </label>
+      </div>
+
+      {/* Fase 4 — Hook visual (marco de referencia) */}
+      <div className="mt-4 space-y-3 rounded-2xl border border-[var(--hairline)] glass p-5">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <p className="text-sm font-medium text-text">🎯 Hook visual (marco de referencia)</p>
+            <p className="text-xs text-muted">
+              Elige, antes de renderizar, qué fragmento abre tus anuncios. Si no
+              eliges, el editor decide automáticamente.
+            </p>
+          </div>
+          <button
+            onClick={buscarGanchos}
+            disabled={buscandoHook || seleccion.size === 0}
+            className="rounded-lg border border-accent/50 bg-accent/10 px-3 py-1.5 text-sm font-medium text-accent-2 disabled:opacity-50"
+          >
+            {buscandoHook ? "Analizando…" : hookCands.length ? "🔄 Volver a buscar" : "🔎 Buscar ganchos"}
+          </button>
+        </div>
+
+        {hookMsg && <p className="text-xs text-muted">{hookMsg}</p>}
+
+        {hookCands.length > 0 && (
+          <>
+            <div className="flex gap-3 overflow-x-auto pb-2">
+              {/* Opción automática */}
+              <button
+                onClick={() => setHookSel(null)}
+                className={
+                  "flex h-[132px] w-[92px] shrink-0 flex-col items-center justify-center gap-1 rounded-xl border text-center transition-all " +
+                  (hookSel == null
+                    ? "border-accent bg-accent/10 ring-1 ring-accent/40"
+                    : "border-[var(--hairline)] bg-[var(--field)] hover:border-accent/40")
+                }
+              >
+                <span className="text-2xl">🎲</span>
+                <span className="px-1 text-[11px] leading-tight text-muted">Automático</span>
+              </button>
+
+              {hookCands.map((c) => {
+                const activo = hookSel === c.i;
+                return (
+                  <button
+                    key={c.i}
+                    onClick={() => setHookSel(c.i)}
+                    title={c.razon}
+                    className={
+                      "relative w-[92px] shrink-0 overflow-hidden rounded-xl border text-left transition-all " +
+                      (activo
+                        ? "border-accent ring-2 ring-accent/50"
+                        : "border-[var(--hairline)] hover:border-accent/40")
+                    }
+                  >
+                    {c.thumb ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={`${hookBase}${c.thumb}`}
+                        alt={`Gancho ${c.i + 1}`}
+                        className="h-[132px] w-[92px] object-cover"
+                      />
+                    ) : (
+                      <div className="flex h-[132px] w-[92px] items-center justify-center bg-[var(--field)] text-2xl">
+                        🎬
+                      </div>
+                    )}
+                    <span className="absolute left-1 top-1 rounded bg-black/60 px-1 text-[10px] text-white">
+                      {mmss(c.start)}
+                    </span>
+                    <span className="absolute bottom-1 right-1 rounded bg-black/60 px-1 text-[10px] text-white">
+                      V{c.video_idx + 1}
+                    </span>
+                    {activo && (
+                      <span className="absolute inset-x-0 bottom-0 bg-accent/90 py-0.5 text-center text-[10px] font-semibold text-white">
+                        Elegido
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+            {hookSel != null && (
+              <p className="rounded-lg bg-[var(--field)] px-3 py-2 text-xs text-muted">
+                Abrirá con:{" "}
+                <span className="text-text">
+                  «{hookCands.find((c) => c.i === hookSel)?.razon || "fragmento elegido"}»
+                </span>
+              </p>
+            )}
+          </>
+        )}
       </div>
 
       {/* Acción + estado */}
