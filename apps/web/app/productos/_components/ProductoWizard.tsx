@@ -132,6 +132,7 @@ export function ProductoWizard({ producto }: { producto?: Producto }) {
   const [subiendoVideo, setSubiendoVideo] = useState<boolean>(false);
   // B-rolls (clips de fondo con Veo o recorte de los videos subidos).
   const [brollSource, setBrollSource] = useState<"veo" | "uploaded">("veo");
+  const [brollCantidad, setBrollCantidad] = useState<number>(10);
   const [brollEstado, setBrollEstado] = useState<string>("");
   const [brollJob, setBrollJob] = useState<BrollJob | null>(null);
   const [brollBase, setBrollBase] = useState<string>("");
@@ -539,7 +540,7 @@ export function ProductoWizard({ producto }: { producto?: Producto }) {
       const res = await fetch(`/api/productos/${p.id}/brolls`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ source: brollSource }),
+        body: JSON.stringify({ source: brollSource, config: { n_brolls: brollCantidad } }),
       });
       if (!res.ok) {
         setBrollEstado("⚠️ " + (await mensajeDeError(res)));
@@ -1422,7 +1423,8 @@ export function ProductoWizard({ producto }: { producto?: Producto }) {
               >
                 <span className="text-sm font-medium text-text">✨ Crear de cero (Veo)</span>
                 <p className="mt-1 text-xs text-muted">
-                  10 clips de 4s en 9:16, generados por IA desde los datos del producto. ~$2.
+                  Clips de 4s en 9:16 con cámara dinámica, generados por IA desde los datos
+                  del producto. ~$0.20 c/u.
                 </p>
               </button>
               <button
@@ -1442,13 +1444,38 @@ export function ProductoWizard({ producto }: { producto?: Producto }) {
             </div>
 
             <div className="flex flex-wrap items-center gap-3">
+              <label className="flex items-center gap-2 text-sm text-muted">
+                ¿Cuántos?
+                <input
+                  type="number"
+                  min={1}
+                  max={20}
+                  value={brollCantidad}
+                  onChange={(e) =>
+                    setBrollCantidad(Math.max(1, Math.min(20, Number(e.target.value) || 1)))
+                  }
+                  className="w-16 rounded-lg border border-[var(--hairline)] bg-[var(--field)] px-2 py-1 text-text outline-none focus:border-accent"
+                />
+              </label>
+              <button
+                onClick={() => setBrollCantidad(1)}
+                className="rounded border border-[var(--hairline)] px-2 py-1 text-xs text-muted hover:text-text"
+                title="Genera solo 1 para probar sin gastar"
+              >
+                🧪 Solo 1 (prueba)
+              </button>
               <button
                 onClick={generarBrolls}
                 disabled={generandoBrolls || !p.id}
                 className="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
               >
-                {generandoBrolls ? "Generando…" : "🎬 Generar 10 brolls"}
+                {generandoBrolls
+                  ? "Generando…"
+                  : `🎬 Generar ${brollCantidad} broll${brollCantidad === 1 ? "" : "s"}`}
               </button>
+              {brollSource === "veo" && (
+                <span className="text-xs text-muted">≈ ${(brollCantidad * 0.2).toFixed(2)}</span>
+              )}
               <span className="text-sm text-muted">
                 {brollEstado}
                 {brollJob && brollJob.status !== "done" && brollJob.status !== "error"

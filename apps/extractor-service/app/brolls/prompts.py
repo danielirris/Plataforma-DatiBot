@@ -30,9 +30,16 @@ _LUCES = [
     "warm golden-hour light", "cool clean studio lighting", "soft diffused daylight",
     "dramatic low-key rim light", "bright high-key lighting", "moody cinematic side light",
 ]
+# Movimientos de cámara ENÉRGICOS (los b-rolls tienen que estar muy movidos).
 _MOVIMIENTOS = [
-    "slow push-in", "gentle parallax drift", "subtle rack focus", "slow dolly move",
-    "locked-off tripod with drifting particles", "slow pedestal rise",
+    "fast crash zoom-in onto the product",
+    "quick zoom-out revealing the whole scene",
+    "dynamic 360-degree orbit around the product",
+    "rapid dolly push-in with strong momentum",
+    "snappy punch-in then punch-out (zoom in and out)",
+    "energetic handheld sweep across the product",
+    "whip-pan that lands on the product",
+    "sweeping crane move rising over the product",
 ]
 
 # Escenario según la categoría inferida de los textos del producto.
@@ -115,8 +122,10 @@ def build_scaffold(product: dict, cfg: BrollConfig) -> list[str]:
         luz = _LUCES[(i * 2 + 1) % len(_LUCES)]
         mov = _MOVIMIENTOS[(i * 3 + 2) % len(_MOVIMIENTOS)]
         prompts.append(
-            f"Cinematic {ang} of {producto}, the product as the sole hero subject, "
-            f"placed on {superficie}, {luz}, {ambiente}. Camera: {mov}. "
+            f"Highly dynamic cinematic {ang} of {producto}, the product as the sole hero "
+            f"subject, placed on {superficie}, {luz}, {ambiente}. "
+            f"Camera: {mov}. Strong, continuous and energetic camera movement with dynamic "
+            f"zoom in and out and momentum throughout — the shot is NEVER static. "
             f"{tono} Photorealistic, shallow depth of field, crisp product detail, "
             f"{aspecto}, no on-screen graphics. {NEGATIVOS}"
         )
@@ -136,7 +145,9 @@ def _refine_with_gemini(product: dict, scaffold: list[str], cfg: BrollConfig) ->
             f"estos {cfg.n_brolls} prompts para clips B-roll de Veo (en INGLÉS). Cada uno: "
             "una toma cinematográfica del PRODUCTO como único sujeto, SIN personas, "
             "coherente con el tono de marca; varía ángulo, luz, encuadre y contexto; "
-            "escena derivada de la categoría. Mantén SIEMPRE al final las instrucciones "
+            "escena derivada de la categoría. MUY IMPORTANTE: cada clip debe tener MUCHO "
+            "movimiento de cámara (zoom in/out marcado, dolly, orbit, whip-pan); enérgico y "
+            "nunca una toma estática. Mantén SIEMPRE al final las instrucciones "
             f"negativas: \"{NEGATIVOS}\". Devuelve SOLO un array JSON de {cfg.n_brolls} strings.\n\n"
             f"BRIEF:\n{product_brief(product)}\n\nPROMPTS BASE:\n"
             + "\n".join(f"{i+1}. {p}" for i, p in enumerate(scaffold))
