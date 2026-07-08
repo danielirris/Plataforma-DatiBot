@@ -31,12 +31,13 @@ def _noop(done: int, total: int, msg: str) -> None:  # pragma: no cover
 
 
 def _from_veo(product_id: str, product: dict, cfg: BrollConfig,
-              on_progress: Progress) -> tuple[list[dict], float]:
+              on_progress: Progress) -> tuple[list[dict], float, list[str]]:
     """Genera clips de cero con Veo, verificando 'sin personas'."""
     from app.brolls.prompts import NEGATIVOS
 
     prompts = build_broll_prompts(product, cfg)
     clips: list[dict] = []
+    errores: list[str] = []
     seconds = 0.0
     with tempfile.TemporaryDirectory() as td:
         tmp = Path(td)
@@ -49,6 +50,7 @@ def _from_veo(product_id: str, product: dict, cfg: BrollConfig,
                     veo.generate_clip(prompt, cfg, raw, negative=NEGATIVOS)
                 except Exception as e:  # noqa: BLE001
                     logger.error("Broll %d: Veo falló definitivamente: %s", i + 1, e)
+                    errores.append(str(e))
                     break
                 seconds += cfg.duration_s  # se factura aunque se descarte
                 if people.has_people(raw, cfg):
@@ -68,11 +70,12 @@ def _from_veo(product_id: str, product: dict, cfg: BrollConfig,
                 })
                 aceptado = True
                 break
-            if not aceptado:
-                logger.warning("Broll %d descartado (sin versión limpia).", i + 1)
+            if not aceptado and not errores:
+                errores.append(f"Broll {i + 1}: sin versión sin personas tras "
+                               f"{cfg.max_retries} reintentos.")
             if len(clips) >= cfg.n_brolls:
                 break
-    return clips, seconds
+    return clips, seconds, errores
 
 
 def _download(url: str, dest: Path) -> Path:
@@ -142,10 +145,16 @@ def generate_brolls(product_id: str, product: dict, *, source: str = "veo",
     on_progress = on_progress or _noop
     source = source if source in ("veo", "uploaded") else "veo"
 
+    errores: list[str] = []
     if source == "uploaded":
         clips, seconds = _from_uploaded(product_id, product, cfg, on_progress)
     else:
-        clips, seconds = _from_veo(product_id, product, cfg, on_progress)
+        clips, seconds, errores = _from_veo(product_id, product, cfg, on_progress)
+
+    # Si NO salió ningún clip, propaga el motivo real (falta key, billing, filtro…).
+    if not clips:
+        detalle = errores[-1] if errores else "no se produjo ningún clip."
+        raise RuntimeError(f"No se generó ningún broll: {detalle}")
 
     cost = seconds * cfg.price_per_sec if source == "veo" else 0.0
     logger.info("Brolls '%s' producto %s: %d clips, %.0fs, coste estimado $%.2f",
@@ -155,4 +164,4 @@ def generate_brolls(product_id: str, product: dict, *, source: str = "veo",
     on_progress(cfg.n_brolls, cfg.n_brolls, "Listo.")
     return {"product_id": product_id, "clips": clips, "cost_usd": round(cost, 4),
             "seconds_total": round(seconds, 2), "source": source,
-            "model": cfg.model, "metadata": meta}
+            "model": cfg.model, "errores": errores, "metadata": meta}
