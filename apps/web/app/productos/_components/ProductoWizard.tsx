@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
@@ -127,6 +127,12 @@ export function ProductoWizard({ producto }: { producto?: Producto }) {
   const [genEstado, setGenEstado] = useState<string>("");
   const [imgEstado, setImgEstado] = useState<string>("");
   const [avatarEstado, setAvatarEstado] = useState<string>("");
+  const [investigandoAvatar, setInvestigandoAvatar] = useState<boolean>(false);
+  // Sondeo del avatar: timer + cerrojo síncrono + bandera de montado, para no
+  // fugar el intervalo ni hacer setState sobre un componente ya desmontado.
+  const avatarTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const avatarLockRef = useRef<boolean>(false);
+  const montadoRef = useRef<boolean>(true);
   const [angulosEstado, setAngulosEstado] = useState<string>("");
   const [ganchosEstado, setGanchosEstado] = useState<Record<string, string>>({});
   const [ofertaEstado, setOfertaEstado] = useState<string>("");
@@ -144,6 +150,16 @@ export function ProductoWizard({ producto }: { producto?: Producto }) {
   const [generandoBrolls, setGenerandoBrolls] = useState<boolean>(false);
 
   const esNuevo = !p.id;
+
+  // Marca el montaje y limpia el sondeo del avatar al desmontar (evita la fuga
+  // del intervalo y setState sobre un componente ya desmontado).
+  useEffect(() => {
+    montadoRef.current = true;
+    return () => {
+      montadoRef.current = false;
+      if (avatarTimerRef.current) clearInterval(avatarTimerRef.current);
+    };
+  }, []);
 
   function setCampo(campo: keyof Producto, valor: unknown) {
     setP((prev) => ({ ...prev, [campo]: valor }));
@@ -383,8 +399,21 @@ export function ProductoWizard({ producto }: { producto?: Producto }) {
     }
   }
 
+  // Detiene el sondeo del avatar y suelta el cerrojo (idempotente).
+  function pararAvatar() {
+    if (avatarTimerRef.current) {
+      clearInterval(avatarTimerRef.current);
+      avatarTimerRef.current = null;
+    }
+    avatarLockRef.current = false;
+    if (montadoRef.current) setInvestigandoAvatar(false);
+  }
+
   async function investigarAvatar() {
-    setAvatarEstado("Investigando en la web (Gemini + Google Search)… puede tardar.");
+    if (avatarLockRef.current) return; // cerrojo SÍNCRONO (evita doble lanzamiento)
+    avatarLockRef.current = true;
+    setInvestigandoAvatar(true);
+    setAvatarEstado("Investigando en la web (Gemini + Google Search)… puede tardar ~1 min.");
     try {
       const res = await fetch("/api/avatar", {
         method: "POST",
@@ -392,17 +421,65 @@ export function ProductoWizard({ producto }: { producto?: Producto }) {
         body: JSON.stringify({ producto: p }),
       });
       if (!res.ok) {
-        setAvatarEstado("⚠️ " + (await mensajeDeError(res)));
+        if (montadoRef.current) setAvatarEstado("⚠️ " + (await mensajeDeError(res)));
+        pararAvatar();
         return;
       }
-      const data = await res.json();
-      setP((prev) => ({ ...prev, avatar: data.avatar }));
-      setAvatarEstado(
-        `✓ Investigación lista (${data.avatar.fuentes?.length ?? 0} fuentes). Revisa y ajusta.`,
-      );
+      const { job_id } = (await res.json()) as { job_id: string };
+      pollAvatar(job_id);
     } catch (e) {
-      setAvatarEstado("⚠️ " + errorDeRed(e));
+      if (montadoRef.current) setAvatarEstado("⚠️ " + errorDeRed(e));
+      pararAvatar();
     }
+  }
+
+  function pollAvatar(jobId: string) {
+    if (avatarTimerRef.current) clearInterval(avatarTimerRef.current); // limpia previo
+    let intentos = 0;
+    let faltantes = 0; // 404 seguidos (el proceso pudo reiniciar): tolera algunos
+    const MAX = 90; // ~4.5 min: cubre el peor caso del servidor (2 llamadas lentas)
+    avatarTimerRef.current = setInterval(async () => {
+      intentos += 1;
+      if (intentos > MAX) {
+        if (montadoRef.current)
+          setAvatarEstado("⚠️ La investigación tardó demasiado. Vuelve a intentarlo.");
+        pararAvatar();
+        return;
+      }
+      try {
+        const r = await fetch(`/api/avatar/${jobId}`, { cache: "no-store" });
+        if (r.status === 404) {
+          faltantes += 1;
+          if (faltantes >= 3) {
+            if (montadoRef.current) setAvatarEstado("⚠️ " + (await mensajeDeError(r)));
+            pararAvatar();
+          }
+          return;
+        }
+        faltantes = 0;
+        if (!r.ok) return; // transitorio: reintenta en el próximo tick
+        const j = (await r.json()) as {
+          status: string;
+          avatar?: Avatar | null;
+          error?: string | null;
+        };
+        if (j.status === "done" && j.avatar) {
+          if (montadoRef.current) {
+            setP((prev) => ({ ...prev, avatar: j.avatar as Avatar }));
+            setAvatarEstado(
+              `✓ Investigación lista (${j.avatar.fuentes?.length ?? 0} fuentes). Revisa y ajusta.`,
+            );
+          }
+          pararAvatar();
+        } else if (j.status === "error") {
+          if (montadoRef.current) setAvatarEstado("⚠️ " + (j.error ?? "Error en la investigación"));
+          pararAvatar();
+        }
+        // status === "running" → sigue sondeando
+      } catch {
+        /* corte de red: reintenta en el próximo tick */
+      }
+    }, 3000);
   }
 
   async function guardar(): Promise<Producto | null> {
@@ -687,9 +764,10 @@ export function ProductoWizard({ producto }: { producto?: Producto }) {
           <div className="flex flex-wrap items-center gap-3 rounded-xl border border-[var(--hairline)] glass p-4">
             <button
               onClick={investigarAvatar}
-              className="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-white"
+              disabled={investigandoAvatar}
+              className="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
             >
-              🔎 Investigar avatar (búsqueda web)
+              {investigandoAvatar ? "Investigando…" : "🔎 Investigar avatar (búsqueda web)"}
             </button>
             <span className="text-sm text-muted">{avatarEstado}</span>
           </div>

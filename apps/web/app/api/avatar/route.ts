@@ -3,11 +3,13 @@ import {
   AVATAR_SECCIONES,
   CATEGORIAS_OBJECION_COMPRA,
   CATEGORIAS_OBJECION_USO,
+  type Avatar,
   type ObjecionCompra,
   type ObjecionUso,
   type Producto,
 } from "@plataforma/products";
 import { investigarConGemini } from "@/lib/ai/textProvider";
+import { crearAvatarJob, terminarAvatarJob, fallarAvatarJob } from "@/lib/ai/avatarJobs";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -65,13 +67,25 @@ Devuelve SOLO un objeto JSON con esta forma exacta (sin texto adicional ni fence
 ${estructuraJson()}`;
 }
 
-// La IA a veces devuelve las viñetas corridas en una sola línea ("- a - b - c").
-// Garantiza un salto de línea real antes de cada viñeta para que se lea ordenado.
+// Normaliza una sección del avatar a viñetas ordenadas (una idea por línea).
+// Gemini suele devolver la sección como un ARRAY JSON de viñetas; con String()
+// se uniría por comas ("- a,- b"). Aquí se maneja el array y también los casos
+// de lista corrida en un solo string.
 function formatearVinetas(texto: unknown): string {
+  // Caso principal: array JSON → una viñeta por elemento.
+  if (Array.isArray(texto)) {
+    return texto
+      .map((x) => String(x ?? "").trim().replace(/^[-•▪●‣]\s*/, ""))
+      .filter(Boolean)
+      .map((l) => `- ${l}`)
+      .join("\n");
+  }
   let t = String(texto ?? "").replace(/\r\n/g, "\n").trim();
   if (!t) return t;
   // Viñetas unicode (•, ▪, ●, ‣) → nueva línea con "- ".
   t = t.replace(/\s*[•▪●‣]\s*/g, "\n- ");
+  // Separador de array serializado ("idea.,- idea" o "idea,- idea") → salto.
+  t = t.replace(/\s*,\s*-\s+/g, "\n- ");
   // Sin ningún salto pero con varias separaciones " - ": es una lista corrida.
   if (!t.includes("\n") && (t.match(/\s-\s/g)?.length ?? 0) >= 2) {
     t = t.replace(/\s+-\s+/g, "\n- ");
@@ -111,22 +125,12 @@ function normObjeciones(
     .filter((o) => o.objecion.length > 0);
 }
 
-export async function POST(req: Request) {
-  let body: Body;
-  try {
-    body = (await req.json()) as Body;
-  } catch {
-    return NextResponse.json({ error: "JSON inválido" }, { status: 400 });
-  }
-  if (!body?.producto?.nombre) {
-    return NextResponse.json({ error: "Falta el producto." }, { status: 400 });
-  }
-
+// Investiga el avatar (Gemini + Google Search). Tarda ~40-90s; por eso corre en
+// segundo plano. Devuelve el avatar o LANZA un Error con mensaje claro.
+async function ejecutarInvestigacion(producto: Producto): Promise<Avatar> {
   // Genera y parsea; valida los dos bloques nuevos. Un solo retry si falta alguno.
   async function intento(notaRetry = "") {
-    const { text, fuentes } = await investigarConGemini(
-      construirPrompt(body.producto, notaRetry),
-    );
+    const { text, fuentes } = await investigarConGemini(construirPrompt(producto, notaRetry));
     let sec: Record<string, unknown>;
     try {
       sec = parsearJson(text);
@@ -141,35 +145,22 @@ export async function POST(req: Request) {
     };
   }
 
-  let r;
-  try {
-    r = await intento();
-    const faltan: string[] = [];
-    if (r.compra.length === 0) faltan.push("objeciones_compra (BLOQUE A)");
-    if (r.uso.length === 0) faltan.push("objeciones_uso (BLOQUE B)");
-    if (faltan.length) {
-      // un único retry, nombrando el/los bloque(s) faltante(s)
-      r = await intento(`faltó ${faltan.join(" y ")}; devuélvelo(s) completo(s) con 5 a 8 objeciones cada uno.`);
-      const siguen: string[] = [];
-      if (r.compra.length === 0) siguen.push("objeciones_compra");
-      if (r.uso.length === 0) siguen.push("objeciones_uso");
-      if (siguen.length) {
-        return NextResponse.json(
-          { error: `La IA no devolvió: ${siguen.join(", ")} (tras 1 reintento). Intenta de nuevo.` },
-          { status: 502 },
-        );
-      }
-    }
-  } catch (e) {
-    console.error("[avatar] fallo:", e);
-    return NextResponse.json(
-      { error: e instanceof Error ? e.message : "Error en la investigación" },
-      { status: 502 },
-    );
+  let r = await intento();
+  const faltan: string[] = [];
+  if (r.compra.length === 0) faltan.push("objeciones_compra (BLOQUE A)");
+  if (r.uso.length === 0) faltan.push("objeciones_uso (BLOQUE B)");
+  if (faltan.length) {
+    // un único retry, nombrando el/los bloque(s) faltante(s)
+    r = await intento(`faltó ${faltan.join(" y ")}; devuélvelo(s) completo(s) con 5 a 8 objeciones cada uno.`);
+    const siguen: string[] = [];
+    if (r.compra.length === 0) siguen.push("objeciones_compra");
+    if (r.uso.length === 0) siguen.push("objeciones_uso");
+    if (siguen.length)
+      throw new Error(`La IA no devolvió: ${siguen.join(", ")} (tras 1 reintento). Intenta de nuevo.`);
   }
 
   const s = r.sec;
-  const avatar = {
+  return {
     compradores: formatearVinetas(s.compradores),
     deseos: formatearVinetas(s.deseos),
     demografia: formatearVinetas(s.demografia),
@@ -180,6 +171,29 @@ export async function POST(req: Request) {
     objeciones_uso: r.uso as ObjecionUso[],
     fuentes: r.fuentes,
   };
+}
 
-  return NextResponse.json({ avatar });
+// Lanza la investigación en SEGUNDO PLANO y responde al instante con un job_id.
+// La UI sondea /api/avatar/[jobId]. Así no depende del timeout del proxy.
+export async function POST(req: Request) {
+  let body: Body;
+  try {
+    body = (await req.json()) as Body;
+  } catch {
+    return NextResponse.json({ error: "JSON inválido" }, { status: 400 });
+  }
+  if (!body?.producto?.nombre) {
+    return NextResponse.json({ error: "Falta el producto." }, { status: 400 });
+  }
+
+  const jobId = crearAvatarJob();
+  // Sin await: el trabajo sigue tras responder (servidor Node de larga vida).
+  void ejecutarInvestigacion(body.producto)
+    .then((avatar) => terminarAvatarJob(jobId, avatar))
+    .catch((e) => {
+      console.error("[avatar] fallo:", e);
+      fallarAvatarJob(jobId, e instanceof Error ? e.message : "Error en la investigación");
+    });
+
+  return NextResponse.json({ job_id: jobId }, { status: 202 });
 }
