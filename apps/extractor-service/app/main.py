@@ -388,6 +388,59 @@ async def hook_thumb(session: str, i: int) -> FileResponse:
     return FileResponse(path=str(thumb), media_type="image/jpeg")
 
 
+# ── B-rolls (clips de fondo para anuncios) — módulo aislado app/brolls/ ──
+@app.post("/api/brolls")
+async def crear_brolls(payload: dict = Body(...)) -> JSONResponse:
+    """Lanza una tanda de B-rolls para un producto (job en segundo plano).
+
+    Body: {producto: {...datos guardados...}, source: "veo"|"uploaded", config?: {...}}
+    """
+    from app.brolls import runner
+
+    producto = payload.get("producto")
+    if not isinstance(producto, dict) or not producto.get("id"):
+        raise HTTPException(status_code=400, detail="Falta 'producto' (con id) en el cuerpo.")
+    source = payload.get("source") or "veo"
+    if source not in ("veo", "uploaded"):
+        raise HTTPException(status_code=400, detail="source inválido (veo|uploaded).")
+    if source == "uploaded" and not (producto.get("videos") or []):
+        raise HTTPException(status_code=400,
+                            detail="El producto no tiene videos subidos para recortar.")
+    overrides = payload.get("config") if isinstance(payload.get("config"), dict) else {}
+    job_id = runner.start(str(producto["id"]), producto, source, overrides)
+    return JSONResponse({"job_id": job_id, "source": source}, status_code=201)
+
+
+@app.get("/api/brolls/jobs/{job_id}")
+async def estado_brolls(job_id: str) -> JSONResponse:
+    """Estado de la tanda de B-rolls; al terminar incluye los clips con su URL."""
+    from app.brolls import runner
+
+    st = runner.status(job_id)
+    if not st:
+        raise HTTPException(status_code=404, detail="Job no encontrado.")
+    out = {k: st.get(k) for k in ("status", "progress", "done", "total", "message",
+                                  "product_id", "source", "error")}
+    res = st.get("result")
+    if res:
+        pid = res["product_id"]
+        out["cost_usd"] = res["cost_usd"]
+        out["clips"] = [{**c, "url": f"/api/brolls/{pid}/file/{c['file']}"}
+                        for c in res["clips"]]
+    return JSONResponse(out)
+
+
+@app.get("/api/brolls/{product_id}/file/{name}")
+async def broll_file(product_id: str, name: str) -> FileResponse:
+    """Sirve un archivo de B-roll de un producto."""
+    from app.brolls import store
+
+    p = store.file_path(product_id, name)
+    if not p:
+        raise HTTPException(status_code=404, detail="B-roll no encontrado.")
+    return FileResponse(path=str(p), media_type="video/mp4")
+
+
 @app.post("/api/jobs")
 async def create_job(
     files: list[UploadFile] = File(...),
