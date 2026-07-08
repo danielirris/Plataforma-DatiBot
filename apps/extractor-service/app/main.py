@@ -180,6 +180,91 @@ async def _save_upload(
     return tmp, file.filename or f"video{ext}"
 
 
+async def _download_url(url: str, max_bytes: int, allowed: set[str] = ALLOWED_EXT) -> tuple[Path, str]:
+    """Descarga un video desde una URL pública a un temporal (streaming, con tope).
+
+    Se usa cuando el editor recibe los videos ADJUNTOS al producto (por URL del
+    servidor de archivos) en vez de una subida directa.
+    """
+    import urllib.parse
+    import urllib.request
+
+    name = Path(urllib.parse.urlparse(url).path).name or "video.mp4"
+    ext = Path(name).suffix.lower()
+    if ext not in allowed:
+        ext = ".mp4"
+        name = f"{Path(name).stem or 'video'}.mp4"
+    tmp = Path(tempfile.mkstemp(suffix=ext, dir=str(settings.storage_dir))[1])
+
+    def _do() -> int:
+        size = 0
+        req = urllib.request.Request(url, headers={"User-Agent": "datibot-editor"})
+        with urllib.request.urlopen(req, timeout=120) as resp, open(tmp, "wb") as out:
+            while True:
+                chunk = resp.read(1024 * 1024)
+                if not chunk:
+                    break
+                size += len(chunk)
+                if size > max_bytes:
+                    raise ValueError(f"supera el máximo de {settings.max_upload_mb} MB")
+                out.write(chunk)
+        return size
+
+    try:
+        size = await run_in_threadpool(_do)
+    except Exception as exc:  # noqa: BLE001
+        tmp.unlink(missing_ok=True)
+        raise HTTPException(status_code=502, detail=f"No se pudo descargar '{name}' ({exc}).")
+    if size == 0:
+        tmp.unlink(missing_ok=True)
+        raise HTTPException(status_code=400, detail=f"'{name}' descargado vacío.")
+    return tmp, name
+
+
+@app.post("/api/jobs/from-urls")
+async def create_job_from_urls(payload: dict = Body(...)) -> JSONResponse:
+    """Crea un job a partir de URLs de video (los adjuntos al producto).
+
+    El editor de Datibot manda aquí los videos que el usuario eligió del producto;
+    el servicio los descarga y corre el mismo pipeline que una subida.
+    """
+    urls = [u for u in (payload.get("video_urls") or []) if isinstance(u, str) and u.strip()]
+    if not urls:
+        raise HTTPException(status_code=400, detail="No se enviaron videos.")
+    mode = payload.get("mode") or "full"
+    if mode not in ("montage", "ad", "full"):
+        raise HTTPException(status_code=400, detail="Modo inválido (montage|ad|full).")
+    num_clips = max(0, min(20, int(payload.get("num_clips") or 0)))
+    use_music = bool(payload.get("use_music", False))
+    use_intro = bool(payload.get("use_intro", False))
+
+    settings.ensure_dirs()
+    max_bytes = settings.max_upload_mb * 1024 * 1024
+    saved: list[tuple[Path, str]] = []
+    intro_saved: tuple[Path, str] | None = None
+    try:
+        for url in urls[:20]:
+            saved.append(await _download_url(url, max_bytes))
+        if use_intro:
+            whoosh = library.ensure_sfx().get("whoosh")
+            if whoosh and whoosh.exists():
+                itmp = Path(tempfile.mkstemp(suffix=whoosh.suffix,
+                                             dir=str(settings.storage_dir))[1])
+                shutil.copy(whoosh, itmp)
+                intro_saved = (itmp, f"intro{whoosh.suffix}")
+    except HTTPException:
+        for tmp, _ in saved:
+            tmp.unlink(missing_ok=True)
+        if intro_saved:
+            intro_saved[0].unlink(missing_ok=True)
+        raise
+
+    job_id = manager.submit(saved, [], mode, None, num_clips, [],
+                            use_music=use_music, intro_tmp=intro_saved)
+    return JSONResponse({"job_id": job_id, "n_videos": len(saved), "mode": mode},
+                        status_code=201)
+
+
 @app.post("/api/jobs")
 async def create_job(
     files: list[UploadFile] = File(...),
