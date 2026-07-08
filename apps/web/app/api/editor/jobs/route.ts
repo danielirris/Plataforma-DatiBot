@@ -13,6 +13,9 @@ export async function POST(req: Request) {
     use_music?: boolean;
     use_intro?: boolean;
     style?: string;
+    subtitle_style?: string;
+    highlight?: string;
+    font?: string;
   };
   try {
     body = (await req.json()) as typeof body;
@@ -34,6 +37,9 @@ export async function POST(req: Request) {
         use_music: !!body.use_music,
         use_intro: !!body.use_intro,
         style: body.style ?? "",
+        subtitle_style: body.subtitle_style ?? "",
+        highlight: body.highlight ?? "",
+        font: body.font ?? "Anton",
         mode: "full",
       }),
     });

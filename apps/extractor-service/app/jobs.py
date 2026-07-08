@@ -111,6 +111,7 @@ class JobManager:
         self._use_music: dict[str, bool] = {}  # música de fondo opcional por job
         self._intro: dict[str, Path] = {}  # sonido de inicio opcional por job
         self._style: dict[str, str] = {}  # estilo de edición por job (5 estilos)
+        self._params: dict[str, dict] = {}  # parámetros finos (subtítulo/color/fuente)
         self._lock = threading.Lock()
         self._queue: "queue.Queue[tuple[str, str]]" = queue.Queue()
         self._worker = threading.Thread(target=self._run_worker, daemon=True)
@@ -148,6 +149,10 @@ class JobManager:
                 use_music = bool(row["use_music"]) if "use_music" in cols and row["use_music"] is not None else True
                 intro = Path(row["intro"]) if "intro" in cols and row["intro"] else None
                 style = row["style"] if "style" in cols and row["style"] else ""
+                try:
+                    params = json.loads(row["params"]) if "params" in cols and row["params"] else None
+                except Exception:  # noqa: BLE001
+                    params = None
                 with self._lock:
                     self._jobs[job.id] = job
                     self._sources[job.id] = sources
@@ -164,6 +169,8 @@ class JobManager:
                         self._intro[job.id] = intro
                     if style:
                         self._style[job.id] = style
+                    if params:
+                        self._params[job.id] = params
                 self._store.update(row["id"], {"status": "queued", "progress": 0,
                                                "message": "Reanudado tras reinicio"})
                 self._queue.put(("job", job.id))
@@ -183,6 +190,7 @@ class JobManager:
         use_music: bool = True,
         intro_tmp: tuple[Path, str] | None = None,
         style: str = "",
+        params: dict | None = None,
     ) -> str:
         """Registra un nuevo job, mueve los uploads a su carpeta y lo encola.
 
@@ -252,11 +260,13 @@ class JobManager:
                 self._intro[job_id] = intro_path
             if style:
                 self._style[job_id] = style
+            if params:
+                self._params[job_id] = params
         self._store.save(id=job_id, filenames=filenames, status=JobStatus.QUEUED.value,
                          created_at=job.created_at, sources=paths, music=music_paths,
                          mode=mode, voz=voz_path, num_clips_req=int(num_clips or 0),
                          guias=guia_paths, use_music=bool(use_music), intro=intro_path,
-                         style=style)
+                         style=style, params=params)
         self._queue.put(("job", job_id))
         logger.info("Job %s encolado (modo=%s, %d videos, %d pistas)",
                     job_id, mode, len(paths), len(music_paths))
@@ -488,7 +498,8 @@ class JobManager:
         """Libera el estado en memoria asociado a un job ya procesado."""
         with self._lock:
             for d in (self._sources, self._music, self._guias, self._voz,
-                      self._req_clips, self._use_music, self._intro, self._style):
+                      self._req_clips, self._use_music, self._intro, self._style,
+                      self._params):
                 d.pop(job_id, None)
 
     def _montage_stage(
@@ -680,6 +691,12 @@ class JobManager:
             # Con estilo elegido: sus lineamientos guían a la IA. Sin estilo
             # (flujo viejo): el prompt genérico + paleta aleatoria, como antes.
             prompt_text = styles.style_prompt(style_id) if usar_estilo else library.read_prompt()
+            # Parámetros finos del editor (overrides sobre el estilo).
+            params = self._params.get(job_id, {}) or {}
+            sub_over = str(params.get("subtitle_style") or "").strip().lower()
+            highlight = str(params.get("highlight") or "").strip()
+            import re as _re
+            font = str(params.get("font") or "Anton").strip()
             for v in videos:
                 v.plan = analyze.plan_ad(v.words, v.duration, prompt_text)
                 seed = f"{settings.seed}:{job_id}:{v.id}"
@@ -690,6 +707,11 @@ class JobManager:
                     pal = analyze.random_palette(seed)
                     v.plan["palette"] = pal
                     v.plan["accent"] = pal[0]
+                # Overrides finos elegidos por el usuario (mandan sobre el estilo).
+                if sub_over in {"pop", "karaoke", "box", "punch", "color"}:
+                    v.plan["subtitle_style"] = sub_over
+                if _re.fullmatch(r"#[0-9A-Fa-f]{6}", highlight):
+                    v.plan["highlight"] = highlight.upper()
 
             self._update(job_id, status=JobStatus.RENDERING,
                          message="Generando proyecto Remotion (anuncio)")
@@ -698,7 +720,7 @@ class JobManager:
                 cta_texto=settings.cta_texto, whatsapp=settings.whatsapp_link,
                 vol=settings.musica_volumen, vol_duck=settings.musica_volumen_ducking,
                 sfx=sfx, guides=self._guias.get(job_id, []),
-                intro=intro,
+                intro=intro, font=font,
             )
             # Empaquetar el proyecto editable (.zip).
             shutil.make_archive(str(output_dir / "anuncio-remotion"), "zip",

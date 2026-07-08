@@ -62,6 +62,8 @@ class JobStore:
             self._conn.execute("ALTER TABLE jobs ADD COLUMN intro TEXT")
         if "style" not in cols:
             self._conn.execute("ALTER TABLE jobs ADD COLUMN style TEXT DEFAULT ''")
+        if "params" not in cols:
+            self._conn.execute("ALTER TABLE jobs ADD COLUMN params TEXT")
         self._conn.commit()
 
     def save(
@@ -80,6 +82,7 @@ class JobStore:
         use_music: bool = True,
         intro: Path | None = None,
         style: str = "",
+        params: dict | None = None,
     ) -> None:
         """Inserta (o reemplaza) un job recién creado. ``music`` es una lista de pistas."""
         with self._lock:
@@ -87,8 +90,8 @@ class JobStore:
                 "INSERT OR REPLACE INTO jobs "
                 "(id, filenames, status, progress, message, error, aviso, n_clips, "
                 " created_at, output_dir, sources, music, mode, voz, num_clips_req, guias, "
-                " use_music, intro, style) "
-                "VALUES (?, ?, ?, 0, 'En cola', '', '', 0, ?, NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                " use_music, intro, style, params) "
+                "VALUES (?, ?, ?, 0, 'En cola', '', '', 0, ?, NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                 (
                     id, json.dumps(filenames), status, created_at,
                     json.dumps([str(p) for p in sources]),
@@ -96,6 +99,7 @@ class JobStore:
                     str(voz) if voz else None, int(num_clips_req),
                     json.dumps([str(p) for p in (guias or [])]),
                     int(bool(use_music)), str(intro) if intro else None, style or "",
+                    json.dumps(params) if params else None,
                 ),
             )
             self._conn.commit()

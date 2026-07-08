@@ -19,6 +19,26 @@ const ESTILOS: { id: string; nombre: string; desc: string }[] = [
   { id: "relato_doc", nombre: "Relato Doc", desc: "Storytelling documental. Testimonios, historias, casos." },
 ];
 
+// Tipo de subtítulo (título/texto). "" = automático según el estilo elegido.
+const SUBTITULOS: { id: string; nombre: string }[] = [
+  { id: "", nombre: "Automático (según el estilo)" },
+  { id: "pop", nombre: "Pop (rebote)" },
+  { id: "karaoke", nombre: "Karaoke (se pinta con la voz)" },
+  { id: "box", nombre: "Box (etiqueta de color)" },
+  { id: "punch", nombre: "Punch (golpe de escala)" },
+  { id: "color", nombre: "Color (solo cambia de color)" },
+];
+
+// Tipografías (módulos de @remotion/google-fonts).
+const FUENTES: { id: string; nombre: string }[] = [
+  { id: "Anton", nombre: "Anton (condensada, por defecto)" },
+  { id: "BebasNeue", nombre: "Bebas Neue" },
+  { id: "Oswald", nombre: "Oswald" },
+  { id: "Montserrat", nombre: "Montserrat" },
+  { id: "Poppins", nombre: "Poppins" },
+  { id: "ArchivoBlack", nombre: "Archivo Black" },
+];
+
 const ESTADO_TXT: Record<string, string> = {
   queued: "En cola…",
   extracting: "Descargando y extrayendo audio…",
@@ -48,6 +68,10 @@ export function EditorVideos({ productos }: { productos: ProductoItem[] }) {
   );
   const [numClips, setNumClips] = useState<number>(5);
   const [estilo, setEstilo] = useState<string>("modo_bestia");
+  const [subtitulo, setSubtitulo] = useState<string>("");
+  const [resaltado, setResaltado] = useState<string>("#10b981");
+  const [usarResaltado, setUsarResaltado] = useState<boolean>(false);
+  const [fuente, setFuente] = useState<string>("Anton");
   const [useMusic, setUseMusic] = useState<boolean>(false);
   const [useIntro, setUseIntro] = useState<boolean>(false);
 
@@ -90,6 +114,9 @@ export function EditorVideos({ productos }: { productos: ProductoItem[] }) {
           video_urls: urls,
           num_clips: numClips,
           style: estilo,
+          subtitle_style: subtitulo,
+          highlight: usarResaltado ? resaltado : "",
+          font: fuente,
           use_music: useMusic,
           use_intro: useIntro,
         }),
@@ -228,6 +255,61 @@ export function EditorVideos({ productos }: { productos: ProductoItem[] }) {
               </button>
             );
           })}
+        </div>
+      </div>
+
+      {/* Parámetros de los subtítulos */}
+      <div className="mt-4 grid grid-cols-1 gap-4 rounded-2xl border border-[var(--hairline)] glass p-5 sm:grid-cols-2">
+        <label className="flex flex-col gap-1 text-sm">
+          <span className="text-muted">Tipo de subtítulo</span>
+          <select
+            value={subtitulo}
+            onChange={(e) => setSubtitulo(e.target.value)}
+            className="rounded-lg border border-[var(--hairline)] bg-[var(--field)] px-3 py-2 text-text outline-none focus:border-accent"
+          >
+            {SUBTITULOS.map((s) => (
+              <option key={s.id} value={s.id}>
+                {s.nombre}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="flex flex-col gap-1 text-sm">
+          <span className="text-muted">Tipografía de subtítulos</span>
+          <select
+            value={fuente}
+            onChange={(e) => setFuente(e.target.value)}
+            className="rounded-lg border border-[var(--hairline)] bg-[var(--field)] px-3 py-2 text-text outline-none focus:border-accent"
+          >
+            {FUENTES.map((f) => (
+              <option key={f.id} value={f.id}>
+                {f.nombre}
+              </option>
+            ))}
+          </select>
+        </label>
+        <div className="flex flex-col gap-1 text-sm sm:col-span-2">
+          <span className="text-muted">Color de resaltado de subtítulos</span>
+          <div className="flex items-center gap-3">
+            <label className="flex items-center gap-2 text-xs text-muted">
+              <input
+                type="checkbox"
+                checked={usarResaltado}
+                onChange={(e) => setUsarResaltado(e.target.checked)}
+              />
+              Fijar color
+            </label>
+            <input
+              type="color"
+              value={resaltado}
+              disabled={!usarResaltado}
+              onChange={(e) => setResaltado(e.target.value)}
+              className="h-8 w-14 cursor-pointer rounded border border-[var(--hairline)] bg-[var(--field)] disabled:opacity-40"
+            />
+            <span className="text-xs text-muted">
+              {usarResaltado ? resaltado : "Automático (según el estilo)"}
+            </span>
+          </div>
         </div>
       </div>
 

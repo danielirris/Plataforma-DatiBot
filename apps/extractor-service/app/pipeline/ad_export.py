@@ -70,6 +70,7 @@ def build_ad_project(
     sfx: dict[str, Path] | None = None,
     guides: list[Path] | None = None,
     intro: Path | None = None,
+    font: str = "Anton",
 ) -> Path:
     """Escribe el proyecto Remotion del anuncio. Devuelve la carpeta del proyecto."""
     from app.pipeline import audio  # import perezoso (evita ciclos)
@@ -162,7 +163,7 @@ def build_ad_project(
                                   encoding="utf-8")
 
     (src / "index.ts").write_text(_INDEX_TS, encoding="utf-8")
-    (src / "font.ts").write_text(_FONT_TS, encoding="utf-8")
+    (src / "font.ts").write_text(_font_ts(font), encoding="utf-8")
     (src / "Root.tsx").write_text(_ROOT_TSX, encoding="utf-8")
     (src / "Ad.tsx").write_text(_AD_TSX, encoding="utf-8")
     (src / "Subtitles.tsx").write_text(_SUBTITLES_TSX, encoding="utf-8")
@@ -194,9 +195,16 @@ registerRoot(RemotionRoot);
 """
 
 # Fuente bonita y de impacto (se hornea en el render, sin internet).
-_FONT_TS = """\
-import { loadFont } from '@remotion/google-fonts/Anton';
-export const { fontFamily } = loadFont();
+# Fuentes de subtítulo permitidas (módulos de @remotion/google-fonts).
+ALLOWED_FONTS = {"Anton", "BebasNeue", "Oswald", "Montserrat", "Poppins", "ArchivoBlack"}
+
+
+def _font_ts(font: str = "Anton") -> str:
+    """font.ts con la fuente elegida (fallback Anton) + pila de emoji a color."""
+    mod = font if font in ALLOWED_FONTS else "Anton"
+    return f"""\
+import {{ loadFont }} from '@remotion/google-fonts/{mod}';
+export const {{ fontFamily }} = loadFont();
 // Pila de fuentes de emoji a color (para que NUNCA salga el cuadrado 'tofu').
 export const emojiFamily = '"Apple Color Emoji","Noto Color Emoji","Segoe UI Emoji","Twemoji Mozilla",sans-serif';
 """
@@ -392,7 +400,7 @@ export const Subtitles: React.FC<{ words: W[]; plan?: any }> = ({ words, plan })
   const frame = useCurrentFrame();
   const t = frame / fps;
   const lines = useMemo(() => buildLines(words || []), [words]);
-  const accent = plan?.accent || '#FFD400';
+  const accent = plan?.highlight || plan?.accent || '#FFD400';
   const style = plan?.subtitle_style || 'pop';
   const intensidad = (plan?.intensidad ?? 70) / 100;
   const emphasis = useMemo(() => new Set((plan?.emphasis || []).map((w: string) => clean(w))), [plan]);

@@ -238,6 +238,11 @@ async def create_job_from_urls(payload: dict = Body(...)) -> JSONResponse:
     use_music = bool(payload.get("use_music", False))
     use_intro = bool(payload.get("use_intro", False))
     style = str(payload.get("style") or "")
+    params = {
+        "subtitle_style": str(payload.get("subtitle_style") or ""),
+        "highlight": str(payload.get("highlight") or ""),
+        "font": str(payload.get("font") or "Anton"),
+    }
 
     settings.ensure_dirs()
     max_bytes = settings.max_upload_mb * 1024 * 1024
@@ -261,7 +266,8 @@ async def create_job_from_urls(payload: dict = Body(...)) -> JSONResponse:
         raise
 
     job_id = manager.submit(saved, [], mode, None, num_clips, [],
-                            use_music=use_music, intro_tmp=intro_saved, style=style)
+                            use_music=use_music, intro_tmp=intro_saved, style=style,
+                            params=params)
     return JSONResponse({"job_id": job_id, "n_videos": len(saved), "mode": mode},
                         status_code=201)
 
