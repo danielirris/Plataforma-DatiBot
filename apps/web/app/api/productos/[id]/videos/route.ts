@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getProduct } from "@plataforma/products";
+import { getProduct, saveProduct, type VideoProducto } from "@plataforma/products";
 import { leerVpsConfig, faltantesVps, subirImagen } from "@/lib/vps/upload";
 
 export const runtime = "nodejs";
@@ -39,9 +39,18 @@ export async function POST(req: Request, { params }: Ctx) {
   try {
     const buf = Buffer.from(await file.arrayBuffer());
     const url = await subirImagen(buf, nombre, vps);
-    return NextResponse.json({
-      video: { url, nombre, original: file.name, bytes: buf.length },
-    });
+    const video: VideoProducto = { url, nombre, original: file.name, bytes: buf.length };
+
+    // Persistir YA en el producto (no esperar a "Guardar"): así el generador de
+    // brolls —que lee del store— ve el video, y no se pierde al recargar.
+    if (producto) {
+      try {
+        await saveProduct({ ...producto, videos: [...(producto.videos ?? []), video] });
+      } catch (e) {
+        console.error("[videos] no se pudo persistir el video en el producto:", e);
+      }
+    }
+    return NextResponse.json({ video });
   } catch (e) {
     console.error("[videos] fallo:", e);
     return NextResponse.json(
