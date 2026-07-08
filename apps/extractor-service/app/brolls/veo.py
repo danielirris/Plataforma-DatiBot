@@ -15,8 +15,14 @@ _POLL_EVERY = 10           # segundos entre sondeos de la operación
 _POLL_TIMEOUT = 600        # techo de espera por clip (10 min)
 
 # Parámetros que el SDK acepta al construir pero que la Gemini API (AI Studio)
-# puede rechazar en runtime; se quitan solos si sale "X parameter is not supported".
-_NO_SOPORTADO = re.compile(r"([a-zA-Z_]+) parameter is not supported")
+# puede rechazar en runtime. Cubre los dos formatos de error que devuelve Veo:
+#   "resolution parameter is not supported"
+#   "`negativePrompt` isn't supported by this model"
+_NO_SOPORTADO = re.compile(r"`?([a-zA-Z_]+)`? (?:parameter is not supported|isn't supported)")
+
+# Nombres camelCase de la API -> snake_case del SDK, para poder quitarlos del kw.
+_CAMEL_A_SNAKE = {"negativePrompt": "negative_prompt", "aspectRatio": "aspect_ratio",
+                  "durationSeconds": "duration_seconds", "resolution": "resolution"}
 
 
 def generate_clip(prompt: str, cfg: BrollConfig, dest: Path,
@@ -37,19 +43,17 @@ def generate_clip(prompt: str, cfg: BrollConfig, dest: Path,
         raise RuntimeError("Falta GEMINI_API_KEY para llamar a Veo.")
     client = genai.Client(api_key=key)
 
-    # Solo los parámetros soportados por la Gemini API. ``resolution`` NO lo es
-    # (el tier Lite entrega 720p por defecto), así que no se envía.
+    # Solo los parámetros soportados por la Gemini API (AI Studio) para Veo Lite.
+    # ``resolution`` NO lo es (Lite da 720p por defecto) y ``negative_prompt``
+    # tampoco: los negativos van dentro del texto del prompt.
+    _ = negative  # los negativos ya están incrustados en el prompt
     kw: dict[str, str] = {"aspect_ratio": cfg.aspect_ratio,
                           "duration_seconds": str(cfg.duration_s)}
     last: Exception | None = None
     intento = 0
     while intento < _API_RETRIES:
         try:
-            try:
-                config = types.GenerateVideosConfig(**kw, negative_prompt=negative)
-            except TypeError:  # el modelo/SDK no acepta negative_prompt
-                config = types.GenerateVideosConfig(**kw)
-
+            config = types.GenerateVideosConfig(**kw)
             op = client.models.generate_videos(model=cfg.model, prompt=prompt, config=config)
             waited = 0
             while not op.done and waited < _POLL_TIMEOUT:
@@ -70,9 +74,10 @@ def generate_clip(prompt: str, cfg: BrollConfig, dest: Path,
             return dest
         except Exception as e:  # noqa: BLE001
             m = _NO_SOPORTADO.search(str(e))
-            if m and m.group(1) in kw:
-                logger.warning("Veo: quito parámetro no soportado '%s' y reintento", m.group(1))
-                kw.pop(m.group(1))
+            param = _CAMEL_A_SNAKE.get(m.group(1), m.group(1)) if m else None
+            if param and param in kw:
+                logger.warning("Veo: quito parámetro no soportado '%s' y reintento", param)
+                kw.pop(param)
                 continue  # no cuenta como intento
             last = e
             intento += 1
