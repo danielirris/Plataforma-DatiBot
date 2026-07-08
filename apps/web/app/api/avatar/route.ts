@@ -65,6 +65,25 @@ Devuelve SOLO un objeto JSON con esta forma exacta (sin texto adicional ni fence
 ${estructuraJson()}`;
 }
 
+// La IA a veces devuelve las viñetas corridas en una sola línea ("- a - b - c").
+// Garantiza un salto de línea real antes de cada viñeta para que se lea ordenado.
+function formatearVinetas(texto: unknown): string {
+  let t = String(texto ?? "").replace(/\r\n/g, "\n").trim();
+  if (!t) return t;
+  // Viñetas unicode (•, ▪, ●, ‣) → nueva línea con "- ".
+  t = t.replace(/\s*[•▪●‣]\s*/g, "\n- ");
+  // Sin ningún salto pero con varias separaciones " - ": es una lista corrida.
+  if (!t.includes("\n") && (t.match(/\s-\s/g)?.length ?? 0) >= 2) {
+    t = t.replace(/\s+-\s+/g, "\n- ");
+  }
+  // Viñeta pegada tras el fin de una frase: ". - Siguiente" → salto de línea.
+  t = t.replace(/([.;:!?»")\]])\s+-\s+(?=\S)/g, "$1\n- ");
+  // Limpieza: viñetas uniformes al inicio de línea y sin saltos triples.
+  t = t.replace(/^\s*-\s*/gm, "- ").replace(/\n{3,}/g, "\n\n").replace(/^\n+/, "");
+  if (!t.startsWith("- ") && t.includes("\n- ")) t = "- " + t;
+  return t;
+}
+
 function parsearJson(raw: string): Record<string, unknown> {
   let s = raw.trim();
   s = s.replace(/^```(?:json)?/i, "").replace(/```$/i, "").trim();
@@ -151,12 +170,12 @@ export async function POST(req: Request) {
 
   const s = r.sec;
   const avatar = {
-    compradores: String(s.compradores ?? ""),
-    deseos: String(s.deseos ?? ""),
-    demografia: String(s.demografia ?? ""),
-    otras_soluciones: String(s.otras_soluciones ?? ""),
-    curiosidad: String(s.curiosidad ?? ""),
-    mecanismo_unico: String(s.mecanismo_unico ?? ""),
+    compradores: formatearVinetas(s.compradores),
+    deseos: formatearVinetas(s.deseos),
+    demografia: formatearVinetas(s.demografia),
+    otras_soluciones: formatearVinetas(s.otras_soluciones),
+    curiosidad: formatearVinetas(s.curiosidad),
+    mecanismo_unico: formatearVinetas(s.mecanismo_unico),
     objeciones_compra: r.compra as ObjecionCompra[],
     objeciones_uso: r.uso as ObjecionUso[],
     fuentes: r.fuentes,

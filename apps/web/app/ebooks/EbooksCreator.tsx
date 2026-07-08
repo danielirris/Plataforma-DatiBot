@@ -23,6 +23,11 @@ async function mensajeDeError(res: Response): Promise<string> {
   } catch {
     /* la respuesta no era JSON (401, 504, HTML de error…) */
   }
+  // Página HTML del proxy (502/504 de EasyPanel): mensaje legible, no el churro.
+  const t = raw.trimStart().toLowerCase();
+  if (t.startsWith("<!doctype") || t.startsWith("<html")) {
+    return `Error ${res.status}: el servidor tardó demasiado o se reinició (respuesta del proxy). Vuelve a intentarlo en unos segundos.`;
+  }
   return `Error ${res.status}${raw ? `: ${raw.slice(0, 160)}` : ""}`;
 }
 function errorDeRed(e: unknown): string {

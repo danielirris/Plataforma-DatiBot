@@ -26,6 +26,32 @@ export async function leerTextoConfig(): Promise<TextoConfig> {
 const GEMINI_TEXT_MODEL = "gemini-2.5-flash";
 const OPENAI_TEXT_MODEL = "gpt-4o-mini";
 
+// Llama a Gemini con timeout y reintentos: los 429/5xx transitorios son
+// frecuentes y, sin esto, la petición queda colgada hasta que el proxy
+// (EasyPanel) la mata y devuelve su página HTML de error 502.
+async function geminiFetch(url: string, body: unknown): Promise<Response> {
+  const INTENTOS = 3;
+  const TIMEOUT_MS = 90_000;
+  let ultimo: unknown = null;
+  for (let i = 0; i < INTENTOS; i++) {
+    try {
+      const res = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+        signal: AbortSignal.timeout(TIMEOUT_MS),
+      });
+      // Reintenta solo errores transitorios; el resto se devuelve al caller.
+      if (res.ok || ![429, 500, 502, 503, 504].includes(res.status)) return res;
+      ultimo = new Error(`Gemini respondió ${res.status}: ${await res.text()}`);
+    } catch (e) {
+      ultimo = e; // timeout o corte de red
+    }
+    if (i < INTENTOS - 1) await new Promise((r) => setTimeout(r, 2000 * (i + 1)));
+  }
+  throw ultimo instanceof Error ? ultimo : new Error("Gemini no respondió (timeout).");
+}
+
 /** Genera texto con el proveedor configurado. Lanza Error con mensaje claro si falta la key. */
 export async function generarTexto(prompt: string): Promise<string> {
   const cfg = await leerTextoConfig();
@@ -47,13 +73,9 @@ export async function generarTexto(prompt: string): Promise<string> {
 
 async function geminiGenerate(prompt: string, key: string): Promise<string> {
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_TEXT_MODEL}:generateContent?key=${encodeURIComponent(key)}`;
-  const res = await fetch(url, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      contents: [{ parts: [{ text: prompt }] }],
-      generationConfig: { temperature: 0.8 },
-    }),
+  const res = await geminiFetch(url, {
+    contents: [{ parts: [{ text: prompt }] }],
+    generationConfig: { temperature: 0.8 },
   });
   if (!res.ok) {
     throw new Error(`Gemini respondió ${res.status}: ${await res.text()}`);
@@ -85,14 +107,10 @@ export async function investigarConGemini(
     );
 
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_TEXT_MODEL}:generateContent?key=${encodeURIComponent(cfg.geminiKey)}`;
-  const res = await fetch(url, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      contents: [{ parts: [{ text: prompt }] }],
-      tools: [{ google_search: {} }],
-      generationConfig: { temperature: 0.7 },
-    }),
+  const res = await geminiFetch(url, {
+    contents: [{ parts: [{ text: prompt }] }],
+    tools: [{ google_search: {} }],
+    generationConfig: { temperature: 0.7 },
   });
   if (!res.ok)
     throw new Error(`Gemini (grounding) respondió ${res.status}: ${await res.text()}`);
