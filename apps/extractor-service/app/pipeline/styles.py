@@ -101,6 +101,107 @@ STYLES: dict[str, dict] = {
 
 DEFAULT_STYLE = "modo_bestia"
 
+# ── Movidas de editor por estilo (Grupo A del spec: solo el video original) ──
+# Cada estilo declara QUÉ efectos usa; ``plan_moves`` los convierte en movidas
+# concretas y temporizadas. Efectos que NO alteran la duración/sync del audio:
+#   punch  — zoom-in de énfasis ("hard" = seco/frecuente, "soft" = lento/espaciado)
+#   bw     — desaturado por tramo ("dominant" todo, "intro" 1er cuarto, "arc" 1er 40%)
+#   shake  — temblor corto en los golpes
+#   flash  — destello de color en cambios de bloque
+#   spotlight — viñeta/oscurecido alrededor para dirigir la mirada
+#   reframe — recompone el encuadre cada N segundos (variedad)
+#   letterbox — barras cine fijas (look premium)
+STYLE_MOVES: dict[str, dict] = {
+    "editorial_mono": {"punch": "soft", "bw": "intro", "spotlight": True},
+    "premium_noir": {"bw": "dominant", "punch": "soft", "letterbox": True},
+    "afiche_retro": {"flash": True, "reframe": True, "punch": "hard"},
+    "modo_bestia": {"punch": "hard", "shake": True, "flash": True},
+    "relato_doc": {"bw": "arc", "punch": "soft"},
+}
+
+
+def plan_moves(plan: dict, line_starts: list[float], duration: float,
+               seed: str = "") -> list[dict]:
+    """Genera las "movidas sobre el video" según el estilo del plan.
+
+    Reglas por triggers baratos (inicios de línea = énfasis, tarjetas = cambios de
+    bloque, píldoras = palabra clave). Devuelve una lista de movidas temporizadas;
+    el motor Remotion las acumula por frame sobre la capa de video.
+    """
+    style = plan.get("estilo")
+    cfg = STYLE_MOVES.get(style or "", {})
+    if not cfg or duration <= 0:
+        return []
+
+    r = _random.Random(f"{seed}:{style}:moves")
+    d = float(duration)
+    ls = sorted(t for t in (line_starts or []) if 0.0 <= t < d)
+    cards = sorted(round(float(c.get("at", 0.0)), 3)
+                   for c in (plan.get("fullscreen") or []) if 0.0 <= float(c.get("at", 0.0)) < d)
+    moves: list[dict] = []
+
+    def add(kind: str, start: float, end: float, **extra: object) -> None:
+        s = max(0.0, round(start, 3))
+        e = min(d, round(end, 3))
+        if e - s >= 0.05:
+            moves.append({"kind": kind, "start": s, "end": e, **extra})
+
+    # A2 — B&N / desaturado por segmento.
+    bw = cfg.get("bw")
+    if bw == "dominant":
+        add("bw", 0.0, d, amount=0.85)
+    elif bw == "intro":
+        add("bw", 0.0, d * 0.28, amount=1.0)
+    elif bw == "arc":
+        add("bw", 0.0, d * 0.4, amount=1.0)
+
+    # letterbox — barras cine fijas.
+    if cfg.get("letterbox"):
+        add("letterbox", 0.0, d)
+
+    # A1 — punch-in en los énfasis (inicios de línea).
+    punch = cfg.get("punch")
+    if punch and ls:
+        hard = punch == "hard"
+        amount = 0.14 if hard else 0.06
+        ramp = 0.10 if hard else 0.45
+        hold = 0.45 if hard else 1.2
+        step = 1 if hard else 2
+        for i in range(0, len(ls), step):
+            add("punch", ls[i], ls[i] + hold, amount=amount, ramp=round(ramp, 3))
+
+    # A5 — shake/zoom-punch en algunos golpes.
+    if cfg.get("shake") and ls:
+        for t in ls:
+            if r.random() < 0.5:
+                add("shake", t, t + 0.28, amount=10)
+
+    # A6 — flash de color en cambios de bloque (o cada varias líneas).
+    if cfg.get("flash"):
+        puntos = cards or ls[::3]
+        for t in puntos:
+            add("flash", t, t + 0.14)
+
+    # A7 — spotlight en la palabra clave (píldoras).
+    if cfg.get("spotlight"):
+        for p in (plan.get("pills") or []):
+            s = float(p.get("start", 0.0))
+            e = float(p.get("end", s + 1.0))
+            add("spotlight", s, e)
+
+    # A8 — reframe cada N segundos (variedad de encuadre).
+    if cfg.get("reframe"):
+        n = 4.0
+        zonas = [(-8, -4), (8, -2), (-6, 6), (6, 4)]
+        i, t = 0, n
+        while t < d - 2.0:
+            zx, zy = zonas[i % len(zonas)]
+            add("reframe", t, t + n, x=zx, y=zy, amount=0.10)
+            t += n
+            i += 1
+
+    return moves
+
 
 def style_prompt(style_id: str) -> str:
     """Prompt (lineamientos) del estilo, con las reglas comunes antepuestas."""

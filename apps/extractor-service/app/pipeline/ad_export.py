@@ -142,12 +142,18 @@ def build_ad_project(
                 guia_out.append({"at": gm.get("at", 0.0), "file": gfile, "dur": gdur})
         plan["guias"] = guia_out
 
+        # Movidas sobre el video (Fase 5): punch-in, B&N, shake, flash, etc.
+        # según el estilo. El motor Remotion las acumula por frame.
+        line_starts = [round(l[0].start, 3) for l in _lines_from_words(v.words)]
+        from app.pipeline import styles as _styles  # import perezoso
+        plan["moves"] = _styles.plan_moves(plan, line_starts, v.duration, seed=str(v.id))
+
         entries.append({
             "id": v.id, "name": v.name, "video": video_name,
             "width": v.width, "height": v.height, "duration": round(v.duration, 3),
             "music": music_name, "voz": voz_name,
             "words": [w.to_dict() for w in v.words],
-            "lineStarts": [round(l[0].start, 3) for l in _lines_from_words(v.words)],
+            "lineStarts": line_starts,
             "plan": plan,
         })
 
@@ -274,12 +280,51 @@ export const Ad: React.FC<{ v: any; cta: any; musica: any; sfx: any; intro?: any
   // Ken Burns suave: el video nunca queda 100% quieto.
   const kb = interpolate(frame, [0, durationInFrames], [1.03, 1.1], { extrapolateRight: 'clamp' });
 
+  // ── Movidas de editor (Fase 5): se acumulan por frame sobre el video. ──
+  const moves = plan.moves || [];
+  const envF = (m: any, rampS: number) => {
+    const s = Math.round(m.start * fps), e = Math.round(m.end * fps);
+    if (frame < s || frame >= e) return 0;
+    const rin = Math.max(1, Math.round((m.ramp != null ? m.ramp : rampS) * fps));
+    const rout = Math.max(1, Math.round(0.2 * fps));
+    const up = interpolate(frame, [s, s + rin], [0, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' });
+    const down = interpolate(frame, [e - rout, e], [1, 0], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' });
+    return Math.min(up, down);
+  };
+  let mScale = 0, mX = 0, mY = 0, mGray = 0, mFlash = 0, mSpot = 0, mLetter = 0;
+  const flashColor = pick(Math.floor(frame / 4));
+  for (const m of moves) {
+    if (m.kind === 'letterbox') {
+      if (frame >= Math.round(m.start * fps) && frame < Math.round(m.end * fps)) mLetter = 1;
+      continue;
+    }
+    const k = envF(m, 0.12);
+    if (k <= 0) continue;
+    if (m.kind === 'punch') mScale += (m.amount || 0.1) * k;
+    else if (m.kind === 'reframe') { mScale += (m.amount || 0.1) * k; mX += (m.x || 0) * k; mY += (m.y || 0) * k; }
+    else if (m.kind === 'shake') { const a = (m.amount || 8) * k; mX += Math.sin(frame * 2.7) * a; mY += Math.cos(frame * 3.1) * a; }
+    else if (m.kind === 'bw') mGray = Math.max(mGray, (m.amount || 1) * k);
+    else if (m.kind === 'flash') mFlash = Math.max(mFlash, k);
+    else if (m.kind === 'spotlight') mSpot = Math.max(mSpot, k);
+  }
+  const videoScale = kb + mScale;
+  const videoFilter = mGray > 0 ? `grayscale(${mGray.toFixed(2)})` : undefined;
+
   return (
     <AbsoluteFill style={{ backgroundColor: 'black', overflow: 'hidden' }}>
-      <AbsoluteFill style={{ transform: `scale(${kb})` }}>
+      <AbsoluteFill style={{ transform: `translate(${mX}px, ${mY}px) scale(${videoScale})`, filter: videoFilter }}>
         <Video src={staticFile(v.video)} muted={!!v.voz} loop={!!v.voz}
                style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
       </AbsoluteFill>
+
+      {/* Movidas sobre el video: spotlight (dirige la mirada) y flash (destello). */}
+      {mSpot > 0 ? (
+        <AbsoluteFill style={{ background: `radial-gradient(circle at 50% 42%, rgba(0,0,0,0) 18%, rgba(0,0,0,${(0.6 * mSpot).toFixed(2)}) 68%)` }} />
+      ) : null}
+      {mFlash > 0 ? (
+        <AbsoluteFill style={{ backgroundColor: flashColor, opacity: 0.55 * mFlash, mixBlendMode: 'screen' }} />
+      ) : null}
+
       {v.voz ? <Audio src={staticFile(v.voz)} /> : null}
 
       {v.music ? (
@@ -369,6 +414,14 @@ export const Ad: React.FC<{ v: any; cta: any; musica: any; sfx: any; intro?: any
       {/* CTA final. */}
       {frame >= ctaStart ? (
         <Cta texto={cta.texto} whatsapp={cta.whatsapp} startFrame={ctaStart} accent={accent} />
+      ) : null}
+
+      {/* Letterbox cine (barras) — look premium, encima de todo. */}
+      {mLetter ? (
+        <>
+          <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '9%', backgroundColor: 'black' }} />
+          <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: '9%', backgroundColor: 'black' }} />
+        </>
       ) : null}
     </AbsoluteFill>
   );
