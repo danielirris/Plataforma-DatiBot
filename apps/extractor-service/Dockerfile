@@ -1,4 +1,8 @@
-# clip-generator — imagen con FFmpeg (libass) + Node + Remotion (render online).
+# clip-generator (Editor de videos) — FFmpeg (libass) + Node + Remotion.
+#
+# Se construye desde la RAÍZ del monorepo (contexto = repo root), igual que web
+# y ebooks, para poder desplegarlo desde Plataforma-DatiBot en EasyPanel.
+# En EasyPanel: Build context = "/", Dockerfile = "apps/extractor-service/Dockerfile".
 FROM python:3.11-slim
 
 ENV PYTHONUNBUFFERED=1 \
@@ -21,19 +25,19 @@ RUN apt-get update \
 WORKDIR /app
 
 # Dependencias de Python primero (mejor cacheo de capas).
-COPY requirements.txt .
+COPY apps/extractor-service/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Runtime de Remotion: instala deps y hornea el navegador headless en la imagen.
-COPY remotion-runtime/ ./remotion-runtime/
+COPY apps/extractor-service/remotion-runtime/ ./remotion-runtime/
 RUN cd remotion-runtime \
     && npm install --no-audit --no-fund \
     && node ensure-browser.mjs
 
 # Código de la aplicación.
-COPY app/ ./app/
-COPY web/ ./web/
-COPY remotion/ ./remotion/
+COPY apps/extractor-service/app/ ./app/
+COPY apps/extractor-service/web/ ./web/
+COPY apps/extractor-service/remotion/ ./remotion/
 
 # Carpeta de almacenamiento (volumen persistente en EasyPanel).
 RUN mkdir -p /app/storage
