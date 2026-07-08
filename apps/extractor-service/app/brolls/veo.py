@@ -73,12 +73,19 @@ def generate_clip(prompt: str, cfg: BrollConfig, dest: Path,
                 raise RuntimeError("El archivo de video quedó vacío.")
             return dest
         except Exception as e:  # noqa: BLE001
-            m = _NO_SOPORTADO.search(str(e))
+            msg = str(e)
+            m = _NO_SOPORTADO.search(msg)
             param = _CAMEL_A_SNAKE.get(m.group(1), m.group(1)) if m else None
             if param and param in kw:
                 logger.warning("Veo: quito parámetro no soportado '%s' y reintento", param)
                 kw.pop(param)
                 continue  # no cuenta como intento
+            # Cuota agotada: no tiene sentido reintentar (no se libera en segundos).
+            if "RESOURCE_EXHAUSTED" in msg or "429" in msg or "quota" in msg.lower():
+                raise RuntimeError(
+                    "Cuota de Veo agotada en Google (429). Es un límite de tu cuenta, "
+                    "no del código: espera unos minutos o pide aumento de cuota de Veo."
+                ) from e
             last = e
             intento += 1
             espera = min(30, 2 ** intento)

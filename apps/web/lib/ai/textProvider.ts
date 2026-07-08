@@ -30,8 +30,8 @@ const OPENAI_TEXT_MODEL = "gpt-4o-mini";
 // frecuentes y, sin esto, la petición queda colgada hasta que el proxy
 // (EasyPanel) la mata y devuelve su página HTML de error 502.
 async function geminiFetch(url: string, body: unknown): Promise<Response> {
-  const INTENTOS = 3;
-  const TIMEOUT_MS = 90_000;
+  const INTENTOS = 2;
+  const TIMEOUT_MS = 100_000;
   let ultimo: unknown = null;
   for (let i = 0; i < INTENTOS; i++) {
     try {
@@ -45,9 +45,14 @@ async function geminiFetch(url: string, body: unknown): Promise<Response> {
       if (res.ok || ![429, 500, 502, 503, 504].includes(res.status)) return res;
       ultimo = new Error(`Gemini respondió ${res.status}: ${await res.text()}`);
     } catch (e) {
-      ultimo = e; // timeout o corte de red
+      // Un timeout/abort NO se reintenta: reintentar una llamada lenta solo agota
+      // el tiempo del proxy y acaba en el 502 HTML. Falla limpio para que el
+      // usuario reintente. Los cortes de red sí se reintentan una vez.
+      const nombre = (e as { name?: string })?.name ?? "";
+      if (nombre === "TimeoutError" || nombre === "AbortError") throw e;
+      ultimo = e;
     }
-    if (i < INTENTOS - 1) await new Promise((r) => setTimeout(r, 2000 * (i + 1)));
+    if (i < INTENTOS - 1) await new Promise((r) => setTimeout(r, 1500 * (i + 1)));
   }
   throw ultimo instanceof Error ? ultimo : new Error("Gemini no respondió (timeout).");
 }

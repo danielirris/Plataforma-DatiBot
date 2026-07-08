@@ -24,8 +24,19 @@ export async function POST(req: Request, { params }: Ctx) {
   let form: FormData;
   try {
     form = await req.formData();
-  } catch {
-    return NextResponse.json({ error: "Subida inválida." }, { status: 400 });
+  } catch (e) {
+    // Suele pasar cuando el proxy (EasyPanel) trunca el cuerpo por su límite de
+    // tamaño: Next recibe un multipart incompleto y no lo puede leer.
+    const det = e instanceof Error ? `: ${e.message.slice(0, 120)}` : "";
+    return NextResponse.json(
+      {
+        error:
+          "No se pudo leer el video. Suele ser el LÍMITE DE TAMAÑO del servidor " +
+          "(proxy): sube el máximo de subida en EasyPanel o usa un video más liviano" +
+          det,
+      },
+      { status: 413 },
+    );
   }
   const file = form.get("file");
   if (!(file instanceof File) || file.size === 0)
