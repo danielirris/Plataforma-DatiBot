@@ -12,6 +12,7 @@ import {
   TIPOS_IMAGEN,
   TIPOS_ANGULO,
   MECANISMOS_GANCHO,
+  PAISES,
   MIN_BONOS,
   MAX_BONOS,
   ofertaVacia,
@@ -39,6 +40,7 @@ const PASOS = [
   { key: "mensajes", label: "5 · Mensajes" },
   { key: "imagenes", label: "6 · Imágenes" },
   { key: "videos", label: "7 · Videos" },
+  { key: "precios", label: "8 · Precios" },
 ] as const;
 
 // Pasos ya implementados.
@@ -50,7 +52,19 @@ const DISPONIBLES = new Set([
   "mensajes",
   "imagenes",
   "videos",
+  "precios",
 ]);
+
+// Campos de precio por país (van al motor de flujos como [PRECIO_*]).
+const CAMPOS_PRECIO: { k: keyof import("@plataforma/products/schema").PreciosPais; l: string; ayuda?: string }[] = [
+  { k: "base", l: "Precio base", ayuda: "El precio principal del producto." },
+  { k: "tachado", l: "Precio tachado", ayuda: "El precio “antes” que se muestra tachado." },
+  { k: "adicional_ob", l: "Adicional Orderbump", ayuda: "Lo que suma el orderbump al combo." },
+  { k: "normal_ob", l: "Normal Orderbump", ayuda: "Precio del orderbump si se vende suelto." },
+  { k: "rmk_15m", l: "Remarketing 15 min" },
+  { k: "rmk_60m", l: "Remarketing 60 min" },
+  { k: "rmk_180m", l: "Remarketing 180 min", ayuda: "También fija el piso del validador." },
+];
 
 // Extrae un mensaje legible de una respuesta fallida: usa {error} si vino JSON,
 // si no, muestra el código de estado y el texto crudo (401, 504, HTML, etc.).
@@ -148,6 +162,7 @@ export function ProductoWizard({ producto }: { producto?: Producto }) {
   const [brollJob, setBrollJob] = useState<BrollJob | null>(null);
   const [brollBase, setBrollBase] = useState<string>("");
   const [generandoBrolls, setGenerandoBrolls] = useState<boolean>(false);
+  const [paisPrecio, setPaisPrecio] = useState<string>("PE");
 
   const esNuevo = !p.id;
 
@@ -163,6 +178,16 @@ export function ProductoWizard({ producto }: { producto?: Producto }) {
 
   function setCampo(campo: keyof Producto, valor: unknown) {
     setP((prev) => ({ ...prev, [campo]: valor }));
+    setEstado("idle");
+  }
+  // Precios por país: alimentan el motor de flujos como [PRECIO_*].
+  function setPrecio(pais: string, campo: string, valor: string) {
+    setP((prev) => {
+      const actual = prev.precios?.[pais] ?? {
+        base: "", tachado: "", adicional_ob: "", normal_ob: "", rmk_15m: "", rmk_60m: "", rmk_180m: "",
+      };
+      return { ...prev, precios: { ...prev.precios, [pais]: { ...actual, [campo]: valor } } };
+    });
     setEstado("idle");
   }
   function setIdentidad(campo: keyof Producto["identidad"], valor: string) {
@@ -1602,6 +1627,69 @@ export function ProductoWizard({ producto }: { producto?: Producto }) {
               className="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-white disabled:opacity-60"
             >
               {estado === "guardando" ? "Guardando…" : "Guardar videos"}
+            </button>
+            {estado === "ok" && <span className="text-sm text-accent-2">✓ Guardado</span>}
+            {estado === "error" && <span className="text-sm text-red-400">Error al guardar</span>}
+          </div>
+        </section>
+      )}
+
+      {paso === "precios" && (
+        <section className="space-y-5">
+          <p className="text-xs text-muted">
+            Precios por <b>país</b>. De aquí salen los tokens del flujo de n8n
+            (<code>[PRECIO_BASE]</code>, <code>[PRECIO_COMBO]</code>, regateos, pisos…).
+            El combo, los regateos y los pisos se calculan solos a partir de estos.
+          </p>
+
+          <label className="flex flex-col gap-1 text-sm">
+            <span className="text-muted">País</span>
+            <select
+              value={paisPrecio}
+              onChange={(e) => setPaisPrecio(e.target.value)}
+              className="w-full max-w-xs rounded-lg border border-[var(--hairline)] bg-[var(--field)] px-3 py-2 text-text outline-none focus:border-accent"
+            >
+              {PAISES.map((pa) => (
+                <option key={pa.codigo} value={pa.codigo}>
+                  {pa.nombre} ({pa.codigo})
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <div className="grid grid-cols-1 gap-3 rounded-xl border border-[var(--hairline)] glass p-5 sm:grid-cols-2">
+            {CAMPOS_PRECIO.map((c) => (
+              <label key={c.k} className="flex flex-col gap-1 text-sm">
+                <span className="text-muted">{c.l}</span>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  value={p.precios?.[paisPrecio]?.[c.k] ?? ""}
+                  onChange={(e) => setPrecio(paisPrecio, c.k, e.target.value)}
+                  placeholder="0"
+                  className="rounded-lg border border-[var(--hairline)] bg-[var(--field)] px-3 py-2 text-text outline-none focus:border-accent"
+                />
+                {c.ayuda && <span className="text-xs text-muted">{c.ayuda}</span>}
+              </label>
+            ))}
+          </div>
+
+          <p className="text-xs text-muted">
+            Otros datos del flujo (categoría, industria, marcas, Orderbump, Drive,
+            formularios) se ponen en{" "}
+            <Link href="/configuracion" className="text-accent-2 hover:underline">
+              Configuración → Creador de Flujos
+            </Link>
+            .
+          </p>
+
+          <div className="sticky bottom-0 flex items-center gap-3 border-t border-[var(--hairline)] bg-bg/80 py-4 backdrop-blur">
+            <button
+              onClick={guardar}
+              disabled={estado === "guardando"}
+              className="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-white disabled:opacity-60"
+            >
+              {estado === "guardando" ? "Guardando…" : "Guardar precios"}
             </button>
             {estado === "ok" && <span className="text-sm text-accent-2">✓ Guardado</span>}
             {estado === "error" && <span className="text-sm text-red-400">Error al guardar</span>}

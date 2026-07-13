@@ -238,6 +238,8 @@ export interface PreciosPais {
   base: string;
   tachado: string;
   adicional_ob: string;
+  /** precio "normal" del orderbump (si se vende suelto) */
+  normal_ob: string;
   rmk_15m: string;
   rmk_60m: string;
   rmk_180m: string;

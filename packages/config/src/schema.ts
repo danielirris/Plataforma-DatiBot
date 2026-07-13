@@ -182,6 +182,10 @@ export const CONFIG_GROUPS: ConfigGroup[] = [
     fields: [
       { key: "categoria_producto", label: "Categoría del producto", type: "text", placeholder: "neveras" },
       { key: "descripcion_corta", label: "Descripción corta", type: "text" },
+      { key: "industria_del_producto", label: "Industria del producto", type: "text", placeholder: "electrodomésticos" },
+      { key: "marcas_comunes", label: "Marcas comunes del rubro", type: "text", placeholder: "Samsung, LG, Mabe…" },
+      { key: "nombre_orderbump", label: "Nombre del Orderbump", type: "text", placeholder: "Kit de instalación" },
+      { key: "emoji_producto", label: "Emoji del producto", type: "text", placeholder: "🎮" },
       { key: "drive_contenido", label: "Drive de contenido (entrega)", type: "url" },
       { key: "forms_compradores", label: "Formulario compradores (Google Forms)", type: "url" },
       { key: "forms_salida", label: "Formulario salida / no compradores", type: "url" },

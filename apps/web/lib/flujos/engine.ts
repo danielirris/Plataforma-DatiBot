@@ -41,6 +41,26 @@ export function tiposDisponibles(): TipoEmbudo[] {
   return ["largo", "corto", "cod"];
 }
 
+// Lista de bonos para [LISTA_DE_BONOS], derivada de la oferta del producto.
+function listaBonos(producto: Producto): string {
+  const bonos = producto.oferta?.bonos ?? [];
+  return bonos
+    .map((b) => (b?.titulo ?? "").trim())
+    .filter(Boolean)
+    .map((t) => `✅ ${t}`)
+    .join("\n");
+}
+
+// Base pública de las imágenes para [URL_BASE_IMAGENES_PRODUCTO]: la carpeta
+// (sin el archivo) de la primera imagen del producto que exista.
+function baseImagenes(producto: Producto): string {
+  const img = producto.imagenes ?? ({} as Producto["imagenes"]);
+  const alguna = Object.values(img).find((u) => typeof u === "string" && u.startsWith("http"));
+  if (!alguna) return "";
+  const i = alguna.lastIndexOf("/");
+  return i > "https://".length ? alguna.slice(0, i) : alguna;
+}
+
 export function emitir({
   producto,
   pais,
@@ -56,6 +76,7 @@ export function emitir({
     base: "",
     tachado: "",
     adicional_ob: "",
+    normal_ob: "",
     rmk_15m: "",
     rmk_60m: "",
     rmk_180m: "",
@@ -81,10 +102,19 @@ export function emitir({
     precio_rmk_180m: precios.rmk_180m,
     // datos de emisión de Creador de Flujos (no por país)
     categoria_producto: generalConfig.categoria_producto || undefined,
-    descripcion_corta: generalConfig.descripcion_corta || undefined,
+    descripcion_corta: generalConfig.descripcion_corta || producto.identidad?.promesa || undefined,
+    industria: generalConfig.industria_del_producto || undefined,
+    marcas: generalConfig.marcas_comunes || undefined,
+    nombre_orderbump: generalConfig.nombre_orderbump || undefined,
+    emoji: generalConfig.emoji_producto || undefined,
+    precio_normal_ob: precios.normal_ob || undefined,
     drive_contenido: generalConfig.drive_contenido || undefined,
     forms_compradores: generalConfig.forms_compradores || undefined,
     forms_salida: generalConfig.forms_salida || undefined,
+    // derivados del propio producto (Grupo 3 cableado)
+    lista_bonos: listaBonos(producto) || undefined,
+    lista_beneficios_ob: listaBonos(producto) || undefined,
+    url_base_imagenes: baseImagenes(producto) || undefined,
   };
 
   // fieldValues (Capa 1): mensajes + links de imágenes. Vacío NO sobrescribe.
