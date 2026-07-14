@@ -10,6 +10,7 @@ import {
   type EbookCapitulo,
 } from "@plataforma/products/schema";
 import { AutoTextarea } from "../productos/_components/AutoTextarea";
+import { bloquesATexto, textoABloques } from "@/lib/ebook/bloquesTexto";
 
 // Temas de diseño del motor de ebooks (carpetas en themes/).
 const TEMAS_EBOOK = ["amigurumi", "arcade", "capital", "impulso", "sabores", "sereno"];
@@ -51,6 +52,18 @@ export function EbooksCreator({ productos }: { productos: Producto[] }) {
   const [fotosEstado, setFotosEstado] = useState<Record<string, string>>({});
   const [renderEstado, setRenderEstado] = useState<string>("");
   const [guardando, setGuardando] = useState<"idle" | "guardando" | "ok" | "error">("idle");
+  // Buffer editable de la redacción por capítulo (texto legible ↔ bloques).
+  const [redaccion, setRedaccion] = useState<Record<number, string>>(() => {
+    const r: Record<number, string> = {};
+    (inicial?.ebook?.capitulos ?? []).forEach((c, i) => {
+      if (c.bloques?.length) r[i] = bloquesATexto(c.bloques);
+    });
+    return r;
+  });
+  // Vista previa de un módulo (HTML del tema) en un panel.
+  const [previewCap, setPreviewCap] = useState<number | null>(null);
+  const [previewHtml, setPreviewHtml] = useState<string>("");
+  const [previewEstado, setPreviewEstado] = useState<string>("");
 
   function cambiarProducto(id: string) {
     const prod = productos.find((x) => x.id === id);
@@ -62,6 +75,26 @@ export function EbooksCreator({ productos }: { productos: Producto[] }) {
     setFotosEstado({});
     setRenderEstado("");
     setGuardando("idle");
+    // Precarga los cuadros de redacción desde los bloques ya guardados.
+    const caps = prod?.ebook?.capitulos ?? [];
+    const r: Record<number, string> = {};
+    caps.forEach((c, i) => {
+      if (c.bloques?.length) r[i] = bloquesATexto(c.bloques);
+    });
+    setRedaccion(r);
+    setPreviewCap(null);
+    setPreviewHtml("");
+    setPreviewEstado("");
+  }
+
+  // Texto editado → bloques (preservando el eyebrow "Capítulo 0X" del módulo).
+  function onRedaccionChange(i: number, valor: string) {
+    setRedaccion((prev) => ({ ...prev, [i]: valor }));
+    const bloques = textoABloques(valor);
+    const primero = bloques[0] as { type?: string; eyebrow?: string } | undefined;
+    if (primero?.type === "section" && !primero.eyebrow)
+      primero.eyebrow = `Capítulo ${String(i + 1).padStart(2, "0")}`;
+    setCapitulo(i, "bloques", bloques);
   }
 
   // ── Helpers de estado del ebook ──
@@ -149,9 +182,33 @@ export function EbooksCreator({ productos }: { productos: Producto[] }) {
       }
       const data = await res.json();
       setCapitulo(i, "bloques", data.bloques);
-      setCapEstado((s) => ({ ...s, [i]: "✓ Redactado. Guarda para conservarlo." }));
+      setRedaccion((prev) => ({ ...prev, [i]: bloquesATexto(data.bloques) }));
+      setCapEstado((s) => ({ ...s, [i]: "✓ Redactado. Lee y corrige abajo; guarda para conservarlo." }));
     } catch (e) {
       setCapEstado((s) => ({ ...s, [i]: "⚠️ " + errorDeRed(e) }));
+    }
+  }
+
+  // Vista previa de UN módulo con el tema del ebook (HTML renderizado por el motor).
+  async function previsualizarModulo(i: number) {
+    if (!p) return;
+    setPreviewCap(i);
+    setPreviewHtml("");
+    setPreviewEstado("Generando vista previa del módulo…");
+    try {
+      const res = await fetch(`/api/productos/${p.id}/ebook/preview`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ producto: p, index: i }),
+      });
+      if (!res.ok) {
+        setPreviewEstado("⚠️ " + (await mensajeDeError(res)));
+        return;
+      }
+      setPreviewHtml(await res.text());
+      setPreviewEstado("");
+    } catch (e) {
+      setPreviewEstado("⚠️ " + errorDeRed(e));
     }
   }
 
@@ -438,6 +495,49 @@ export function EbooksCreator({ productos }: { productos: Producto[] }) {
                     placeholder="Resumen: qué cubre este capítulo"
                     className="w-full rounded border border-[var(--hairline)] bg-[var(--field)] px-2 py-1 text-sm text-text outline-none focus:border-accent"
                   />
+
+                  {/* Redacción del módulo: editable + vista previa con el tema. */}
+                  {cap.bloques?.length ? (
+                    <div className="space-y-2 rounded-lg border border-[var(--hairline)] bg-[var(--field)]/40 p-2">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <span className="text-xs font-medium text-muted">
+                          📝 Redacción del módulo — léela y corrígela
+                        </span>
+                        <button
+                          onClick={() => previsualizarModulo(i)}
+                          className="rounded border border-accent/50 bg-accent/10 px-2 py-1 text-xs font-medium text-accent-2"
+                        >
+                          👁 Vista previa
+                        </button>
+                      </div>
+                      <textarea
+                        value={redaccion[i] ?? ""}
+                        onChange={(e) => onRedaccionChange(i, e.target.value)}
+                        rows={12}
+                        spellCheck
+                        className="w-full resize-y rounded-lg border border-[var(--hairline)] bg-[var(--field)] px-3 py-2 font-mono text-xs leading-relaxed text-text outline-none focus:border-accent"
+                      />
+                      <p className="text-[11px] text-muted">
+                        Formato: <code># Título</code>, párrafos normales,{" "}
+                        <code>- lista</code>, <code>&gt; Tip: …</code>,{" "}
+                        <code>**negrita**</code>. Guarda el ebook para conservar los cambios.
+                      </p>
+                      {previewCap === i && (
+                        <div className="overflow-hidden rounded-lg border border-[var(--hairline)]">
+                          {previewEstado ? (
+                            <p className="p-3 text-xs text-muted">{previewEstado}</p>
+                          ) : (
+                            <iframe
+                              title={`vista-previa-${i}`}
+                              srcDoc={previewHtml}
+                              className="h-[520px] w-full bg-white"
+                            />
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  ) : null}
+
                   <div className="flex flex-wrap items-center gap-2">
                     <label className="flex items-center gap-1.5 text-xs text-muted">
                       Fotos:
