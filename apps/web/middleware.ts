@@ -13,8 +13,9 @@ import { NextRequest, NextResponse } from "next/server";
 // ─────────────────────────────────────────────────────────────
 
 export const config = {
-  // Protege todo menos los estáticos de Next (que el navegador pide sin cabecera).
-  matcher: ["/((?!_next/static|_next/image|favicon.ico).*)"],
+  // Protege todo menos los estáticos de Next y /api/img (imágenes públicas que
+  // deben cargar n8n, los ebooks y los anuncios sin autenticación).
+  matcher: ["/((?!_next/static|_next/image|favicon.ico|api/img/).*)"],
 };
 
 export function middleware(req: NextRequest) {

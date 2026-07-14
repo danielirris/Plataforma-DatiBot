@@ -35,9 +35,12 @@ export async function leerVpsConfig(): Promise<VpsConfig> {
 
 export function faltantesVps(c: VpsConfig): string[] {
   const faltan: string[] = [];
-  if (!c.publicBaseUrl) faltan.push("URL pública base");
-  // Modo local: solo hace falta la URL pública (la carpeta se crea sola).
-  if (c.localDir) return faltan;
+  // Auto-servido (IMG_PUBLIC_BASE): el web sirve las imágenes; no hace falta la
+  // URL pública de nginx.
+  const autoServido = !!(process.env.IMG_PUBLIC_BASE ?? "").trim();
+  if (!autoServido && !c.publicBaseUrl) faltan.push("URL pública base");
+  // Modo local o auto-servido: no se usa SFTP (la carpeta se crea sola).
+  if (c.localDir || autoServido) return faltan;
   // Modo SFTP: hacen falta los datos de conexión.
   if (!c.host) faltan.push("host");
   if (!c.user) faltan.push("usuario");
@@ -74,6 +77,11 @@ export async function subirImagen(
     const dir = cfg.localDir.replace(/\/+$/, "");
     await mkdir(dir, { recursive: true });
     await writeFile(`${dir}/${nombreArchivo}`, buffer);
+    // Si el propio web sirve las imágenes (IMG_PUBLIC_BASE = su dominio), la URL
+    // apunta a /api/img — no depende de que nginx comparta el volumen. Si no,
+    // se mantiene el comportamiento clásico (nginx en publicBaseUrl).
+    const selfBase = (process.env.IMG_PUBLIC_BASE ?? "").replace(/\/+$/, "");
+    if (selfBase) return `${selfBase}/api/img/${encodeURIComponent(nombreArchivo)}`;
     return `${cfg.publicBaseUrl}/${nombreArchivo}`;
   }
 
