@@ -8,6 +8,7 @@ from __future__ import annotations
 import logging
 import threading
 import uuid
+from pathlib import Path
 
 from app.brolls.service import generate_brolls
 
@@ -24,7 +25,8 @@ def _prune() -> None:
 
 
 def _run(job_id: str, product_id: str, product: dict,
-         source: str, overrides: dict | None) -> None:
+         source: str, overrides: dict | None,
+         videos_locales: list[Path] | None = None) -> None:
     def prog(done: int, total: int, msg: str) -> None:
         j = _JOBS.get(job_id)
         if j:
@@ -34,22 +36,31 @@ def _run(job_id: str, product_id: str, product: dict,
     try:
         _JOBS[job_id].update(status="running", message="Preparando…")
         res = generate_brolls(product_id, product, source=source,
-                              overrides=overrides, on_progress=prog)
+                              overrides=overrides, on_progress=prog,
+                              videos_locales=videos_locales)
         _JOBS[job_id].update(status="done", progress=100, result=res,
                              message=f"{len(res['clips'])} brolls listos.")
     except Exception as e:  # noqa: BLE001
         logger.exception("Broll job %s falló", job_id)
         _JOBS[job_id].update(status="error", error=str(e), message=f"Error: {e}")
+    finally:
+        # Limpia los videos temporales que mandó el web.
+        for p in (videos_locales or []):
+            try:
+                p.unlink(missing_ok=True)
+            except Exception:  # noqa: BLE001
+                pass
 
 
 def start(product_id: str, product: dict, source: str,
-          overrides: dict | None) -> str:
+          overrides: dict | None, videos_locales: list[Path] | None = None) -> str:
     job_id = uuid.uuid4().hex[:12]
     total = int((overrides or {}).get("n_brolls") or 10)
     _JOBS[job_id] = {"status": "queued", "progress": 0, "done": 0, "total": total,
                      "message": "En cola…", "product_id": product_id, "source": source}
     _prune()
-    threading.Thread(target=_run, args=(job_id, product_id, product, source, overrides),
+    threading.Thread(target=_run,
+                     args=(job_id, product_id, product, source, overrides, videos_locales),
                      daemon=True).start()
     return job_id
 

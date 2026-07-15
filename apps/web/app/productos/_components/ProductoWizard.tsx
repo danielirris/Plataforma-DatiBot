@@ -568,6 +568,8 @@ export function ProductoWizard({ producto }: { producto?: Producto }) {
   }
 
   // ── Videos del producto (materia prima para editar los anuncios) ──
+  // Subida POR TROZOS de 4 MB: el proxy no puede cortar archivos grandes porque
+  // cada petición es pequeña (adiós al límite de ~23 MB del servidor).
   async function subirVideos(files: FileList | null) {
     if (!files?.length) return;
     if (!p.id) {
@@ -575,28 +577,58 @@ export function ProductoWizard({ producto }: { producto?: Producto }) {
       return;
     }
     setSubiendoVideo(true);
+    const CHUNK = 4 * 1024 * 1024;
     const lista = Array.from(files);
+    const fallos: string[] = [];
+    let subidos = 0;
     for (let i = 0; i < lista.length; i++) {
       const file = lista[i];
-      setVideoEstado(`Subiendo ${i + 1}/${lista.length}: ${file.name}…`);
+      if (file.size === 0) {
+        fallos.push(`${file.name}: archivo vacío`);
+        continue; // no aborta el resto de la selección
+      }
+      const total = Math.max(1, Math.ceil(file.size / CHUNK));
+      const uploadId =
+        globalThis.crypto?.randomUUID?.() ??
+        `${Date.now()}-${Math.random().toString(36).slice(2)}`;
       try {
-        const fd = new FormData();
-        fd.append("file", file);
-        const res = await fetch(`/api/productos/${p.id}/videos`, { method: "POST", body: fd });
-        if (!res.ok) {
-          setVideoEstado("⚠️ " + (await mensajeDeError(res)));
-          setSubiendoVideo(false);
-          return;
+        for (let idx = 0; idx < total; idx++) {
+          const pct = Math.round(((idx + 1) / total) * 100);
+          setVideoEstado(`Subiendo ${i + 1}/${lista.length}: ${file.name} (${pct}%)…`);
+          const parte = file.slice(idx * CHUNK, Math.min(file.size, (idx + 1) * CHUNK));
+          const qs = new URLSearchParams({
+            id: uploadId,
+            index: String(idx),
+            total: String(total),
+            chunkSize: String(CHUNK),
+            name: file.name,
+          });
+          const res = await fetch(`/api/productos/${p.id}/videos/chunk?${qs}`, {
+            method: "POST",
+            headers: { "Content-Type": "application/octet-stream" },
+            body: parte,
+          });
+          if (!res.ok) throw new Error(await mensajeDeError(res));
+          if (idx === total - 1) {
+            const data = await res.json();
+            setP((prev) => ({
+              ...prev,
+              videos: [...(prev.videos ?? []), data.video as VideoProducto],
+            }));
+            if (data.aviso) fallos.push(`${file.name}: ${data.aviso}`);
+            subidos += 1;
+          }
         }
-        const data = await res.json();
-        setP((prev) => ({ ...prev, videos: [...(prev.videos ?? []), data.video as VideoProducto] }));
       } catch (e) {
-        setVideoEstado("⚠️ " + errorDeRed(e));
-        setSubiendoVideo(false);
-        return;
+        // Un archivo que falla no tumba los demás.
+        fallos.push(`${file.name}: ${e instanceof Error ? e.message : "error"}`);
       }
     }
-    setVideoEstado("✓ Videos subidos. Guarda para conservarlos.");
+    setVideoEstado(
+      fallos.length
+        ? `${subidos ? `✓ ${subidos} subido(s). ` : ""}⚠️ ${fallos.join(" · ")}`
+        : "✓ Videos subidos. Guarda para conservarlos.",
+    );
     setSubiendoVideo(false);
   }
 

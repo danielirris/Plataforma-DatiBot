@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import io
+import json
 import logging
 import shutil
 import tempfile
@@ -279,6 +280,76 @@ async def create_job_from_urls(payload: dict = Body(...)) -> JSONResponse:
                         status_code=201)
 
 
+@app.post("/api/jobs/from-files")
+async def create_job_from_files(
+    videos: list[UploadFile] = File(default=[]),
+    mode: str = Form("full"),
+    num_clips: int = Form(0),
+    use_music: str = Form("0"),
+    use_intro: str = Form("0"),
+    style: str = Form(""),
+    subtitle_style: str = Form(""),
+    highlight: str = Form(""),
+    font: str = Form("Anton"),
+    hook: str = Form(""),
+) -> JSONResponse:
+    """Igual que /api/jobs/from-urls pero el web MANDA LOS VIDEOS como archivos.
+
+    Es el camino robusto: no depende de que la URL pública del video sea
+    alcanzable (nginx/volumen/dominio). El web ya tiene el archivo y lo pasa por
+    la red interna.
+    """
+    if mode not in ("montage", "ad", "full"):
+        raise HTTPException(status_code=400, detail="Modo inválido (montage|ad|full).")
+    settings.ensure_dirs()
+
+    saved: list[tuple[Path, str]] = []
+    for up in videos[:20]:
+        if not up.filename:
+            continue
+        ext = Path(up.filename).suffix.lower() or ".mp4"
+        if ext not in ALLOWED_EXT:
+            ext = ".mp4"
+        tmp = Path(tempfile.mkstemp(suffix=ext, dir=str(settings.storage_dir))[1])
+        with tmp.open("wb") as f:
+            while chunk := await up.read(1 << 20):
+                f.write(chunk)
+        saved.append((tmp, up.filename))
+    if not saved:
+        raise HTTPException(status_code=400, detail="No se enviaron videos.")
+
+    params: dict = {
+        "subtitle_style": subtitle_style or "",
+        "highlight": highlight or "",
+        "font": font or "Anton",
+    }
+    if hook:
+        try:
+            h = json.loads(hook)
+            if isinstance(h, dict) and "video_idx" in h:
+                params["hook"] = {
+                    "video_idx": int(h.get("video_idx", 0)),
+                    "start": float(h.get("start", 0.0)),
+                    "dur": float(h.get("dur", 2.0)),
+                }
+        except Exception:  # noqa: BLE001
+            pass
+
+    intro_saved: tuple[Path, str] | None = None
+    if use_intro in ("1", "true", "True"):
+        whoosh = library.ensure_sfx().get("whoosh")
+        if whoosh and whoosh.exists():
+            itmp = Path(tempfile.mkstemp(suffix=whoosh.suffix, dir=str(settings.storage_dir))[1])
+            shutil.copy(whoosh, itmp)
+            intro_saved = (itmp, f"intro{whoosh.suffix}")
+
+    job_id = manager.submit(saved, [], mode, None, max(0, min(20, int(num_clips))), [],
+                            use_music=use_music in ("1", "true", "True"),
+                            intro_tmp=intro_saved, style=style or "", params=params)
+    return JSONResponse({"job_id": job_id, "n_videos": len(saved), "mode": mode},
+                        status_code=201)
+
+
 @app.get("/api/styles")
 async def list_styles() -> JSONResponse:
     """Catálogo de los 5 estilos de edición (para el selector del editor)."""
@@ -409,6 +480,57 @@ async def crear_brolls(payload: dict = Body(...)) -> JSONResponse:
     overrides = payload.get("config") if isinstance(payload.get("config"), dict) else {}
     job_id = runner.start(str(producto["id"]), producto, source, overrides)
     return JSONResponse({"job_id": job_id, "source": source}, status_code=201)
+
+
+@app.post("/api/brolls/upload")
+async def crear_brolls_con_archivos(
+    producto: str = Form(...),
+    source: str = Form("uploaded"),
+    config: str = Form("{}"),
+    videos: list[UploadFile] = File(default=[]),
+) -> JSONResponse:
+    """Igual que /api/brolls pero el web MANDA LOS VIDEOS como archivos.
+
+    Es el camino robusto: no hay que descargar nada por URL pública (que depende
+    de nginx/volumen/dominio). El web ya tiene el archivo en su disco y nos lo
+    pasa por la red interna.
+    """
+    from app.brolls import runner
+
+    try:
+        prod = json.loads(producto)
+    except Exception:  # noqa: BLE001
+        raise HTTPException(status_code=400, detail="'producto' no es JSON válido.")
+    if not isinstance(prod, dict) or not prod.get("id"):
+        raise HTTPException(status_code=400, detail="Falta 'producto' (con id).")
+    if source not in ("veo", "uploaded"):
+        raise HTTPException(status_code=400, detail="source inválido (veo|uploaded).")
+    try:
+        overrides = json.loads(config) if config else {}
+    except Exception:  # noqa: BLE001
+        overrides = {}
+
+    settings.ensure_dirs()
+    guardados: list[Path] = []
+    for up in videos:
+        if not up.filename:
+            continue
+        dest = Path(tempfile.mkstemp(suffix=Path(up.filename).suffix or ".mp4",
+                                     dir=str(settings.storage_dir))[1])
+        with dest.open("wb") as f:
+            while chunk := await up.read(1 << 20):
+                f.write(chunk)
+        guardados.append(dest)
+
+    if source == "uploaded" and not guardados:
+        for p in guardados:
+            p.unlink(missing_ok=True)
+        raise HTTPException(status_code=400, detail="No llegó ningún video del producto.")
+
+    job_id = runner.start(str(prod["id"]), prod, source, overrides,
+                          videos_locales=guardados or None)
+    return JSONResponse({"job_id": job_id, "source": source, "videos": len(guardados)},
+                        status_code=201)
 
 
 @app.get("/api/brolls/jobs/{job_id}")

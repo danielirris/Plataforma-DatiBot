@@ -44,6 +44,9 @@ export async function GET(_req: Request, { params }: Ctx) {
       headers: {
         "Content-Type": MIME[ext] || "application/octet-stream",
         "Cache-Control": "public, max-age=31536000, immutable",
+        // No dejar que el navegador adivine el tipo (evita servir HTML/SVG
+        // ejecutable si alguna vez entra un archivo raro a la carpeta).
+        "X-Content-Type-Options": "nosniff",
       },
     });
   } catch {

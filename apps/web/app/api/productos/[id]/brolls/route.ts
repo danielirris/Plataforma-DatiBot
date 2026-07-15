@@ -1,5 +1,8 @@
 import { NextResponse } from "next/server";
+import { readFile, stat } from "node:fs/promises";
+import path from "node:path";
 import { getProduct } from "@plataforma/products";
+import { leerVpsConfig } from "@/lib/vps/upload";
 import { extractorUrl, extractorPublicUrl } from "@/lib/editor/extractor";
 
 export const runtime = "nodejs";
@@ -29,13 +32,43 @@ export async function POST(req: Request, { params }: Ctx) {
       { status: 400 },
     );
 
+  // Para "uploaded": en vez de darle URLs al extractor (que dependen de nginx /
+  // volumen / dominio y suelen fallar), le mandamos LOS BYTES por la red interna.
+  // El web ya tiene los videos en su disco porque él mismo los escribió.
+  const archivos: { nombre: string; ruta: string }[] = [];
+  if (source === "uploaded") {
+    const dir = (await leerVpsConfig()).localDir || process.env.VPS_LOCAL_DIR || "";
+    if (dir) {
+      for (const v of producto.videos ?? []) {
+        const ruta = path.join(dir.replace(/\/+$/, ""), path.basename(v.nombre || ""));
+        try {
+          await stat(ruta);
+          archivos.push({ nombre: v.nombre, ruta });
+        } catch {
+          /* ese video ya no está en disco: se omite */
+        }
+      }
+    }
+  }
+
   let res: Response;
   try {
-    res = await fetch(`${extractorUrl()}/api/brolls`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ producto, source, config: body.config ?? {} }),
-    });
+    if (source === "uploaded" && archivos.length) {
+      const form = new FormData();
+      form.append("producto", JSON.stringify(producto));
+      form.append("source", source);
+      form.append("config", JSON.stringify(body.config ?? {}));
+      for (const a of archivos) {
+        form.append("videos", new Blob([new Uint8Array(await readFile(a.ruta))]), a.nombre);
+      }
+      res = await fetch(`${extractorUrl()}/api/brolls/upload`, { method: "POST", body: form });
+    } else {
+      res = await fetch(`${extractorUrl()}/api/brolls`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ producto, source, config: body.config ?? {} }),
+      });
+    }
   } catch {
     return NextResponse.json(
       { error: `No se pudo contactar al servicio de video (${extractorUrl()}).` },

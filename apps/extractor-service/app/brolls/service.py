@@ -87,26 +87,50 @@ def _download(url: str, dest: Path) -> Path:
 
 
 def _from_uploaded(product_id: str, product: dict, cfg: BrollConfig,
-                   on_progress: Progress) -> tuple[list[dict], float]:
-    """Recorta N clips cortos de los videos ya subidos al producto (sin coste)."""
-    videos = [v for v in (product.get("videos") or []) if v.get("url")]
-    if not videos:
-        raise RuntimeError("El producto no tiene videos subidos para recortar.")
+                   on_progress: Progress,
+                   videos_locales: list[Path] | None = None) -> tuple[list[dict], float]:
+    """Recorta N clips cortos de los videos del producto (sin coste).
 
+    ``videos_locales``: archivos que el web YA mandó por la red interna. Es el
+    camino preferido — no depende de que la URL pública sirva el archivo. Si no
+    vienen, se cae al modo antiguo: descargar por URL.
+    """
     clips: list[dict] = []
     with tempfile.TemporaryDirectory() as td:
         tmp = Path(td)
-        # Descarga cada video una vez.
         fuentes: list[tuple[Path, float]] = []
-        for j, v in enumerate(videos):
-            on_progress(0, cfg.n_brolls, f"Descargando video {j + 1}/{len(videos)}…")
-            try:
-                p = _download(v["url"], tmp / f"src_{j}.mp4")
-                fuentes.append((p, _probe_duration(p)))
-            except Exception as e:  # noqa: BLE001
-                logger.warning("No pude descargar %s: %s", v.get("url"), e)
+        fallos: list[str] = []
+
+        if videos_locales:
+            # El web nos pasó los bytes: cero descargas, cero URLs.
+            for p in videos_locales:
+                try:
+                    fuentes.append((p, _probe_duration(p)))
+                except Exception as e:  # noqa: BLE001
+                    fallos.append(f"{p.name} → {e}")
+        else:
+            videos = [v for v in (product.get("videos") or []) if v.get("url")]
+            if not videos:
+                raise RuntimeError("El producto no tiene videos subidos para recortar.")
+            for j, v in enumerate(videos):
+                on_progress(0, cfg.n_brolls, f"Descargando video {j + 1}/{len(videos)}…")
+                try:
+                    p = _download(v["url"], tmp / f"src_{j}.mp4")
+                    fuentes.append((p, _probe_duration(p)))
+                except Exception as e:  # noqa: BLE001
+                    logger.warning("No pude descargar %s: %s", v.get("url"), e)
+                    fallos.append(f"{v.get('url')} → {e}")
+
         if not fuentes:
-            raise RuntimeError("No se pudo descargar ningún video del producto.")
+            detalle = fallos[0] if fallos else "sin detalle"
+            raise RuntimeError(
+                "No se pudo usar ningún video del producto. "
+                f"Primera causa: {detalle}. Si es una URL que no carga, el archivo "
+                "no se está sirviendo: vuelve a subir el video en Productos."
+            )
+        if fallos:
+            logger.warning("Se omitieron %d video(s) del producto: %s",
+                           len(fallos), "; ".join(fallos[:3]))
 
         for i in range(cfg.n_brolls):
             on_progress(i, cfg.n_brolls, f"Recortando broll {i + 1}/{cfg.n_brolls}…")
@@ -133,13 +157,16 @@ def _from_uploaded(product_id: str, product: dict, cfg: BrollConfig,
 
 def generate_brolls(product_id: str, product: dict, *, source: str = "veo",
                     overrides: dict | None = None,
-                    on_progress: Progress | None = None) -> dict:
+                    on_progress: Progress | None = None,
+                    videos_locales: list[Path] | None = None) -> dict:
     """Genera los B-rolls del producto y devuelve el resumen (clips, coste, metadata).
 
     Args:
         product_id: id del producto (para las rutas de salida).
         product: TODOS los datos guardados del producto (dict del JSON del store).
         source: "veo" (crear de cero) | "uploaded" (recortar los videos subidos).
+        videos_locales: videos que el web mandó por la red interna (evita tener
+            que descargarlos por URL pública).
     """
     cfg = BrollConfig.from_overrides(overrides)
     on_progress = on_progress or _noop
@@ -147,7 +174,7 @@ def generate_brolls(product_id: str, product: dict, *, source: str = "veo",
 
     errores: list[str] = []
     if source == "uploaded":
-        clips, seconds = _from_uploaded(product_id, product, cfg, on_progress)
+        clips, seconds = _from_uploaded(product_id, product, cfg, on_progress, videos_locales)
     else:
         clips, seconds, errores = _from_veo(product_id, product, cfg, on_progress)
 

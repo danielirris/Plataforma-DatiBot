@@ -97,6 +97,38 @@ export async function subirImagen(
 }
 
 /**
+ * Guarda un archivo YA escrito en disco (p. ej. re-armado por trozos) y devuelve
+ * su URL pública. En modo local copia por streaming (sin cargarlo a RAM, apto
+ * para videos grandes); en modo SFTP cae a subirImagen con buffer.
+ */
+export async function guardarArchivoDesdeRuta(
+  origen: string,
+  nombreArchivo: string,
+  cfg: VpsConfig,
+): Promise<string> {
+  if (cfg.localDir) {
+    const { copyFile, mkdir } = await import("node:fs/promises");
+    const dir = cfg.localDir.replace(/\/+$/, "");
+    await mkdir(dir, { recursive: true });
+    await copyFile(origen, `${dir}/${nombreArchivo}`);
+    const selfBase = (process.env.IMG_PUBLIC_BASE ?? "").replace(/\/+$/, "");
+    if (selfBase) return `${selfBase}/api/img/${encodeURIComponent(nombreArchivo)}`;
+    return `${cfg.publicBaseUrl}/${nombreArchivo}`;
+  }
+  // SFTP: fastPut sube LEYENDO DEL DISCO (streaming). Nunca cargar el archivo
+  // entero en memoria: un video de 2 GB tumbaría el contenedor por OOM.
+  const sftp = new SftpClient();
+  try {
+    await sftp.connect(await construirConexion(cfg));
+    const remoto = `${cfg.remoteDir.replace(/\/+$/, "")}/${nombreArchivo}`;
+    await sftp.fastPut(origen, remoto);
+    return `${cfg.publicBaseUrl}/${nombreArchivo}`;
+  } finally {
+    await sftp.end().catch(() => {});
+  }
+}
+
+/**
  * Borra la imagen de una URL pública (deriva el nombre del último segmento).
  * Si el archivo no existe, no falla.
  */
