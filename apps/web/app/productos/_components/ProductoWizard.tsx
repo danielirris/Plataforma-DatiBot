@@ -31,6 +31,7 @@ import {
 } from "@plataforma/products/schema";
 import { cn } from "@plataforma/ui";
 import { AutoTextarea } from "./AutoTextarea";
+import { productoAMarkdown, nombreArchivoMd } from "@/lib/producto/markdown";
 
 const PASOS = [
   { key: "identidad", label: "1 · Identidad" },
@@ -180,6 +181,20 @@ export function ProductoWizard({ producto }: { producto?: Producto }) {
     setP((prev) => ({ ...prev, [campo]: valor }));
     setEstado("idle");
   }
+  // Descarga el dossier del producto (identidad + avatar + ángulos + oferta) en
+  // Markdown, para pasárselo a una IA y que redacte los guiones de anuncios.
+  function descargarMarkdown() {
+    const md = productoAMarkdown(p);
+    const blob = new Blob([md], { type: "text/markdown;charset=utf-8" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = nombreArchivoMd(p);
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(a.href);
+  }
+
   // Precios por país: alimentan el motor de flujos como [PRECIO_*].
   function setPrecio(pais: string, campo: string, valor: string) {
     setP((prev) => {
@@ -1289,6 +1304,20 @@ export function ProductoWizard({ producto }: { producto?: Producto }) {
               </div>
             </>
           )}
+
+          {/* Dossier completo del producto para pasárselo a una IA. */}
+          <div className="flex flex-wrap items-center gap-3 rounded-xl border border-[var(--hairline)] glass p-4">
+            <button
+              onClick={descargarMarkdown}
+              className="rounded-lg border border-accent/50 bg-accent/10 px-4 py-2 text-sm font-medium text-accent-2"
+            >
+              ⬇️ Descargar Markdown
+            </button>
+            <span className="text-xs text-muted">
+              Baja <b>identidad + avatar + ángulos + oferta</b> en un <code>.md</code>. Pégaselo a
+              Claude (u otra IA) para que te redacte los guiones de los anuncios.
+            </span>
+          </div>
 
           <div className="sticky bottom-0 flex items-center gap-3 border-t border-[var(--hairline)] bg-bg/80 py-4 backdrop-blur">
             <button
