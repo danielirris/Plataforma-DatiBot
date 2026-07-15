@@ -90,26 +90,6 @@ function errorDeRed(e: unknown): string {
   return "Fallo de red: " + (e instanceof Error ? e.message : "desconocido");
 }
 
-interface BrollClip {
-  index: number;
-  file: string;
-  url: string;
-  prompt: string;
-  duration_s: number;
-  source: string;
-}
-interface BrollJob {
-  status: string;
-  progress?: number;
-  done?: number;
-  total?: number;
-  message?: string;
-  error?: string;
-  cost_usd?: number;
-  clips?: BrollClip[];
-}
-
-// Campos de texto largos de cada ángulo (nombre y tipo van aparte en el header).
 const CAMPOS_ANGULO: { key: keyof Angulo; label: string; rows: number }[] = [
   { key: "promesa_central", label: "Promesa central", rows: 2 },
   { key: "gran_idea", label: "Gran idea (titular)", rows: 2 },
@@ -156,13 +136,6 @@ export function ProductoWizard({ producto }: { producto?: Producto }) {
   );
   const [videoEstado, setVideoEstado] = useState<string>("");
   const [subiendoVideo, setSubiendoVideo] = useState<boolean>(false);
-  // B-rolls (clips de fondo con Veo o recorte de los videos subidos).
-  const [brollSource, setBrollSource] = useState<"veo" | "uploaded">("veo");
-  const [brollCantidad, setBrollCantidad] = useState<number>(10);
-  const [brollEstado, setBrollEstado] = useState<string>("");
-  const [brollJob, setBrollJob] = useState<BrollJob | null>(null);
-  const [brollBase, setBrollBase] = useState<string>("");
-  const [generandoBrolls, setGenerandoBrolls] = useState<boolean>(false);
   const [paisPrecio, setPaisPrecio] = useState<string>("PE");
 
   const esNuevo = !p.id;
@@ -639,61 +612,6 @@ export function ProductoWizard({ producto }: { producto?: Producto }) {
       /* aunque falle el borrado remoto, ya se quitó del producto */
     }
     setVideoEstado("✓ Video quitado. Guarda para conservar el cambio.");
-  }
-
-  // ── B-rolls (clips de fondo): Veo de cero o recorte de los videos subidos ──
-  async function generarBrolls() {
-    if (!p.id) {
-      setBrollEstado("⚠️ Guarda el producto primero (paso Identidad).");
-      return;
-    }
-    if (brollSource === "uploaded" && (p.videos?.length ?? 0) === 0) {
-      setBrollEstado("⚠️ No hay videos subidos para recortar. Sube videos o usa Veo.");
-      return;
-    }
-    setGenerandoBrolls(true);
-    setBrollJob(null);
-    setBrollEstado(
-      brollSource === "veo"
-        ? "Enviando a Veo… (10 clips tardan varios minutos)"
-        : "Recortando de tus videos…",
-    );
-    try {
-      const res = await fetch(`/api/productos/${p.id}/brolls`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ source: brollSource, config: { n_brolls: brollCantidad } }),
-      });
-      if (!res.ok) {
-        setBrollEstado("⚠️ " + (await mensajeDeError(res)));
-        setGenerandoBrolls(false);
-        return;
-      }
-      const data = await res.json();
-      setBrollBase(data.publicBase ?? "");
-      pollBrolls(data.job_id as string);
-    } catch (e) {
-      setBrollEstado("⚠️ " + errorDeRed(e));
-      setGenerandoBrolls(false);
-    }
-  }
-
-  function pollBrolls(jobId: string) {
-    const timer = setInterval(async () => {
-      try {
-        const r = await fetch(`/api/productos/${p.id}/brolls/${jobId}`, { cache: "no-store" });
-        if (!r.ok) return;
-        const j = (await r.json()) as BrollJob;
-        setBrollJob(j);
-        setBrollEstado(j.message ?? "Procesando…");
-        if (j.status === "done" || j.status === "error") {
-          clearInterval(timer);
-          setGenerandoBrolls(false);
-        }
-      } catch {
-        /* corte de red: reintenta en el próximo tick */
-      }
-    }, 3000);
   }
 
   return (
@@ -1537,117 +1455,6 @@ export function ProductoWizard({ producto }: { producto?: Producto }) {
               ))}
             </div>
           )}
-
-          {/* B-rolls: clips de fondo para anuncios (Veo o recorte de tus videos). */}
-          <div className="space-y-4 rounded-xl border border-[var(--hairline)] glass p-5">
-            <div>
-              <p className="text-sm font-medium text-text">🎥 B-rolls (clips de fondo)</p>
-              <p className="mt-1 text-xs text-muted">
-                Clips cortos del producto <b>sin personas</b> para usar de fondo en los
-                anuncios. Se generan con todo lo que ya guardaste del producto.
-              </p>
-            </div>
-
-            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-              <button
-                onClick={() => setBrollSource("veo")}
-                className={cn(
-                  "rounded-xl border p-3 text-left transition-all",
-                  brollSource === "veo"
-                    ? "border-accent bg-accent/10 ring-1 ring-accent/40"
-                    : "border-[var(--hairline)] bg-[var(--field)] hover:border-accent/40",
-                )}
-              >
-                <span className="text-sm font-medium text-text">✨ Crear de cero (Veo)</span>
-                <p className="mt-1 text-xs text-muted">
-                  Clips de 4s en 9:16 con cámara dinámica, generados por IA desde los datos
-                  del producto. ~$0.20 c/u.
-                </p>
-              </button>
-              <button
-                onClick={() => setBrollSource("uploaded")}
-                className={cn(
-                  "rounded-xl border p-3 text-left transition-all",
-                  brollSource === "uploaded"
-                    ? "border-accent bg-accent/10 ring-1 ring-accent/40"
-                    : "border-[var(--hairline)] bg-[var(--field)] hover:border-accent/40",
-                )}
-              >
-                <span className="text-sm font-medium text-text">✂️ Usar mis videos</span>
-                <p className="mt-1 text-xs text-muted">
-                  Recorta 10 fragmentos de los videos que subiste arriba. Sin coste.
-                </p>
-              </button>
-            </div>
-
-            <div className="flex flex-wrap items-center gap-3">
-              <label className="flex items-center gap-2 text-sm text-muted">
-                ¿Cuántos?
-                <input
-                  type="number"
-                  min={1}
-                  max={20}
-                  value={brollCantidad}
-                  onChange={(e) =>
-                    setBrollCantidad(Math.max(1, Math.min(20, Number(e.target.value) || 1)))
-                  }
-                  className="w-16 rounded-lg border border-[var(--hairline)] bg-[var(--field)] px-2 py-1 text-text outline-none focus:border-accent"
-                />
-              </label>
-              <button
-                onClick={() => setBrollCantidad(1)}
-                className="rounded border border-[var(--hairline)] px-2 py-1 text-xs text-muted hover:text-text"
-                title="Genera solo 1 para probar sin gastar"
-              >
-                🧪 Solo 1 (prueba)
-              </button>
-              <button
-                onClick={generarBrolls}
-                disabled={generandoBrolls || !p.id}
-                className="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
-              >
-                {generandoBrolls
-                  ? "Generando…"
-                  : `🎬 Generar ${brollCantidad} broll${brollCantidad === 1 ? "" : "s"}`}
-              </button>
-              {brollSource === "veo" && (
-                <span className="text-xs text-muted">≈ ${(brollCantidad * 0.2).toFixed(2)}</span>
-              )}
-              <span className="text-sm text-muted">
-                {brollEstado}
-                {brollJob && brollJob.status !== "done" && brollJob.status !== "error"
-                  ? ` (${brollJob.progress ?? 0}%)`
-                  : ""}
-              </span>
-            </div>
-
-            {brollJob?.status === "done" && (brollJob.clips?.length ?? 0) > 0 && (
-              <div className="space-y-2">
-                <p className="text-xs text-muted">
-                  ✅ {brollJob.clips!.length} brolls listos
-                  {brollJob.cost_usd != null ? ` · coste estimado $${brollJob.cost_usd.toFixed(2)}` : ""}
-                </p>
-                <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-                  {brollJob.clips!.map((c) => (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <video
-                      key={c.index}
-                      src={`${brollBase}${c.url}`}
-                      controls
-                      muted
-                      playsInline
-                      className="aspect-[9/16] w-full rounded-lg border border-[var(--hairline)] bg-black object-cover"
-                    />
-                  ))}
-                </div>
-              </div>
-            )}
-            {brollJob?.status === "error" && (
-              <p className="rounded-lg border border-red-500/40 bg-red-500/10 p-3 text-sm text-red-300">
-                ⚠️ {brollJob.error || "Error generando los brolls"}
-              </p>
-            )}
-          </div>
 
           <div className="sticky bottom-0 flex items-center gap-3 border-t border-[var(--hairline)] bg-bg/80 py-4 backdrop-blur">
             <button

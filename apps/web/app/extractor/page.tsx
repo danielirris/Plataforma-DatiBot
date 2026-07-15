@@ -11,8 +11,12 @@ export const dynamic = "force-dynamic";
 
 export default async function ExtractorPage() {
   const productos = await listProducts();
-  const items = productos
-    .filter((p) => (p.videos?.length ?? 0) > 0)
-    .map((p) => ({ id: p.id, nombre: p.nombre, videos: p.videos }));
+  // Se listan TODOS los productos: los anuncios necesitan videos subidos, pero
+  // los B-rolls de Veo se generan sin videos (solo con los datos del producto).
+  const items = productos.map((p) => ({
+    id: p.id,
+    nombre: p.nombre,
+    videos: p.videos ?? [],
+  }));
   return <EditorVideos productos={items} />;
 }
