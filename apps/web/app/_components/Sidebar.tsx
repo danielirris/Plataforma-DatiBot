@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { NAV_ITEMS, cn } from "@plataforma/ui";
@@ -9,10 +10,23 @@ import { Logo } from "./Logo";
 export function Sidebar() {
   const pathname = usePathname();
 
+  // Modo solo editor: el middleware lo marca con una cookie legible (el layout
+  // es estático y no puede leer el modo en servidor). Se lee tras montar; hay un
+  // parpadeo mínimo la primera vez, aceptable para una cáscara.
+  const [soloEditor, setSoloEditor] = useState(false);
+  useEffect(() => {
+    setSoloEditor(/(?:^|;\s*)datibot_solo_editor=1(?:;|$)/.test(document.cookie));
+  }, []);
+
+  // En el subdominio del editor solo existe el editor; el menú lo refleja. El
+  // bloqueo de verdad está en middleware.ts, esto es solo la cara visible.
+  const items = soloEditor ? NAV_ITEMS.filter((i) => i.href === "/extractor") : NAV_ITEMS;
+  const inicio = soloEditor ? "/extractor" : "/";
+
   return (
     <aside className="glass flex w-60 shrink-0 flex-col border-r border-[var(--hairline)]">
       {/* Marca */}
-      <Link href="/" className="flex items-center gap-2.5 px-5 py-6">
+      <Link href={inicio} className="flex items-center gap-2.5 px-5 py-6">
         <Logo size={34} />
         <span className="bg-gradient-to-r from-accent to-accent-2 bg-clip-text text-lg font-bold tracking-tight text-transparent">
           Datibot
@@ -20,7 +34,7 @@ export function Sidebar() {
       </Link>
 
       <nav className="flex flex-1 flex-col gap-0.5 px-3">
-        {NAV_ITEMS.map((item) => {
+        {items.map((item) => {
           const active =
             item.href === "/"
               ? pathname === "/"

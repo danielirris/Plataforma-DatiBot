@@ -35,12 +35,18 @@ export async function leerVpsConfig(): Promise<VpsConfig> {
 
 export function faltantesVps(c: VpsConfig): string[] {
   const faltan: string[] = [];
-  // Auto-servido (IMG_PUBLIC_BASE): el web sirve las imágenes; no hace falta la
-  // URL pública de nginx.
+  // Auto-servido (IMG_PUBLIC_BASE): el web sirve las imágenes por /api/img desde
+  // la carpeta local, así que no hace falta la URL pública de nginx… pero SÍ la
+  // carpeta local. Sin ella no hay de dónde servir, y la subida se iría a SFTP
+  // con datos vacíos y un error de conexión incomprensible. Se exige aquí.
   const autoServido = !!(process.env.IMG_PUBLIC_BASE ?? "").trim();
   if (!autoServido && !c.publicBaseUrl) faltan.push("URL pública base");
-  // Modo local o auto-servido: no se usa SFTP (la carpeta se crea sola).
-  if (c.localDir || autoServido) return faltan;
+  if (autoServido) {
+    if (!c.localDir) faltan.push("carpeta local (VPS_LOCAL_DIR)");
+    return faltan;
+  }
+  // Modo local: la carpeta se crea sola, no se usa SFTP.
+  if (c.localDir) return faltan;
   // Modo SFTP: hacen falta los datos de conexión.
   if (!c.host) faltan.push("host");
   if (!c.user) faltan.push("usuario");

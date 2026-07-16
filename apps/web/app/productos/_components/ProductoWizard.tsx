@@ -33,6 +33,8 @@ import {
 import { cn } from "@plataforma/ui";
 import { AutoTextarea } from "./AutoTextarea";
 import { productoAMarkdown, nombreArchivoMd } from "@/lib/producto/markdown";
+import { mensajeDeError, errorDeRed } from "@/lib/http/errores";
+import { subirPorTrozos } from "@/lib/uploads/cliente";
 
 // Los precios van ANTES de los mensajes: el copy usa los tokens [PRECIO_*], así
 // que conviene tenerlos puestos antes de redactar.
@@ -64,28 +66,6 @@ const DISPONIBLES = new Set([
 // pinta la misma tabla y así no se desincronizan.
 const CAMPOS_PRECIO = CAMPOS_PRECIO_SCHEMA.map((c) => ({ k: c.key, l: c.label, ayuda: c.ayuda }));
 
-// Extrae un mensaje legible de una respuesta fallida: usa {error} si vino JSON,
-// si no, muestra el código de estado y el texto crudo (401, 504, HTML, etc.).
-// Así el usuario ve la causa REAL en vez de un "no se pudo contactar" genérico.
-async function mensajeDeError(res: Response): Promise<string> {
-  const raw = await res.text().catch(() => "");
-  try {
-    const d = JSON.parse(raw);
-    if (d?.error) return String(d.error);
-  } catch {
-    /* la respuesta no era JSON (401 de login, 504 del proxy, HTML de error…) */
-  }
-  // Página HTML del proxy (502/504 de EasyPanel): mensaje legible, no el churro.
-  const t = raw.trimStart().toLowerCase();
-  if (t.startsWith("<!doctype") || t.startsWith("<html")) {
-    return `Error ${res.status}: el servidor tardó demasiado o se reinició (respuesta del proxy). Vuelve a intentarlo en unos segundos.`;
-  }
-  return `Error ${res.status}${raw ? `: ${raw.slice(0, 160)}` : ""}`;
-}
-
-function errorDeRed(e: unknown): string {
-  return "Fallo de red: " + (e instanceof Error ? e.message : "desconocido");
-}
 
 const CAMPOS_ANGULO: { key: keyof Angulo; label: string; rows: number }[] = [
   { key: "promesa_central", label: "Promesa central", rows: 2 },
@@ -574,48 +554,20 @@ export function ProductoWizard({ producto }: { producto?: Producto }) {
       return;
     }
     setSubiendoVideo(true);
-    const CHUNK = 4 * 1024 * 1024;
     const lista = Array.from(files);
     const fallos: string[] = [];
     let subidos = 0;
     for (let i = 0; i < lista.length; i++) {
       const file = lista[i];
-      if (file.size === 0) {
-        fallos.push(`${file.name}: archivo vacío`);
-        continue; // no aborta el resto de la selección
-      }
-      const total = Math.max(1, Math.ceil(file.size / CHUNK));
-      const uploadId =
-        globalThis.crypto?.randomUUID?.() ??
-        `${Date.now()}-${Math.random().toString(36).slice(2)}`;
       try {
-        for (let idx = 0; idx < total; idx++) {
-          const pct = Math.round(((idx + 1) / total) * 100);
-          setVideoEstado(`Subiendo ${i + 1}/${lista.length}: ${file.name} (${pct}%)…`);
-          const parte = file.slice(idx * CHUNK, Math.min(file.size, (idx + 1) * CHUNK));
-          const qs = new URLSearchParams({
-            id: uploadId,
-            index: String(idx),
-            total: String(total),
-            chunkSize: String(CHUNK),
-            name: file.name,
-          });
-          const res = await fetch(`/api/productos/${p.id}/videos/chunk?${qs}`, {
-            method: "POST",
-            headers: { "Content-Type": "application/octet-stream" },
-            body: parte,
-          });
-          if (!res.ok) throw new Error(await mensajeDeError(res));
-          if (idx === total - 1) {
-            const data = await res.json();
-            setP((prev) => ({
-              ...prev,
-              videos: [...(prev.videos ?? []), data.video as VideoProducto],
-            }));
-            if (data.aviso) fallos.push(`${file.name}: ${data.aviso}`);
-            subidos += 1;
-          }
-        }
+        const data = await subirPorTrozos<{ video: VideoProducto; aviso?: string }>(
+          `/api/productos/${p.id}/videos/chunk`,
+          file,
+          (pct) => setVideoEstado(`Subiendo ${i + 1}/${lista.length}: ${file.name} (${pct}%)…`),
+        );
+        setP((prev) => ({ ...prev, videos: [...(prev.videos ?? []), data.video] }));
+        if (data.aviso) fallos.push(`${file.name}: ${data.aviso}`);
+        subidos += 1;
       } catch (e) {
         // Un archivo que falla no tumba los demás.
         fallos.push(`${file.name}: ${e instanceof Error ? e.message : "error"}`);

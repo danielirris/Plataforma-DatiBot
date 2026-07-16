@@ -144,8 +144,10 @@ dejen vacía.
   instalar las deps Node de `apps/extractor-service/remotion-runtime/` y
   `apps/extractor-service/web-preview/` (`npm install` en cada una; descargan un
   Chromium headless). Hazlo cuando vayas a usar ese modo.
-- **Sin login:** la plataforma es abierta (uso local). El shell está montado
-  para poder añadir auth después (p. ej. middleware de Next) sin rehacer nada.
+- **Login:** `middleware.ts` protege el shell con HTTP Basic si están puestas
+  `APP_AUTH_USER` y `APP_AUTH_PASSWORD` (así se despliega, ver `DEPLOY.md`). En
+  local, sin esas variables, la plataforma queda abierta; en producción, sin
+  ellas, responde 503 en vez de abrirse.
 - **`app-grande`** (Documents) es una versión vieja de Dashboard ads y quedó
   fuera a propósito. **`prrsv-validator`** (bioinformática) tampoco entró por no
   encajar temáticamente.

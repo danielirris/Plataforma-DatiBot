@@ -293,6 +293,7 @@ async def create_job_from_files(
     highlight: str = Form(""),
     font: str = Form("Anton"),
     hook: str = Form(""),
+    auto_render: str = Form(""),
 ) -> JSONResponse:
     """Igual que /api/jobs/from-urls pero el web MANDA LOS VIDEOS como archivos.
 
@@ -324,6 +325,11 @@ async def create_job_from_files(
         "highlight": highlight or "",
         "font": font or "Anton",
     }
+    # Render automático para ESTE trabajo, sin depender del preview_first global.
+    # Lo pide el editor suelto (subdominio): quien lo usa no tiene acceso a la
+    # página de preview del extractor, así que el anuncio debe renderizarse solo.
+    if auto_render in ("1", "true", "True"):
+        params["auto_render"] = True
     if hook:
         try:
             h = json.loads(hook)

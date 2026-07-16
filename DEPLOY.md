@@ -12,6 +12,10 @@ GitHub, cada uno como una **App** distinta en EasyPanel (contenedores separados)
 
 El shell (web) embebe a los otros 3 por iframe usando las URLs de sus subdominios.
 
+Hay un **5º servicio opcional**: `editor`, que es el mismo `apps/web` con
+`SOLO_EDITOR=1` y otro dominio, para prestar el editor de videos a alguien de
+fuera sin darle el resto. Ver **2-bis**.
+
 > **Modelo de secretos:** como cada servicio es un contenedor aparte, las API keys
 > de los servicios Python se ponen como **variables de entorno en EasyPanel**, NO
 > con los `.env` que genera el panel de Configuración (ese mecanismo era para un
@@ -94,6 +98,51 @@ Necesita las URLs de los 3 subdominios de arriba, así que va después.
   > El botón **Generar ebook** (en Productos) crea el contenido con la IA del
   > shell (Gemini/OpenAI) y lo manda al servicio `ebooks` a renderizar el PDF.
   > Por eso `web` necesita alcanzar a `ebooks` por la red interna del proyecto.
+
+---
+
+## 2-bis. Editor de videos suelto (opcional) — `editor.tudominio.com`
+
+Para darle **solo el editor de videos** a alguien de fuera, sin darle el resto de
+la plataforma ni tus productos. Es el **mismo repo y el mismo Dockerfile** que
+`web`: cambian el dominio y las variables. Los arreglos que hagas al editor le
+llegan redesplegando este servicio.
+
+Crea una **segunda App** en EasyPanel:
+
+- **Build:** igual que `web` — Dockerfile · Build context `/` · `apps/web/Dockerfile`.
+- **Puerto:** 3000.
+- **Dominio:** `editor.tudominio.com` (activa HTTPS).
+- **Basic Auth de EasyPanel:** **NO** lo actives (el login lo hace la app).
+- **Volumen:** **no montes el volumen `/data` de `web`.** No lo necesita, y sin él
+  es imposible que se filtren tus productos aunque algo falle.
+- **Env:**
+  ```
+  SOLO_EDITOR=1
+  APP_AUTH_USER=el_usuario_de_tu_invitada
+  APP_AUTH_PASSWORD=una_clave_distinta_a_la_tuya
+  EXTRACTOR_INTERNAL_URL=http://extractor:8000
+  EXTRACTOR_URL=https://extractor.tudominio.com
+  IMG_PUBLIC_BASE=https://editor.tudominio.com
+  VPS_LOCAL_DIR=/data/img
+  ```
+
+Con `SOLO_EDITOR=1`, `middleware.ts` deja pasar **solo** el editor y sus APIs
+(`/extractor`, `/api/editor/jobs|hooks|voz|videos`, `GET /api/editor/cola`,
+`/api/img`). Todo lo demás —incluida `/api/config`, que devuelve las API keys—
+responde 404 aunque se entre por URL directa. Quedan fuera a propósito
+`/api/editor/galeria` (los anuncios del extractor son de todos los que lo usan)
+y el `POST /api/editor/cola` (vaciar la cola cancelaría **tus** renders).
+
+**Ten en cuenta:**
+
+- **El extractor es el mismo y hace un trabajo a la vez.** Los renders de tu
+  invitada se ponen en la misma cola que los tuyos y os esperáis mutuamente.
+- **El gasto de IA lo pagas tú:** cada anuncio que genere consume tu cuota.
+- **Credenciales aparte.** Ponle usuario y contraseña **distintos** de los tuyos:
+  así se los quitas cerrando este servicio, sin tocar tu app.
+- **Los videos que suba** van a `VPS_LOCAL_DIR` con el prefijo `vid-editor-` y
+  **nadie los borra solos**: revisa esa carpeta de vez en cuando.
 
 ---
 

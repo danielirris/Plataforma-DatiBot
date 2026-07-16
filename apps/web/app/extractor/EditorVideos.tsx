@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import type { VideoProducto } from "@plataforma/products";
+import { subirPorTrozos } from "@/lib/uploads/cliente";
 
 interface ProductoItem {
   id: string;
@@ -85,12 +86,27 @@ interface JobState {
   project_url?: string | null;
 }
 
-export function EditorVideos({ productos }: { productos: ProductoItem[] }) {
+export function EditorVideos({
+  productos,
+  soloEditor = false,
+}: {
+  productos: ProductoItem[];
+  /** subdominio del editor: no hay productos, los videos se suben aquí */
+  soloEditor?: boolean;
+}) {
   const [productoId, setProductoId] = useState<string>(productos[0]?.id ?? "");
   const producto = productos.find((p) => p.id === productoId);
   const [seleccion, setSeleccion] = useState<Set<string>>(
     () => new Set(productos[0]?.videos.map((v) => v.url) ?? []),
   );
+
+  // Videos sueltos, subidos aquí mismo (modo solo editor).
+  const [subidos, setSubidos] = useState<VideoProducto[]>([]);
+  const [subiendoVideo, setSubiendoVideo] = useState<boolean>(false);
+  const [videoEstado, setVideoEstado] = useState<string>("");
+
+  // La materia prima: o los videos del producto, o los que se acaban de subir.
+  const videosDisponibles: VideoProducto[] = soloEditor ? subidos : (producto?.videos ?? []);
   const [numClips, setNumClips] = useState<number>(5);
   const [estilo, setEstilo] = useState<string>("modo_bestia");
   const [subtitulo, setSubtitulo] = useState<string>("");
@@ -134,7 +150,50 @@ export function EditorVideos({ productos }: { productos: ProductoItem[] }) {
   // URLs de los videos elegidos, en el mismo orden que ve el extractor. El
   // video_idx de cada gancho apunta a esta lista.
   function urlsSeleccionadas() {
-    return (producto?.videos ?? []).filter((v) => seleccion.has(v.url)).map((v) => v.url);
+    return videosDisponibles.filter((v) => seleccion.has(v.url)).map((v) => v.url);
+  }
+
+  // ── Subida de videos sueltos (modo solo editor) ──
+  // Van al mismo almacén que los de producto: el job los busca en disco por su
+  // nombre y el Hook visual necesita que tengan URL.
+  async function subirVideos(files: FileList | null) {
+    if (!files?.length) return;
+    setSubiendoVideo(true);
+    const lista = Array.from(files);
+    const fallos: string[] = [];
+    let subidosOk = 0;
+    for (let i = 0; i < lista.length; i++) {
+      const file = lista[i];
+      try {
+        const data = await subirPorTrozos<{ video: VideoProducto }>(
+          "/api/editor/videos/chunk",
+          file,
+          (pct) => setVideoEstado(`Subiendo ${i + 1}/${lista.length}: ${file.name} (${pct}%)…`),
+        );
+        setSubidos((prev) => [...prev.filter((v) => v.url !== data.video.url), data.video]);
+        setSeleccion((prev) => new Set([...prev, data.video.url]));
+        subidosOk += 1;
+      } catch (e) {
+        fallos.push(`${file.name}: ${e instanceof Error ? e.message : "error"}`);
+      }
+    }
+    limpiarGanchos(); // cambió la lista: los video_idx de los ganchos ya no valen
+    setVideoEstado(
+      fallos.length
+        ? `${subidosOk ? `✓ ${subidosOk} subido(s). ` : ""}⚠️ ${fallos.join(" · ")}`
+        : `✓ ${subidosOk} video(s) listos.`,
+    );
+    setSubiendoVideo(false);
+  }
+
+  function quitarVideoSubido(url: string) {
+    setSubidos((prev) => prev.filter((v) => v.url !== url));
+    setSeleccion((prev) => {
+      const s = new Set(prev);
+      s.delete(url);
+      return s;
+    });
+    limpiarGanchos();
   }
 
   function cambiarProducto(id: string) {
@@ -193,9 +252,10 @@ export function EditorVideos({ productos }: { productos: ProductoItem[] }) {
     }
   }
 
-  // Al abrir el editor, mira la cola: si hay atasco, se ve de inmediato.
+  // Al abrir el editor, mira la cola: si hay atasco, se ve de inmediato. En el
+  // subdominio no: la cola es del extractor compartido y su API está bloqueada.
   useEffect(() => {
-    verCola();
+    if (!soloEditor) verCola();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -320,7 +380,9 @@ export function EditorVideos({ productos }: { productos: ProductoItem[] }) {
     }, 2500);
   }
 
-  if (!productos.length) {
+  // En el subdominio del editor no hay productos y es lo esperado: los videos
+  // se suben abajo.
+  if (!soloEditor && !productos.length) {
     return (
       <div className="mx-auto max-w-3xl px-8 py-16 text-center">
         <h1 className="text-2xl font-semibold">Editor de videos</h1>
@@ -330,13 +392,20 @@ export function EditorVideos({ productos }: { productos: ProductoItem[] }) {
             Productos
           </Link>{" "}
           (y en el paso <b>Videos</b> sube los videos largos). Aquí eliges el
-          producto, generas sus <b>B-rolls</b> y creas los anuncios.
+          producto y creas los anuncios a partir de esos videos.
         </p>
       </div>
     );
   }
 
-  const abs = (u?: string | null) => (u ? `${publicBase}${u}` : "#");
+  // Base de las SALIDAS (render, .zip, miniaturas). El dueño las abre en el
+  // dominio público del extractor. El editor suelto no tiene sus credenciales,
+  // así que van por un proxy del propio dominio (/api/editor/descargar).
+  const abs = (u?: string | null) => {
+    if (!u) return "#";
+    return soloEditor ? `/api/editor/descargar${u}` : `${publicBase}${u}`;
+  };
+  const thumbSrc = (u: string) => (soloEditor ? `/api/editor/descargar${u}` : `${hookBase}${u}`);
   const mmss = (s: number) => {
     const m = Math.floor(s / 60);
     const sec = Math.floor(s % 60);
@@ -347,39 +416,72 @@ export function EditorVideos({ productos }: { productos: ProductoItem[] }) {
     <div className="mx-auto max-w-3xl px-8 py-10">
       <h1 className="text-2xl font-semibold">🎬 Editor de videos</h1>
       <p className="mt-2 mb-8 text-sm text-muted">
-        Elige un producto y sus videos (los que subiste en Productos). El editor
-        <b> recorta extractos de esos videos y arma un video nuevo</b> de ~45s, con
-        subtítulos, animaciones y CTA. Antes de renderizar puedes previsualizar. Los
-        que ya creaste están en{" "}
-        <Link href="/anuncios" className="text-accent-2 hover:underline">
-          Mis anuncios
-        </Link>
-        .
+        {soloEditor ? (
+          <>
+            Sube tus videos largos y el editor
+            <b> recorta extractos y arma un video nuevo</b> de ~45s, con subtítulos,
+            animaciones y CTA. Si le pones una locución, ella manda: el video dura lo
+            que dure el audio. Antes de renderizar puedes previsualizar.
+          </>
+        ) : (
+          <>
+            Elige un producto y sus videos (los que subiste en Productos). El editor
+            <b> recorta extractos de esos videos y arma un video nuevo</b> de ~45s, con
+            subtítulos, animaciones y CTA. Antes de renderizar puedes previsualizar. Los
+            que ya creaste están en{" "}
+            <Link href="/anuncios" className="text-accent-2 hover:underline">
+              Mis anuncios
+            </Link>
+            .
+          </>
+        )}
       </p>
 
-      {/* Producto + videos */}
+      {/* Materia prima: los videos del producto, o los que se suban aquí. */}
       <div className="space-y-4 rounded-2xl border border-[var(--hairline)] glass p-5">
-        <label className="flex flex-col gap-1 text-sm">
-          <span className="text-muted">Producto</span>
-          <select
-            value={productoId}
-            onChange={(e) => cambiarProducto(e.target.value)}
-            className="rounded-lg border border-[var(--hairline)] bg-[var(--field)] px-3 py-2 text-text outline-none focus:border-accent"
-          >
-            {productos.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.nombre} ({p.videos.length} video{p.videos.length === 1 ? "" : "s"})
-              </option>
-            ))}
-          </select>
-        </label>
+        {soloEditor ? (
+          <div>
+            <p className="text-sm text-muted">Tus videos</p>
+            <p className="mt-1 text-xs text-muted">
+              De aquí salen los recortes. Sube uno o varios (mp4, mov, webm). Se
+              suben por partes, así que el tamaño no es problema.
+            </p>
+            <input
+              type="file"
+              accept="video/*"
+              multiple
+              disabled={subiendoVideo}
+              onChange={(e) => {
+                subirVideos(e.target.files);
+                e.target.value = ""; // permite volver a elegir el mismo archivo
+              }}
+              className="mt-3 block w-full text-sm text-muted file:mr-3 file:rounded-lg file:border-0 file:bg-accent file:px-4 file:py-2 file:text-sm file:font-medium file:text-white disabled:opacity-60"
+            />
+            {videoEstado && <p className="mt-2 text-xs text-muted">{videoEstado}</p>}
+          </div>
+        ) : (
+          <label className="flex flex-col gap-1 text-sm">
+            <span className="text-muted">Producto</span>
+            <select
+              value={productoId}
+              onChange={(e) => cambiarProducto(e.target.value)}
+              className="rounded-lg border border-[var(--hairline)] bg-[var(--field)] px-3 py-2 text-text outline-none focus:border-accent"
+            >
+              {productos.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.nombre} ({p.videos.length} video{p.videos.length === 1 ? "" : "s"})
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
 
         <div>
           <p className="mb-2 text-sm text-muted">
-            Videos a usar ({seleccion.size}/{producto?.videos.length ?? 0})
+            Videos a usar ({seleccion.size}/{videosDisponibles.length})
           </p>
           <div className="space-y-2">
-            {(producto?.videos ?? []).map((v) => (
+            {videosDisponibles.map((v) => (
               <label
                 key={v.url}
                 className="flex cursor-pointer items-center gap-3 rounded-lg border border-[var(--hairline)] bg-[var(--field)] p-2.5 text-sm"
@@ -396,8 +498,23 @@ export function EditorVideos({ productos }: { productos: ProductoItem[] }) {
                 <span className="shrink-0 text-xs text-muted">
                   {(v.bytes / (1024 * 1024)).toFixed(1)} MB
                 </span>
+                {soloEditor && (
+                  <button
+                    type="button"
+                    onClick={() => quitarVideoSubido(v.url)}
+                    title="Quitar de la lista"
+                    className="shrink-0 rounded px-1.5 text-xs text-muted hover:text-red-400"
+                  >
+                    ✕
+                  </button>
+                )}
               </label>
             ))}
+            {soloEditor && !videosDisponibles.length && !subiendoVideo && (
+              <p className="rounded-lg border border-dashed border-[var(--hairline)] p-4 text-center text-xs text-muted">
+                Todavía no has subido ningún video.
+              </p>
+            )}
           </div>
         </div>
       </div>
@@ -610,7 +727,7 @@ export function EditorVideos({ productos }: { productos: ProductoItem[] }) {
                     {c.thumb ? (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img
-                        src={`${hookBase}${c.thumb}`}
+                        src={thumbSrc(c.thumb)}
                         alt={`Gancho ${c.i + 1}`}
                         className="h-[132px] w-[92px] object-cover"
                       />
@@ -663,7 +780,10 @@ export function EditorVideos({ productos }: { productos: ProductoItem[] }) {
         </span>
       </div>
 
-      {/* Cola: hay UN worker, así que todo se procesa de uno en uno. */}
+      {/* Cola: hay UN worker, así que todo se procesa de uno en uno. La cola es
+          del extractor COMPARTIDO (lista trabajos del dueño): en el subdominio
+          no se muestra, y su API está bloqueada. */}
+      {!soloEditor && (
       <div className="mt-4 space-y-2 rounded-2xl border border-[var(--hairline)] glass p-4">
         <div className="flex flex-wrap items-center gap-3">
           <span className="text-sm font-medium text-text">🚦 Cola del editor</span>
@@ -702,12 +822,16 @@ export function EditorVideos({ productos }: { productos: ProductoItem[] }) {
           </p>
         )}
       </div>
+      )}
 
       {/* Resultado */}
       {job?.status === "done" && (
         <div className="mt-4 space-y-3 rounded-2xl border border-[var(--hairline)] glass p-5">
           <h2 className="text-sm font-semibold">✅ Anuncios listos</h2>
-          {job.preview_url && (
+          {/* La página de "previsualizar y renderizar" vive en el extractor, tras
+              su propio login: en el subdominio no se ofrece (allí el anuncio se
+              renderiza solo y se descarga directo). */}
+          {!soloEditor && job.preview_url && (
             <a
               href={abs(job.preview_url)}
               target="_blank"
@@ -717,7 +841,7 @@ export function EditorVideos({ productos }: { productos: ProductoItem[] }) {
               👁️ Previsualizar y renderizar
             </a>
           )}
-          {(job.clips ?? []).length > 0 && (
+          {(job.clips ?? []).length > 0 ? (
             <div className="flex flex-wrap gap-2">
               {(job.clips ?? []).map((c, i) => (
                 <a
@@ -729,6 +853,13 @@ export function EditorVideos({ productos }: { productos: ProductoItem[] }) {
                 </a>
               ))}
             </div>
+          ) : (
+            soloEditor && (
+              <p className="text-xs text-muted">
+                El anuncio se generó pero este servidor de video no pudo renderizar
+                el mp4. Descarga el proyecto y ábrelo, o avísale al dueño.
+              </p>
+            )
           )}
           {job.project_url && (
             <a

@@ -4,6 +4,7 @@ import path from "node:path";
 import os from "node:os";
 import { leerVpsConfig } from "@/lib/vps/upload";
 import { extractorUrl, extractorPublicUrl } from "@/lib/editor/extractor";
+import { esSoloEditor } from "@/lib/modo";
 
 const DIR_VOZ = path.join(os.tmpdir(), "datibot-voz");
 
@@ -96,6 +97,9 @@ export async function POST(req: Request) {
       form.append("highlight", body.highlight ?? "");
       form.append("font", body.font ?? "Anton");
       if (body.hook) form.append("hook", JSON.stringify(body.hook));
+      // Editor suelto (subdominio): quien lo usa no tiene la página de preview del
+      // extractor, así que el anuncio debe renderizarse solo, sin esperar a nadie.
+      if (esSoloEditor()) form.append("auto_render", "1");
       // Locución del usuario: manda sobre la duración y de ella salen los subtítulos.
       if (body.voz) {
         const rutaVoz = path.join(DIR_VOZ, path.basename(body.voz));

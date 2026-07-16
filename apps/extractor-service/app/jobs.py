@@ -800,8 +800,11 @@ class JobManager:
                                 str(output_dir / "remotion-ad"))
 
             # Con preview_first: NO renderizamos aún; mostramos la previsualización
-            # y el render se dispara con request_render (botón "Renderizar").
-            if settings.preview_first:
+            # y el render se dispara con request_render (botón "Renderizar"). Pero
+            # un job puede pedir auto_render (editor suelto, sin acceso al preview):
+            # entonces se renderiza solo, sin esperar.
+            auto_render = bool(self._params.get(job_id, {}).get("auto_render"))
+            if settings.preview_first and not auto_render:
                 self._update(job_id, status=JobStatus.DONE, n_clips=0,
                              message="Listo para previsualizar", output_dir=str(output_dir))
                 logger.info("Job %s (anuncio) generado; esperando preview/render", job_id)
