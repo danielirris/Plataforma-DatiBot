@@ -308,12 +308,24 @@ export interface EbookCapitulo {
   /** bloques redactados por la IA (null = capítulo aún sin redactar) */
   bloques: Record<string, unknown>[] | null;
 }
+/**
+ * Qué entregable de la oferta se está escribiendo. La oferta trae el producto
+ * principal Y los bonos: cada uno es un ebook distinto que hay que crear.
+ */
+export interface EbookObjetivo {
+  tipo: "principal" | "bono";
+  /** índice dentro de oferta.bonos (solo aplica si tipo === "bono") */
+  bono: number;
+}
+
 export interface EbookProducto {
   idea: EbookIdea | null;
   capitulos: EbookCapitulo[];
   /** tema de diseño del motor (amigurumi, capital, …) */
   tema: string;
   foto_portada: EbookFoto | null;
+  /** el entregable que se está creando (producto principal o un bono) */
+  objetivo: EbookObjetivo;
   /**
    * Órdenes del usuario para la IA: mandan sobre la oferta al crear el libro.
    * Ej.: "céntrate en la limpieza facial, nada de captar clientes; 8 sesiones
@@ -327,6 +339,7 @@ export function ebookVacio(): EbookProducto {
     capitulos: [],
     tema: "capital",
     foto_portada: null,
+    objetivo: { tipo: "principal", bono: 0 },
     instrucciones: "",
   };
 }

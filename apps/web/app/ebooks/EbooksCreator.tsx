@@ -8,6 +8,7 @@ import {
   type Producto,
   type EbookProducto,
   type EbookCapitulo,
+  type EbookObjetivo,
 } from "@plataforma/products/schema";
 import { AutoTextarea } from "../productos/_components/AutoTextarea";
 import { bloquesATexto, textoABloques } from "@/lib/ebook/bloquesTexto";
@@ -85,6 +86,40 @@ export function EbooksCreator({ productos }: { productos: Producto[] }) {
     setPreviewCap(null);
     setPreviewHtml("");
     setPreviewEstado("");
+  }
+
+  // Cambiar de entregable (principal ↔ bono). Se trabaja UNO a la vez: si ya
+  // había libro escrito, se avisa porque el nuevo lo reemplaza.
+  function cambiarObjetivo(valor: string) {
+    if (!p) return;
+    const nuevo: EbookObjetivo = valor.startsWith("bono:")
+      ? { tipo: "bono", bono: Number(valor.slice(5)) || 0 }
+      : { tipo: "principal", bono: 0 };
+    const hayLibro = !!p.ebook.idea || p.ebook.capitulos.length > 0;
+    if (
+      hayLibro &&
+      !window.confirm(
+        "Vas a cambiar de entregable y se reemplazará el ebook actual (idea, índice y lo redactado).\n\n" +
+          "Si aún lo necesitas, descarga el PDF antes.\n\n¿Seguimos?",
+      )
+    )
+      return;
+    setEbook((e) => ({
+      ...e,
+      objetivo: nuevo,
+      idea: null,
+      capitulos: [],
+      foto_portada: null,
+    }));
+    setRedaccion({});
+    setPreviewCap(null);
+    setPreviewHtml("");
+    setPreviewEstado("");
+    setIdeaEstado("");
+    setIndiceEstado("");
+    setCapEstado({});
+    setFotosEstado({});
+    setRenderEstado("");
   }
 
   // Texto editado → bloques (preservando el eyebrow "Capítulo 0X" del módulo).
@@ -304,6 +339,11 @@ export function EbooksCreator({ productos }: { productos: Producto[] }) {
 
   // El capítulo que se está viendo en el visor de la derecha.
   const capPreview = previewCap != null ? p?.ebook?.capitulos?.[previewCap] : undefined;
+  // El bono elegido como entregable (si el objetivo apunta a uno válido).
+  const bonoActual =
+    p?.ebook?.objetivo?.tipo === "bono"
+      ? p.oferta?.bonos?.[p.ebook.objetivo.bono] ?? null
+      : null;
 
   // ── Sin productos ──
   if (!productos.length) {
@@ -365,6 +405,58 @@ export function EbooksCreator({ productos }: { productos: Producto[] }) {
 
       {p && (
         <section className="mt-4 space-y-5">
+          {/* ── Qué entregable de la oferta se está creando ── */}
+          <div className="space-y-2 rounded-2xl border border-[var(--hairline)] glass p-5">
+            <div>
+              <p className="text-sm font-medium text-text">📦 ¿Qué vamos a crear?</p>
+              <p className="mt-1 text-xs text-muted">
+                Tu oferta incluye el producto principal <b>y los bonos</b>: cada uno es un
+                ebook distinto que hay que entregar. Elige cuál estás escribiendo.
+              </p>
+            </div>
+            <select
+              value={
+                p.ebook.objetivo?.tipo === "bono" ? `bono:${p.ebook.objetivo.bono}` : "principal"
+              }
+              onChange={(e) => cambiarObjetivo(e.target.value)}
+              className="w-full rounded-lg border border-[var(--hairline)] bg-[var(--field)] px-3 py-2 text-sm text-text outline-none focus:border-accent"
+            >
+              <option value="principal">
+                ⭐ Producto principal
+                {p.oferta?.producto_principal?.titulo
+                  ? ` — ${p.oferta.producto_principal.titulo}`
+                  : ""}
+              </option>
+              {(p.oferta?.bonos ?? []).map((b, i) =>
+                String(b?.titulo ?? "").trim() ? (
+                  <option key={i} value={`bono:${i}`}>
+                    🎁 Bono {i + 1} — {b.titulo}
+                  </option>
+                ) : null,
+              )}
+            </select>
+            {bonoActual && (
+              <div className="rounded-lg bg-[var(--field)]/60 p-3 text-xs text-muted">
+                {bonoActual.descripcion_corta && <p>{bonoActual.descripcion_corta}</p>}
+                {bonoActual.objecion_que_desactiva && (
+                  <p className="mt-1">
+                    <b className="text-text">Debe dejar sin excusa:</b>{" "}
+                    «{bonoActual.objecion_que_desactiva}»
+                  </p>
+                )}
+              </div>
+            )}
+            {!(p.oferta?.bonos ?? []).some((b) => String(b?.titulo ?? "").trim()) && (
+              <p className="text-[11px] text-muted">
+                Esta oferta aún no tiene bonos con título.{" "}
+                <Link href={`/productos/${p.id}`} className="text-accent-2 hover:underline">
+                  Añádelos en el paso Oferta
+                </Link>{" "}
+                y aparecerán aquí.
+              </p>
+            )}
+          </div>
+
           {/* ── Órdenes para la IA: mandan sobre la oferta en las 3 fases ── */}
           <div className="space-y-2 rounded-2xl border border-[var(--hairline)] glass p-5">
             <div>

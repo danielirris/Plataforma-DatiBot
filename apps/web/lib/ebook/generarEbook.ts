@@ -5,7 +5,7 @@
 // Usa el proveedor de texto del shell (Gemini/OpenAI de la config).
 
 import { generarTexto } from "@/lib/ai/textProvider";
-import type { EbookIdea, EbookCapitulo, Producto } from "@plataforma/products";
+import type { BonoOferta, EbookIdea, EbookCapitulo, Producto } from "@plataforma/products";
 
 // Los proveedores devuelven 503/429 transitorios; una falla no debe tumbar la
 // fase. Reintentos con backoff exponencial.
@@ -92,6 +92,14 @@ function parseBloques(raw: string): Bloque[] {
 
 const pad2 = (n: number) => String(n).padStart(2, "0");
 
+/** El bono elegido como entregable, si el objetivo apunta a uno válido. */
+export function bonoObjetivo(p: Producto): BonoOferta | null {
+  const obj = p.ebook?.objetivo;
+  if (!obj || obj.tipo !== "bono") return null;
+  const b = p.oferta?.bonos?.[obj.bono];
+  return b && String(b.titulo ?? "").trim() ? b : null;
+}
+
 /** Contexto del producto que alimenta todas las fases (la OFERTA manda). */
 function contextoProducto(p: Producto): string {
   const o = p.oferta;
@@ -101,13 +109,44 @@ function contextoProducto(p: Producto): string {
     p.identidad?.dirigidoA ? `Dirigido a: ${p.identidad.dirigidoA}` : "",
   ];
   if (o) {
+    const bono = bonoObjetivo(p);
     partes.push(
-      `OFERTA (el ebook ES este entregable — el libro debe cumplirla):`,
+      `OFERTA (contexto):`,
       `- Nombre de la oferta: ${o.nombre_oferta}`,
       `- Promesa grande: ${o.promesa_grande}`,
-      `- Producto principal: ${o.producto_principal.titulo}`,
-      ...o.producto_principal.que_incluye.filter(Boolean).map((x) => `  · ${x}`),
     );
+    if (bono) {
+      // El entregable es un BONO: manda él, y el principal solo da contexto para
+      // que el bono lo COMPLEMENTE en vez de repetirlo.
+      partes.push(
+        ``,
+        `EL ENTREGABLE QUE ESCRIBES ES ESTE BONO (no el producto principal):`,
+        `- Bono: ${bono.titulo}`,
+        bono.descripcion_corta ? `- Qué es: ${bono.descripcion_corta}` : "",
+        bono.por_que_lo_incluyo ? `- Por qué se incluye en la oferta: ${bono.por_que_lo_incluyo}` : "",
+        bono.objecion_que_desactiva
+          ? `- Objeción del cliente que este bono DEBE desactivar: ${bono.objecion_que_desactiva}`
+          : "",
+        ``,
+        `El libro debe cumplir ESE bono de principio a fin y dejar sin excusa esa objeción.`,
+        `Para contexto, el producto principal de la oferta es «${o.producto_principal.titulo}»: NO lo repitas, este bono lo complementa.`,
+      );
+    } else {
+      partes.push(
+        ``,
+        `EL ENTREGABLE QUE ESCRIBES ES EL PRODUCTO PRINCIPAL (el libro debe cumplirlo):`,
+        `- Producto principal: ${o.producto_principal.titulo}`,
+        o.producto_principal.descripcion_corta
+          ? `- Qué es: ${o.producto_principal.descripcion_corta}`
+          : "",
+        ...o.producto_principal.que_incluye.filter(Boolean).map((x) => `  · ${x}`),
+      );
+      const otros = (o.bonos ?? []).map((b) => b.titulo).filter(Boolean);
+      if (otros.length)
+        partes.push(
+          `Los bonos de la oferta se entregan APARTE (no los desarrolles aquí): ${otros.join("; ")}.`,
+        );
+    }
   }
   const a = p.avatar;
   if (a?.deseos || a?.compradores) {
