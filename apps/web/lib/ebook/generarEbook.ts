@@ -34,7 +34,24 @@ const SCHEMA_BLOQUES = `Devuelves SOLO JSON válido (sin markdown, sin texto ext
 - {"type":"list","items":["...","..."]}
 - {"type":"callout","kind":"note|sell|danger","tag":"...","text":"..."}
 - {"type":"chips","items":["...","..."]}
-- {"type":"divider"}`;
+- {"type":"divider"}
+- {"type":"html","title":"...","html":"..."}  → GRÁFICO hecho por ti con HTML (NO es una foto).
+
+Sobre el bloque "html" (úsalo 1-2 veces por capítulo cuando aporte de verdad):
+- Sirve para fichas y esquemas: receta (ingredientes + pasos), tabla comparativa,
+  checklist, ficha técnica, línea de tiempo, dosis/medidas, antes/después.
+- Escribe HTML SIMPLE y SIN estilos propios (nada de style=, class= inventadas,
+  script ni imágenes): el diseño del libro lo pinta solo con su tema.
+- Etiquetas permitidas: p, b, strong, i, em, br, ul, ol, li, table, thead, tbody,
+  tr, th, td, div, span, h3, h4, small, hr.
+- Puedes usar estas clases del tema para que quede bonito:
+  · <div class="kv"><span>Tiempo</span><b>25 min</b></div>   (dato a la izquierda, valor a la derecha)
+  · <span class="badge">Fácil</span>                          (etiqueta destacada)
+  · <div class="step"><span class="n">1</span><div>Haz esto…</div></div>  (paso numerado)
+  · <div class="grid2"><div>…</div><div>…</div></div>         (dos columnas)
+  · table/thead/tbody para tablas.
+- Ejemplo (ficha de receta):
+  {"type":"html","title":"Ficha de la receta","html":"<div class=\\"grid2\\"><div><h4>Ingredientes</h4><ul><li>2 tazas de agua</li><li>30 g de azúcar</li></ul></div><div><h4>Datos</h4><div class=\\"kv\\"><span>Tiempo</span><b>25 min</b></div><div class=\\"kv\\"><span>Porciones</span><b>4</b></div></div></div><h4>Pasos</h4><div class=\\"step\\"><span class=\\"n\\">1</span><div>Hierve el agua.</div></div><div class=\\"step\\"><span class=\\"n\\">2</span><div>Añade el azúcar y remueve.</div></div>"}`;
 
 export type Bloque = Record<string, unknown>;
 

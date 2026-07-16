@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getProduct, type Producto, type EbookFoto } from "@plataforma/products";
 import type { Bloque } from "@/lib/ebook/generarEbook";
+import { intercalarFotos } from "@/lib/ebook/fotos";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -77,19 +78,11 @@ export async function POST(req: Request, { params }: Ctx) {
   }
 
   eb.capitulos.forEach((cap, i) => {
-    const bloques = [...(cap.bloques ?? [])];
-    // La primera foto va tras el bloque `section` (título del capítulo);
-    // las demás se reparten al final del capítulo.
+    // Las fotos se reparten ENTRE los textos del capítulo (la 1ª grande tras el
+    // título, el resto alternando difuminada/normal).
     const fotos = cap.fotos ?? [];
-    if (fotos[0]) {
-      const pos = bloques.length && (bloques[0] as { type?: string }).type === "section" ? 1 : 0;
-      bloques.splice(pos, 0, { type: "image", src: fotos[0].nombre, caption: "" });
-    }
-    for (const f of fotos.slice(1)) {
-      bloques.push({ type: "image", src: f.nombre, caption: "" });
-    }
     fotosUsadas.push(...fotos);
-    blocks.push(...bloques);
+    blocks.push(...intercalarFotos(cap.bloques ?? [], fotos));
     if (i < eb.capitulos.length - 1) blocks.push({ type: "divider" });
   });
 

@@ -10,6 +10,7 @@ Un tema debe exponer:
     DECO, COVER_DECO, FLOURISH, DIVIDER, CLOSING_MOTIF (str HTML/SVG)
 y delegar render_block/wrap a este módulo.
 """
+import re
 
 BASE_CSS = r"""
 *{box-sizing:border-box}
@@ -61,6 +62,38 @@ p{margin:0}
 .frame{display:inline-block;border-radius:var(--radius);overflow:hidden;border:2px solid var(--line);line-height:0}
 .frame img{display:block;max-width:150mm;max-height:100mm;width:auto;height:auto}
 .figcap{text-align:center;font-family:var(--font-display);font-weight:500;color:var(--soft);font-size:10.5pt;margin:3mm 0 0}
+/* Foto GRANDE: ocupa el ancho del texto y respira. Se usa para la que abre el
+   capítulo, para que no salgan todas del mismo tamaño. */
+.photo.big .frame{display:block;border:0}
+.photo.big .frame img{max-width:100%;max-height:120mm;width:100%;object-fit:cover}
+/* Foto SUAVE: difuminada hacia los bordes; queda bonita bajo un texto. */
+.photo.soft .frame{border:0;border-radius:calc(var(--radius) + 6px)}
+.photo.soft .frame img{max-width:100%;max-height:95mm;width:100%;object-fit:cover;
+  -webkit-mask-image:radial-gradient(120% 100% at 50% 45%, #000 60%, transparent 100%);
+  mask-image:radial-gradient(120% 100% at 50% 45%, #000 60%, transparent 100%)}
+/* Gráfico HTML que escribe la IA (fichas de receta, tablas, pasos…): se pinta
+   con los colores del tema, sin generar imágenes. */
+.figura{margin:5mm 0 6mm;break-inside:avoid;border:1.5px solid var(--line);
+  border-radius:calc(var(--radius) + 4px);background:var(--wash);padding:6mm 6mm 5mm}
+.figura .ftitle{font-family:var(--font-display);font-weight:700;color:var(--accent);
+  font-size:13pt;margin:0 0 3mm;letter-spacing:var(--title-ls)}
+.figura table{width:100%;border-collapse:collapse;font-size:10.5pt}
+.figura th,.figura td{text-align:left;padding:2mm 2.5mm;border-bottom:1px solid var(--line)}
+.figura th{font-family:var(--font-display);color:var(--accent);font-weight:700}
+.figura tr:last-child td{border-bottom:0}
+.figura ul,.figura ol{margin:0;padding-left:5mm;font-size:10.5pt}
+.figura li{margin:1.2mm 0}
+.figura .grid2{display:flex;gap:5mm}
+.figura .grid2>*{flex:1}
+.figura .kv{display:flex;justify-content:space-between;gap:3mm;padding:1.6mm 0;
+  border-bottom:1px dashed var(--line);font-size:10.5pt}
+.figura .kv:last-child{border-bottom:0}
+.figura .kv b{color:var(--accent)}
+.figura .badge{display:inline-block;background:var(--accent);color:var(--accent-ink);
+  border-radius:var(--pill);padding:1mm 3mm;font-size:9.5pt;font-weight:700;margin:0 1mm 1mm 0}
+.figura .step{display:flex;gap:3mm;align-items:flex-start;margin:2mm 0;font-size:10.5pt}
+.figura .step .n{flex:none;width:6mm;height:6mm;border-radius:50%;background:var(--accent);
+  color:var(--accent-ink);font-weight:700;font-size:9pt;text-align:center;line-height:6mm}
 
 .callout{border-left:3mm solid var(--accent);background:var(--wash);border-radius:0 var(--radius) var(--radius) 0;padding:5mm 6mm;margin:0 0 5mm;break-inside:avoid}
 .callout .tag{display:block;font-family:var(--font-display);font-weight:600;text-transform:uppercase;letter-spacing:.1em;font-size:8.5pt;color:var(--accent2);margin-bottom:1.5mm}
@@ -111,7 +144,46 @@ def _card(t, b):
 
 def _image(t, b):
     cap = f'<figcaption class="figcap">{b["caption"]}</figcaption>' if b.get("caption") else ""
-    return f'<figure class="photo"><div class="frame"><img src="{b["src"]}" alt="{b.get("caption","")}"></div>{cap}</figure>'
+    # variante: "big" (grande, a todo el ancho) | "soft" (difuminada) | normal
+    var = str(b.get("variant") or "").strip().lower()
+    clase = f"photo {var}" if var in ("big", "soft") else "photo"
+    return (f'<figure class="{clase}"><div class="frame">'
+            f'<img src="{b["src"]}" alt="{b.get("caption","")}"></div>{cap}</figure>')
+
+
+# Etiquetas permitidas en un bloque `html` (gráfico que escribe la IA). Nada de
+# script/style/iframe: el PDF no los necesita y no vamos a confiar a ciegas.
+_HTML_OK = re.compile(
+    r"</?(?:div|p|span|b|strong|i|em|u|br|hr|small|"
+    r"ul|ol|li|table|thead|tbody|tr|th|td|figure|figcaption|h3|h4)\b[^>]*>",
+    re.I,
+)
+_HTML_TAG = re.compile(r"</?[a-zA-Z][^>]*>")
+
+
+def _sanear_html(bruto: str) -> str:
+    """Deja solo etiquetas de maquetación simples y quita atributos peligrosos.
+
+    La IA escribe el gráfico (ficha de receta, tabla de pasos…); el estilo lo
+    pone el tema con las clases de `.figura`, así que aquí basta con podar.
+    """
+    # Fuera bloques enteros que nunca deben entrar.
+    limpio = re.sub(r"(?is)<(script|style|iframe|object|embed)[^>]*>.*?</\1\s*>", "", bruto)
+    limpio = re.sub(r"(?is)</?(script|style|iframe|object|embed)[^>]*>", "", limpio)
+    # Fuera manejadores de eventos y urls javascript:
+    limpio = re.sub(r'(?is)\son[a-z]+\s*=\s*(".*?"|\'.*?\'|[^\s>]+)', "", limpio)
+    limpio = re.sub(r'(?is)(href|src)\s*=\s*(["\']?)\s*javascript:[^"\'>\s]*\2', r'\1="#"', limpio)
+    # Cualquier etiqueta fuera de la lista blanca se descarta (su texto se queda).
+    return _HTML_TAG.sub(lambda m: m.group(0) if _HTML_OK.fullmatch(m.group(0)) else "", limpio)
+
+
+def _html(t, b):
+    """Gráfico hecho con HTML por la IA (sin generar imágenes)."""
+    cuerpo = _sanear_html(str(b.get("html") or ""))
+    if not cuerpo.strip():
+        return ""
+    titulo = f'<div class="ftitle">{b["title"]}</div>' if b.get("title") else ""
+    return f'<figure class="figura">{titulo}{cuerpo}</figure>'
 
 
 def _closing(t, b):
@@ -129,6 +201,7 @@ def render_block(t, b):
     if ty == "list":      return '<ul class="blist">' + "".join(f"<li>{i}</li>" for i in b.get("items", [])) + '</ul>'
     if ty == "card":      return _card(t, b)
     if ty == "image":     return _image(t, b)
+    if ty == "html":      return _html(t, b)
     if ty == "callout":   return f'<div class="callout {b.get("kind","note")}">' + (f'<span class="tag">{b["tag"]}</span>' if b.get("tag") else "") + f'<p>{b["text"]}</p></div>'
     if ty == "chips":     return '<div class="chips">' + "".join(f'<span class="chip">{i}</span>' for i in b.get("items", [])) + '</div>'
     if ty == "divider":   return t.DIVIDER

@@ -38,6 +38,10 @@ export function bloquesATexto(bloques: Bloque[]): string {
     else if (t === "chips") out.push(`chips: ${items(b).join(", ")}`);
     else if (t === "divider") out.push("---");
     else if (t === "image") continue; // las fotos se manejan aparte
+    // Gráfico HTML de la IA: se muestra tal cual para poder retocarlo, en una
+    // línea marcada, y se reconstruye igual al guardar.
+    else if (t === "html")
+      out.push(`::grafico ${txt(b, "title")}\n${txt(b, "html").replace(/\n/g, " ")}`);
     else if (txt(b, "text")) out.push(strongAmd(txt(b, "text")));
   }
   return out.join("\n\n").trim();
@@ -55,6 +59,14 @@ export function textoABloques(texto: string): Bloque[] {
     }
     if (p.startsWith("# ")) {
       bloques.push({ type: "section", title: p.slice(2).trim() });
+      continue;
+    }
+    // Gráfico HTML: "::grafico Título" y debajo el HTML.
+    if (/^::grafico/i.test(p)) {
+      const lineas = p.split("\n");
+      const title = lineas[0].replace(/^::grafico\s*/i, "").trim();
+      const html = lineas.slice(1).join(" ").trim();
+      if (html) bloques.push({ type: "html", title, html });
       continue;
     }
     if (/^chips:/i.test(p)) {

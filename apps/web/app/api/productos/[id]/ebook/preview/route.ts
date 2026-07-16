@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getProduct, type Producto } from "@plataforma/products";
 import type { Bloque } from "@/lib/ebook/generarEbook";
+import { intercalarFotos } from "@/lib/ebook/fotos";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -38,14 +39,10 @@ export async function POST(req: Request, { params }: Ctx) {
   if (!cap.bloques?.length)
     return NextResponse.json({ error: "Este módulo aún no está redactado." }, { status: 400 });
 
-  // Bloques del módulo + sus fotos (la 1ª tras el título; el resto al final).
-  const bloques: Bloque[] = [...cap.bloques];
+  // Bloques del módulo con las fotos repartidas ENTRE los textos (igual que en
+  // el PDF final, para que la vista previa muestre el diseño de verdad).
   const fotos = cap.fotos ?? [];
-  if (fotos[0]) {
-    const pos = bloques.length && (bloques[0] as { type?: string }).type === "section" ? 1 : 0;
-    bloques.splice(pos, 0, { type: "image", src: fotos[0].nombre, caption: "" });
-  }
-  for (const f of fotos.slice(1)) bloques.push({ type: "image", src: f.nombre, caption: "" });
+  const bloques: Bloque[] = intercalarFotos(cap.bloques, fotos);
 
   const doc = {
     title: eb.idea?.titulo || cap.titulo,
