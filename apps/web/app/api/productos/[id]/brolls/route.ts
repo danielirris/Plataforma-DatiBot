@@ -51,9 +51,17 @@ export async function POST(req: Request, { params }: Ctx) {
     }
   }
 
+  const porArchivos = source === "uploaded" && archivos.length > 0;
+  const enviarJson = () =>
+    fetch(`${extractorUrl()}/api/brolls`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ producto, source, config: body.config ?? {} }),
+    });
+
   let res: Response;
   try {
-    if (source === "uploaded" && archivos.length) {
+    if (porArchivos) {
       const form = new FormData();
       form.append("producto", JSON.stringify(producto));
       form.append("source", source);
@@ -62,12 +70,11 @@ export async function POST(req: Request, { params }: Ctx) {
         form.append("videos", new Blob([new Uint8Array(await readFile(a.ruta))]), a.nombre);
       }
       res = await fetch(`${extractorUrl()}/api/brolls/upload`, { method: "POST", body: form });
+      // 404 = el extractor aún no tiene el endpoint nuevo (no se ha redesplegado):
+      // se intenta por el camino antiguo antes de rendirse.
+      if (res.status === 404) res = await enviarJson();
     } else {
-      res = await fetch(`${extractorUrl()}/api/brolls`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ producto, source, config: body.config ?? {} }),
-      });
+      res = await enviarJson();
     }
   } catch {
     return NextResponse.json(
@@ -76,10 +83,13 @@ export async function POST(req: Request, { params }: Ctx) {
     );
   }
   const data = await res.json().catch(() => ({}));
-  if (!res.ok)
-    return NextResponse.json(
-      { error: (data as { detail?: string }).detail ?? `Error ${res.status}` },
-      { status: res.status },
-    );
+  if (!res.ok) {
+    const detalle = (data as { detail?: string }).detail;
+    const error =
+      res.status === 404
+        ? "El servicio de video está desactualizado: redespliega el servicio «extractor» en EasyPanel y vuelve a intentar."
+        : (detalle ?? `Error ${res.status}`);
+    return NextResponse.json({ error }, { status: res.status });
+  }
   return NextResponse.json({ ...data, publicBase: extractorPublicUrl() });
 }

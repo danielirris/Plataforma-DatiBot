@@ -49,6 +49,24 @@ export async function POST(req: Request) {
   }
   const porArchivos = rutas.length === urls.length && rutas.length > 0;
 
+  const enviarPorUrls = () =>
+    fetch(`${extractorUrl()}/api/jobs/from-urls`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        video_urls: urls,
+        num_clips: body.num_clips ?? 0,
+        use_music: !!body.use_music,
+        use_intro: !!body.use_intro,
+        style: body.style ?? "",
+        subtitle_style: body.subtitle_style ?? "",
+        highlight: body.highlight ?? "",
+        font: body.font ?? "Anton",
+        hook: body.hook ?? null,
+        mode: "full",
+      }),
+    });
+
   let res: Response;
   try {
     if (porArchivos) {
@@ -65,23 +83,11 @@ export async function POST(req: Request) {
       form.append("font", body.font ?? "Anton");
       if (body.hook) form.append("hook", JSON.stringify(body.hook));
       res = await fetch(`${extractorUrl()}/api/jobs/from-files`, { method: "POST", body: form });
+      // 404 = el extractor aún no tiene el endpoint nuevo (no se ha redesplegado):
+      // se intenta por el camino antiguo antes de rendirse.
+      if (res.status === 404) res = await enviarPorUrls();
     } else {
-      res = await fetch(`${extractorUrl()}/api/jobs/from-urls`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          video_urls: urls,
-          num_clips: body.num_clips ?? 0,
-          use_music: !!body.use_music,
-          use_intro: !!body.use_intro,
-          style: body.style ?? "",
-          subtitle_style: body.subtitle_style ?? "",
-          highlight: body.highlight ?? "",
-          font: body.font ?? "Anton",
-          hook: body.hook ?? null,
-          mode: "full",
-        }),
-      });
+      res = await enviarPorUrls();
     }
   } catch {
     return NextResponse.json(
@@ -90,10 +96,13 @@ export async function POST(req: Request) {
     );
   }
   const data = await res.json().catch(() => ({}));
-  if (!res.ok)
-    return NextResponse.json(
-      { error: (data as { detail?: string }).detail ?? `Error ${res.status}` },
-      { status: res.status },
-    );
+  if (!res.ok) {
+    const detalle = (data as { detail?: string }).detail;
+    const error =
+      res.status === 404
+        ? "El servicio de video está desactualizado: redespliega el servicio «extractor» en EasyPanel y vuelve a intentar."
+        : (detalle ?? `Error ${res.status}`);
+    return NextResponse.json({ error }, { status: res.status });
+  }
   return NextResponse.json({ ...data, publicBase: extractorPublicUrl() });
 }
