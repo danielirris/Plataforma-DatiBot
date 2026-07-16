@@ -29,12 +29,13 @@ export const TIPOS_IMAGEN: TipoImagen[] = [
 
 /** Países con los que se puede emitir (deben tener config por país para emitir). */
 export const PAISES: { codigo: string; nombre: string }[] = [
-  { codigo: "PE", nombre: "Perú" },
-  { codigo: "CL", nombre: "Chile" },
   { codigo: "CO", nombre: "Colombia" },
-  { codigo: "EC", nombre: "Ecuador" },
   { codigo: "MX", nombre: "México" },
+  { codigo: "EC", nombre: "Ecuador" },
+  { codigo: "CL", nombre: "Chile" },
   { codigo: "VE", nombre: "Venezuela" },
+  { codigo: "PE", nombre: "Perú" },
+  { codigo: "AR", nombre: "Argentina" },
 ];
 
 export interface IdentidadProducto {

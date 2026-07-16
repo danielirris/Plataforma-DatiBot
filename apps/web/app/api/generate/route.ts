@@ -91,7 +91,9 @@ Redacta el contenido de cada RANURA del embudo: persuasivo, claro, cercano y ori
 REGLAS CRÍTICAS:
 - NO incluyas precios, links de pago, moneda ni datos que dependan del país como texto suelto.
 - Donde harían falta esos datos, deja LITERAL el token del motor entre corchetes: [PRECIO_BASE], [PRECIO_TACHADO], [PRECIO_ADICIONAL_OB], [NUMERO_PAGO], [TITULAR_CUENTA]. NO los inventes ni cambies su forma.
-- Español neutral, sin modismos. Emojis con moderación donde sumen.
+- Español neutral, sin modismos.
+- NEGRITAS: resalta SIEMPRE lo importante (la promesa, el beneficio clave, la urgencia, el precio) envolviéndolo entre asteriscos, así: *texto en negrita*. Es el formato de negrita de WhatsApp. Usa varias por mensaje, pero solo en lo que de verdad importa: si todo va en negrita, nada resalta.
+- EMOJIS: úsalos con generosidad para que el mensaje entre por los ojos — al inicio de las líneas de lista, marcando cada beneficio (✅ 🎁 🔥 ⚡ 💰 ⏰ 👉) y donde refuercen la emoción. Que se vea vivo, sin llegar a parecer spam.
 - FORMATO WHATSAPP: cada mensaje debe venir ORGANIZADO y con SALTOS DE LÍNEA reales (\\n) — párrafos cortos de 1-2 líneas, y donde ayude, listas con viñetas o checks ✅ en líneas separadas. Nada de un bloque de texto corrido.
 
 RANURAS a redactar:

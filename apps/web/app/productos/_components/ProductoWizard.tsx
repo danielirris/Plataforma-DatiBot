@@ -33,15 +33,17 @@ import { cn } from "@plataforma/ui";
 import { AutoTextarea } from "./AutoTextarea";
 import { productoAMarkdown, nombreArchivoMd } from "@/lib/producto/markdown";
 
+// Los precios van ANTES de los mensajes: el copy usa los tokens [PRECIO_*], así
+// que conviene tenerlos puestos antes de redactar.
 const PASOS = [
   { key: "identidad", label: "1 · Identidad" },
   { key: "avatar", label: "2 · Avatar" },
   { key: "angulos", label: "3 · Ángulos" },
   { key: "oferta", label: "4 · Oferta" },
-  { key: "mensajes", label: "5 · Mensajes" },
-  { key: "imagenes", label: "6 · Imágenes" },
-  { key: "videos", label: "7 · Videos" },
-  { key: "precios", label: "8 · Precios" },
+  { key: "precios", label: "5 · Precios" },
+  { key: "mensajes", label: "6 · Mensajes" },
+  { key: "imagenes", label: "7 · Imágenes" },
+  { key: "videos", label: "8 · Videos" },
 ] as const;
 
 // Pasos ya implementados.
@@ -136,7 +138,6 @@ export function ProductoWizard({ producto }: { producto?: Producto }) {
   );
   const [videoEstado, setVideoEstado] = useState<string>("");
   const [subiendoVideo, setSubiendoVideo] = useState<boolean>(false);
-  const [paisPrecio, setPaisPrecio] = useState<string>("PE");
 
   const esNuevo = !p.id;
 
@@ -1505,42 +1506,69 @@ export function ProductoWizard({ producto }: { producto?: Producto }) {
       {paso === "precios" && (
         <section className="space-y-5">
           <p className="text-xs text-muted">
-            Precios por <b>país</b>. De aquí salen los tokens del flujo de n8n
-            (<code>[PRECIO_BASE]</code>, <code>[PRECIO_COMBO]</code>, regateos, pisos…).
-            El combo, los regateos y los pisos se calculan solos a partir de estos.
+            Los precios de <b>todos los países</b>, de una sola vez. De aquí salen los
+            tokens del flujo de n8n (<code>[PRECIO_BASE]</code>, <code>[PRECIO_COMBO]</code>,
+            regateos, pisos…). El combo, los regateos y los pisos se calculan solos a
+            partir de estos. Deja en blanco el país que no uses.
           </p>
 
-          <label className="flex flex-col gap-1 text-sm">
-            <span className="text-muted">País</span>
-            <select
-              value={paisPrecio}
-              onChange={(e) => setPaisPrecio(e.target.value)}
-              className="w-full max-w-xs rounded-lg border border-[var(--hairline)] bg-[var(--field)] px-3 py-2 text-text outline-none focus:border-accent"
-            >
-              {PAISES.map((pa) => (
-                <option key={pa.codigo} value={pa.codigo}>
-                  {pa.nombre} ({pa.codigo})
-                </option>
-              ))}
-            </select>
-          </label>
-
-          <div className="grid grid-cols-1 gap-3 rounded-xl border border-[var(--hairline)] glass p-5 sm:grid-cols-2">
-            {CAMPOS_PRECIO.map((c) => (
-              <label key={c.k} className="flex flex-col gap-1 text-sm">
-                <span className="text-muted">{c.l}</span>
-                <input
-                  type="text"
-                  inputMode="numeric"
-                  value={p.precios?.[paisPrecio]?.[c.k] ?? ""}
-                  onChange={(e) => setPrecio(paisPrecio, c.k, e.target.value)}
-                  placeholder="0"
-                  className="rounded-lg border border-[var(--hairline)] bg-[var(--field)] px-3 py-2 text-text outline-none focus:border-accent"
-                />
-                {c.ayuda && <span className="text-xs text-muted">{c.ayuda}</span>}
-              </label>
+          <ul className="grid grid-cols-1 gap-x-6 gap-y-1 rounded-xl border border-[var(--hairline)] bg-[var(--field)]/40 p-4 text-xs text-muted sm:grid-cols-2">
+            {CAMPOS_PRECIO.filter((c) => c.ayuda).map((c) => (
+              <li key={c.k}>
+                <b className="text-text">{c.l}:</b> {c.ayuda}
+              </li>
             ))}
-          </div>
+          </ul>
+
+          {PAISES.map((pa) => {
+            const llenos = CAMPOS_PRECIO.filter((c) =>
+              String(p.precios?.[pa.codigo]?.[c.k] ?? "").trim(),
+            ).length;
+            return (
+              <div
+                key={pa.codigo}
+                className="space-y-3 rounded-xl border border-[var(--hairline)] glass p-5"
+              >
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="text-sm font-medium text-text">{pa.nombre}</span>
+                  <span className="rounded bg-[var(--field)] px-1.5 py-0.5 text-xs text-muted">
+                    {pa.codigo}
+                  </span>
+                  <span
+                    className={cn(
+                      "rounded px-2 py-0.5 text-xs",
+                      llenos === CAMPOS_PRECIO.length
+                        ? "bg-accent/20 text-accent-2"
+                        : llenos > 0
+                          ? "bg-amber-500/15 text-amber-300"
+                          : "bg-[var(--field)] text-muted",
+                    )}
+                  >
+                    {llenos === CAMPOS_PRECIO.length
+                      ? "✓ completo"
+                      : llenos > 0
+                        ? `${llenos}/${CAMPOS_PRECIO.length}`
+                        : "sin precios"}
+                  </span>
+                </div>
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                  {CAMPOS_PRECIO.map((c) => (
+                    <label key={c.k} className="flex flex-col gap-1 text-sm">
+                      <span className="text-muted">{c.l}</span>
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        value={p.precios?.[pa.codigo]?.[c.k] ?? ""}
+                        onChange={(e) => setPrecio(pa.codigo, c.k, e.target.value)}
+                        placeholder="0"
+                        className="rounded-lg border border-[var(--hairline)] bg-[var(--field)] px-3 py-2 text-text outline-none focus:border-accent"
+                      />
+                    </label>
+                  ))}
+                </div>
+              </div>
+            );
+          })}
 
           <p className="text-xs text-muted">
             Otros datos del flujo (categoría, industria, marcas, Orderbump, Drive,
