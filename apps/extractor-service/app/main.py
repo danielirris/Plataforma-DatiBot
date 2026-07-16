@@ -283,6 +283,7 @@ async def create_job_from_urls(payload: dict = Body(...)) -> JSONResponse:
 @app.post("/api/jobs/from-files")
 async def create_job_from_files(
     videos: list[UploadFile] = File(default=[]),
+    voz: UploadFile | None = File(default=None),
     mode: str = Form("full"),
     num_clips: int = Form(0),
     use_music: str = Form("0"),
@@ -343,7 +344,26 @@ async def create_job_from_files(
             shutil.copy(whoosh, itmp)
             intro_saved = (itmp, f"intro{whoosh.suffix}")
 
-    job_id = manager.submit(saved, [], mode, None, max(0, min(20, int(num_clips))), [],
+    # Locución del usuario: manda sobre el video (duración) y de ella salen los
+    # subtítulos (se transcribe), en vez del audio original de los videos.
+    voz_saved: tuple[Path, str] | None = None
+    if voz is not None and voz.filename:
+        vext = Path(voz.filename).suffix.lower()
+        if vext not in ALLOWED_AUDIO_EXT:
+            for p, _ in saved:
+                p.unlink(missing_ok=True)
+            raise HTTPException(
+                status_code=400,
+                detail=f"Audio no soportado ({vext or 'sin extensión'}). "
+                       f"Usa: {', '.join(sorted(ALLOWED_AUDIO_EXT))}.",
+            )
+        vtmp = Path(tempfile.mkstemp(suffix=vext, dir=str(settings.storage_dir))[1])
+        with vtmp.open("wb") as f:
+            while chunk := await voz.read(1 << 20):
+                f.write(chunk)
+        voz_saved = (vtmp, voz.filename)
+
+    job_id = manager.submit(saved, [], mode, voz_saved, max(0, min(20, int(num_clips))), [],
                             use_music=use_music in ("1", "true", "True"),
                             intro_tmp=intro_saved, style=style or "", params=params)
     return JSONResponse({"job_id": job_id, "n_videos": len(saved), "mode": mode},

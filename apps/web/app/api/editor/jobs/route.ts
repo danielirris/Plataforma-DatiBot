@@ -1,8 +1,11 @@
 import { NextResponse } from "next/server";
 import { readFile, stat } from "node:fs/promises";
 import path from "node:path";
+import os from "node:os";
 import { leerVpsConfig } from "@/lib/vps/upload";
 import { extractorUrl, extractorPublicUrl } from "@/lib/editor/extractor";
+
+const DIR_VOZ = path.join(os.tmpdir(), "datibot-voz");
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -20,6 +23,8 @@ export async function POST(req: Request) {
     highlight?: string;
     font?: string;
     hook?: { video_idx: number; start: number; dur: number } | null;
+    /** nombre devuelto por /api/editor/voz: la locución que manda sobre el video */
+    voz?: string | null;
   };
   try {
     body = (await req.json()) as typeof body;
@@ -48,6 +53,15 @@ export async function POST(req: Request) {
     }
   }
   const porArchivos = rutas.length === urls.length && rutas.length > 0;
+  // La locución solo viaja por el camino de archivos (multipart al extractor).
+  if (body.voz && !porArchivos)
+    return NextResponse.json(
+      {
+        error:
+          "Para ponerle tu audio, los videos deben estar en el servidor: vuelve a subirlos en Productos → paso Videos.",
+      },
+      { status: 400 },
+    );
 
   const enviarPorUrls = () =>
     fetch(`${extractorUrl()}/api/jobs/from-urls`, {
@@ -82,6 +96,23 @@ export async function POST(req: Request) {
       form.append("highlight", body.highlight ?? "");
       form.append("font", body.font ?? "Anton");
       if (body.hook) form.append("hook", JSON.stringify(body.hook));
+      // Locución del usuario: manda sobre la duración y de ella salen los subtítulos.
+      if (body.voz) {
+        const rutaVoz = path.join(DIR_VOZ, path.basename(body.voz));
+        try {
+          await stat(rutaVoz);
+          form.append(
+            "voz",
+            new Blob([new Uint8Array(await readFile(rutaVoz))]),
+            path.basename(body.voz),
+          );
+        } catch {
+          return NextResponse.json(
+            { error: "El audio subido ya no está disponible. Vuelve a subirlo." },
+            { status: 400 },
+          );
+        }
+      }
       res = await fetch(`${extractorUrl()}/api/jobs/from-files`, { method: "POST", body: form });
       // 404 = el extractor aún no tiene el endpoint nuevo (no se ha redesplegado):
       // se intenta por el camino antiguo antes de rendirse.

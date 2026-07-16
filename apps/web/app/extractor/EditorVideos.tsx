@@ -93,6 +93,12 @@ export function EditorVideos({ productos }: { productos: ProductoItem[] }) {
   const [buscandoHook, setBuscandoHook] = useState<boolean>(false);
   const [hookMsg, setHookMsg] = useState<string>("");
 
+  // Locución: el audio que le pones tú al video. Manda sobre la duración y de
+  // él salen los subtítulos (el motor lo transcribe).
+  const [voz, setVoz] = useState<{ nombre: string; original: string } | null>(null);
+  const [vozEstado, setVozEstado] = useState<string>("");
+  const [subiendoVoz, setSubiendoVoz] = useState<boolean>(false);
+
   const [estado, setEstado] = useState<string>("");
   const [job, setJob] = useState<JobState | null>(null);
   const [publicBase, setPublicBase] = useState<string>("");
@@ -131,6 +137,31 @@ export function EditorVideos({ productos }: { productos: ProductoItem[] }) {
     limpiarGanchos();
   }
 
+
+  // Sube la locución (cuerpo crudo: el proxy no lo corta).
+  async function subirVoz(file: File | null | undefined) {
+    if (!file) return;
+    setSubiendoVoz(true);
+    setVozEstado(`Subiendo ${file.name}…`);
+    try {
+      const res = await fetch(`/api/editor/voz?name=${encodeURIComponent(file.name)}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/octet-stream" },
+        body: file,
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setVozEstado("⚠️ " + (data.error ?? `Error ${res.status}`));
+        setSubiendoVoz(false);
+        return;
+      }
+      setVoz({ nombre: data.voz as string, original: data.original as string });
+      setVozEstado(`✓ ${data.original} (${((data.bytes ?? 0) / (1024 * 1024)).toFixed(1)} MB)`);
+    } catch (e) {
+      setVozEstado("⚠️ Fallo de red: " + (e instanceof Error ? e.message : "?"));
+    }
+    setSubiendoVoz(false);
+  }
 
   async function buscarGanchos() {
     const urls = urlsSeleccionadas();
@@ -192,6 +223,7 @@ export function EditorVideos({ productos }: { productos: ProductoItem[] }) {
           use_music: useMusic,
           use_intro: useIntro,
           hook,
+          voz: voz?.nombre ?? null,
         }),
       });
       const data = await res.json().catch(() => ({}));
@@ -413,6 +445,47 @@ export function EditorVideos({ productos }: { productos: ProductoItem[] }) {
           <input type="checkbox" checked={useIntro} onChange={(e) => setUseIntro(e.target.checked)} />
           🔔 Sonido de inicio (opcional) — un golpe de apertura al arrancar.
         </label>
+      </div>
+
+      {/* Locución: el audio que le pones tú al video. */}
+      <div className="mt-4 space-y-3 rounded-2xl border border-[var(--hairline)] glass p-5">
+        <div>
+          <p className="text-sm font-medium text-text">🎙️ Audio del video (tu locución)</p>
+          <p className="mt-1 text-xs text-muted">
+            Sube tu audio y <b>manda sobre el video</b>: el montaje se ajusta a su duración
+            y los <b>subtítulos salen de él</b> (no del audio original de tus videos). Si no
+            subes ninguno, se usa el audio de los videos.
+          </p>
+        </div>
+        <div className="flex flex-wrap items-center gap-3">
+          <label className="cursor-pointer rounded-lg border border-accent/50 bg-accent/10 px-4 py-2 text-sm font-medium text-accent-2">
+            {subiendoVoz ? "Subiendo…" : voz ? "🔄 Cambiar audio" : "⬆️ Subir audio"}
+            <input
+              type="file"
+              accept="audio/*,.mp3,.m4a,.wav,.aac,.ogg"
+              disabled={subiendoVoz}
+              onChange={(e) => {
+                subirVoz(e.target.files?.[0]);
+                e.target.value = "";
+              }}
+              className="hidden"
+            />
+          </label>
+          {voz && (
+            <button
+              onClick={() => {
+                setVoz(null);
+                setVozEstado("");
+              }}
+              className="rounded border border-[var(--hairline)] px-2 py-1 text-xs text-muted hover:text-red-400"
+              title="Quitar el audio"
+            >
+              ✕ Quitar
+            </button>
+          )}
+          <span className="text-sm text-muted">{vozEstado}</span>
+        </div>
+        <p className="text-[11px] text-muted">Formatos: mp3, m4a, wav, aac, ogg.</p>
       </div>
 
       {/* Fase 4 — Hook visual (marco de referencia) */}
