@@ -183,23 +183,37 @@ export function EbooksCreator({ productos }: { productos: Producto[] }) {
       const data = await res.json();
       setCapitulo(i, "bloques", data.bloques);
       setRedaccion((prev) => ({ ...prev, [i]: bloquesATexto(data.bloques) }));
-      setCapEstado((s) => ({ ...s, [i]: "✓ Redactado. Lee y corrige abajo; guarda para conservarlo." }));
+      setCapEstado((s) => ({ ...s, [i]: "✓ Redactado. Lee y corrige; míralo en el visor." }));
+      // Recién redactado: se muestra solo en el visor de al lado. Se le pasa el
+      // producto YA con los bloques nuevos (el estado aún no se ha refrescado).
+      previsualizarModulo(i, {
+        ...p,
+        ebook: {
+          ...p.ebook,
+          capitulos: p.ebook.capitulos.map((c, k) =>
+            k === i ? { ...c, bloques: data.bloques } : c,
+          ),
+        },
+      });
     } catch (e) {
       setCapEstado((s) => ({ ...s, [i]: "⚠️ " + errorDeRed(e) }));
     }
   }
 
   // Vista previa de UN módulo con el tema del ebook (HTML renderizado por el motor).
-  async function previsualizarModulo(i: number) {
-    if (!p) return;
+  // `prod`: producto ya actualizado. Hace falta al redactar, porque el estado de
+  // React aún no se ha re-renderizado y `p` iría sin los bloques nuevos.
+  async function previsualizarModulo(i: number, prod?: Producto) {
+    const base = prod ?? p;
+    if (!base) return;
     setPreviewCap(i);
     setPreviewHtml("");
-    setPreviewEstado("Generando vista previa del módulo…");
+    setPreviewEstado("Maquetando el módulo…");
     try {
-      const res = await fetch(`/api/productos/${p.id}/ebook/preview`, {
+      const res = await fetch(`/api/productos/${base.id}/ebook/preview`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ producto: p, index: i }),
+        body: JSON.stringify({ producto: base, index: i }),
       });
       if (!res.ok) {
         setPreviewEstado("⚠️ " + (await mensajeDeError(res)));
@@ -288,6 +302,9 @@ export function EbooksCreator({ productos }: { productos: Producto[] }) {
     }
   }
 
+  // El capítulo que se está viendo en el visor de la derecha.
+  const capPreview = previewCap != null ? p?.ebook?.capitulos?.[previewCap] : undefined;
+
   // ── Sin productos ──
   if (!productos.length) {
     return (
@@ -305,13 +322,18 @@ export function EbooksCreator({ productos }: { productos: Producto[] }) {
   }
 
   return (
-    <div className="mx-auto max-w-3xl px-8 py-10">
+    <div className="mx-auto max-w-[1500px] px-6 py-10">
       <h1 className="text-2xl font-semibold">📕 Ebooks</h1>
       <p className="mt-2 mb-8 text-sm text-muted">
         Convierte un producto en un ebook para vender. El libro nace de la{" "}
         <b>oferta</b> del producto y se crea en tres fases: idea → índice → redacción
-        capítulo a capítulo, con fotos realistas generadas con IA.
+        capítulo a capítulo, con fotos realistas generadas con IA. Ve creando{" "}
+        <b>módulo a módulo</b> y míralo maquetado en el visor de la derecha.
       </p>
+
+      {/* Izquierda: creación · Derecha: visor del módulo (pegado al scroll). */}
+      <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(0,560px)]">
+        <div className="min-w-0">
 
       {/* Producto */}
       <div className="space-y-2 rounded-2xl border border-[var(--hairline)] glass p-5">
@@ -505,9 +527,14 @@ export function EbooksCreator({ productos }: { productos: Producto[] }) {
                         </span>
                         <button
                           onClick={() => previsualizarModulo(i)}
-                          className="rounded border border-accent/50 bg-accent/10 px-2 py-1 text-xs font-medium text-accent-2"
+                          className={cn(
+                            "rounded border px-2 py-1 text-xs font-medium",
+                            previewCap === i
+                              ? "border-accent bg-accent text-white"
+                              : "border-accent/50 bg-accent/10 text-accent-2",
+                          )}
                         >
-                          👁 Vista previa
+                          {previewCap === i ? "👁 Viéndose al lado" : "👁 Ver al lado"}
                         </button>
                       </div>
                       <textarea
@@ -522,19 +549,6 @@ export function EbooksCreator({ productos }: { productos: Producto[] }) {
                         <code>- lista</code>, <code>&gt; Tip: …</code>,{" "}
                         <code>**negrita**</code>. Guarda el ebook para conservar los cambios.
                       </p>
-                      {previewCap === i && (
-                        <div className="overflow-hidden rounded-lg border border-[var(--hairline)]">
-                          {previewEstado ? (
-                            <p className="p-3 text-xs text-muted">{previewEstado}</p>
-                          ) : (
-                            <iframe
-                              title={`vista-previa-${i}`}
-                              srcDoc={previewHtml}
-                              className="h-[520px] w-full bg-white"
-                            />
-                          )}
-                        </div>
-                      )}
                     </div>
                   ) : null}
 
@@ -627,6 +641,50 @@ export function EbooksCreator({ productos }: { productos: Producto[] }) {
           </div>
         </section>
       )}
+        </div>
+
+        {/* ── Visor: el módulo maquetado, al lado y siempre a la vista ── */}
+        <aside className="xl:sticky xl:top-6 xl:self-start">
+          <div className="flex h-[calc(100vh-8rem)] min-h-[520px] flex-col overflow-hidden rounded-2xl border border-[var(--hairline)] glass">
+            <div className="flex flex-wrap items-center gap-2 border-b border-[var(--hairline)] px-4 py-3">
+              <span className="text-sm font-medium text-text">👁 Visor del módulo</span>
+              {capPreview && (
+                <span className="rounded bg-accent/15 px-2 py-0.5 text-xs text-accent-2">
+                  {(previewCap ?? 0) + 1}. {capPreview.titulo || "sin título"}
+                </span>
+              )}
+              {previewCap != null && (
+                <button
+                  onClick={() => previsualizarModulo(previewCap)}
+                  className="ml-auto rounded border border-[var(--hairline)] px-2 py-1 text-xs text-muted hover:text-text"
+                  title="Vuelve a maquetar con lo que acabas de escribir"
+                >
+                  🔄 Actualizar
+                </button>
+              )}
+            </div>
+
+            {previewCap == null ? (
+              <div className="flex flex-1 items-center justify-center p-6 text-center text-sm text-muted">
+                <span>
+                  Redacta un módulo y pulsa <b>👁 Ver al lado</b> para verlo aquí
+                  maquetado con el tema, mientras lo corriges.
+                </span>
+              </div>
+            ) : previewEstado ? (
+              <div className="flex flex-1 items-center justify-center p-6 text-center text-sm text-muted">
+                <span>{previewEstado}</span>
+              </div>
+            ) : (
+              <iframe
+                title="visor-modulo"
+                srcDoc={previewHtml}
+                className="flex-1 w-full bg-white"
+              />
+            )}
+          </div>
+        </aside>
+      </div>
     </div>
   );
 }
