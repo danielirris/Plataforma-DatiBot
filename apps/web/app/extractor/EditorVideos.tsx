@@ -116,7 +116,8 @@ export function EditorVideos({ productos }: { productos: ProductoItem[] }) {
   const [trabajando, setTrabajando] = useState<boolean>(false);
 
   // B-rolls (clips de fondo): se generan aquí, con los videos que subiste al producto.
-  const [brollSource, setBrollSource] = useState<"veo" | "uploaded">("veo");
+  // Por defecto: recortar los videos del producto (gratis). Veo cuesta dinero.
+  const [brollSource, setBrollSource] = useState<"veo" | "uploaded">("uploaded");
   const [brollCantidad, setBrollCantidad] = useState<number>(10);
   const [brollEstado, setBrollEstado] = useState<string>("");
   const [brollJob, setBrollJob] = useState<BrollJob | null>(null);
@@ -419,9 +420,12 @@ export function EditorVideos({ productos }: { productos: ProductoItem[] }) {
                 : "border-[var(--hairline)] bg-[var(--field)] hover:border-accent/40")
             }
           >
-            <span className="text-sm font-medium text-text">✂️ Usar los videos del producto</span>
+            <span className="text-sm font-medium text-text">
+              ✂️ Usar los videos del producto <span className="text-accent-2">· recomendado</span>
+            </span>
             <p className="mt-1 text-xs text-muted">
-              Recorta fragmentos de los videos que subiste en Productos. Sin coste.
+              Arma un video de <b>~45s</b> encadenando <b>muchos extractos</b> de los videos
+              que subiste en Productos. Sin coste.
             </p>
           </button>
         </div>

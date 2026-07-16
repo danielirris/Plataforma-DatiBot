@@ -35,6 +35,11 @@ class BrollConfig:
     max_retries: int = 3         # reintentos por clip (Veo o verificación de personas)
     frames_per_check: int = 3    # frames muestreados para el detector de personas
     refine_with_gemini: bool = True
+    # ── Montaje (source="uploaded"): un video de ~45s hecho de MUCHOS extractos
+    # de los videos subidos, como en la app original.
+    montage_total_s: int = 45    # duración objetivo del montaje
+    beat_min_s: float = 2.0      # duración mínima de cada extracto
+    beat_max_s: float = 4.0      # duración máxima de cada extracto
 
     @property
     def price_per_sec(self) -> float:
@@ -45,7 +50,8 @@ class BrollConfig:
         cfg = cls()
         data = data or {}
         for k in ("n_brolls", "duration_s", "aspect_ratio", "resolution",
-                  "model", "max_retries", "frames_per_check", "refine_with_gemini"):
+                  "model", "max_retries", "frames_per_check", "refine_with_gemini",
+                  "montage_total_s", "beat_min_s", "beat_max_s"):
             if data.get(k) is not None:
                 setattr(cfg, k, data[k])
         # Saneos (Veo es estricto con estos valores).
@@ -54,6 +60,9 @@ class BrollConfig:
         cfg.aspect_ratio = cfg.aspect_ratio if cfg.aspect_ratio in ASPECTOS_VALIDOS else "9:16"
         cfg.max_retries = max(0, min(6, int(cfg.max_retries)))
         cfg.frames_per_check = max(1, min(8, int(cfg.frames_per_check)))
+        cfg.montage_total_s = max(5, min(180, int(cfg.montage_total_s)))
+        cfg.beat_min_s = max(0.5, min(10.0, float(cfg.beat_min_s)))
+        cfg.beat_max_s = max(cfg.beat_min_s, min(15.0, float(cfg.beat_max_s)))
         if cfg.model not in VEO_PRICE_PER_SEC:
             cfg.model = DEFAULT_MODEL
         return cfg
