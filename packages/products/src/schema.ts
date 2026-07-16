@@ -246,6 +246,17 @@ export interface PreciosPais {
   rmk_180m: string;
 }
 
+/** Los campos de PreciosPais con su etiqueta, en el orden en que se piden. */
+export const CAMPOS_PRECIO: { key: keyof PreciosPais; label: string; ayuda?: string }[] = [
+  { key: "base", label: "Precio base", ayuda: "El precio principal del producto." },
+  { key: "tachado", label: "Precio tachado", ayuda: "El precio “antes” que se muestra tachado." },
+  { key: "adicional_ob", label: "Adicional Orderbump", ayuda: "Lo que suma el orderbump al combo." },
+  { key: "normal_ob", label: "Normal Orderbump", ayuda: "Precio del orderbump si se vende suelto." },
+  { key: "rmk_15m", label: "Remarketing 15 min" },
+  { key: "rmk_60m", label: "Remarketing 60 min" },
+  { key: "rmk_180m", label: "Remarketing 180 min", ayuda: "También fija el piso del validador." },
+];
+
 export interface EmisionRegistro {
   pais: string;
   fecha: string;

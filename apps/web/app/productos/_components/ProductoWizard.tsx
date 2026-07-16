@@ -13,6 +13,7 @@ import {
   TIPOS_ANGULO,
   MECANISMOS_GANCHO,
   PAISES,
+  CAMPOS_PRECIO as CAMPOS_PRECIO_SCHEMA,
   MIN_BONOS,
   MAX_BONOS,
   ofertaVacia,
@@ -59,15 +60,9 @@ const DISPONIBLES = new Set([
 ]);
 
 // Campos de precio por país (van al motor de flujos como [PRECIO_*]).
-const CAMPOS_PRECIO: { k: keyof import("@plataforma/products/schema").PreciosPais; l: string; ayuda?: string }[] = [
-  { k: "base", l: "Precio base", ayuda: "El precio principal del producto." },
-  { k: "tachado", l: "Precio tachado", ayuda: "El precio “antes” que se muestra tachado." },
-  { k: "adicional_ob", l: "Adicional Orderbump", ayuda: "Lo que suma el orderbump al combo." },
-  { k: "normal_ob", l: "Normal Orderbump", ayuda: "Precio del orderbump si se vende suelto." },
-  { k: "rmk_15m", l: "Remarketing 15 min" },
-  { k: "rmk_60m", l: "Remarketing 60 min" },
-  { k: "rmk_180m", l: "Remarketing 180 min", ayuda: "También fija el piso del validador." },
-];
+// Los campos de precio (y sus etiquetas) viven en el esquema: el dossier .md
+// pinta la misma tabla y así no se desincronizan.
+const CAMPOS_PRECIO = CAMPOS_PRECIO_SCHEMA.map((c) => ({ k: c.key, l: c.label, ayuda: c.ayuda }));
 
 // Extrae un mensaje legible de una respuesta fallida: usa {error} si vino JSON,
 // si no, muestra el código de estado y el texto crudo (401, 504, HTML, etc.).
@@ -155,8 +150,9 @@ export function ProductoWizard({ producto }: { producto?: Producto }) {
     setP((prev) => ({ ...prev, [campo]: valor }));
     setEstado("idle");
   }
-  // Descarga el dossier del producto (identidad + avatar + ángulos + oferta) en
-  // Markdown, para pasárselo a una IA y que redacte los guiones de anuncios.
+  // Descarga el dossier del producto (identidad + avatar + ángulos + oferta +
+  // precios) en Markdown, para pasárselo a una IA y que redacte los guiones de
+  // anuncios. Lee el estado vivo: lo que se acaba de teclear ya sale, sin guardar.
   function descargarMarkdown() {
     const md = productoAMarkdown(p);
     const blob = new Blob([md], { type: "text/markdown;charset=utf-8" });
@@ -1256,20 +1252,6 @@ export function ProductoWizard({ producto }: { producto?: Producto }) {
             </>
           )}
 
-          {/* Dossier completo del producto para pasárselo a una IA. */}
-          <div className="flex flex-wrap items-center gap-3 rounded-xl border border-[var(--hairline)] glass p-4">
-            <button
-              onClick={descargarMarkdown}
-              className="rounded-lg border border-accent/50 bg-accent/10 px-4 py-2 text-sm font-medium text-accent-2"
-            >
-              ⬇️ Descargar Markdown
-            </button>
-            <span className="text-xs text-muted">
-              Baja <b>identidad + avatar + ángulos + oferta</b> en un <code>.md</code>. Pégaselo a
-              Claude (u otra IA) para que te redacte los guiones de los anuncios.
-            </span>
-          </div>
-
           <div className="sticky bottom-0 flex items-center gap-3 border-t border-[var(--hairline)] bg-bg/80 py-4 backdrop-blur">
             <button
               onClick={guardar}
@@ -1578,6 +1560,22 @@ export function ProductoWizard({ producto }: { producto?: Producto }) {
             </Link>
             .
           </p>
+
+          {/* Dossier completo del producto para pasárselo a una IA. Va aquí, al
+              final del último paso de investigación: ya están la oferta Y los
+              precios, así que el .md sale entero de una vez. */}
+          <div className="flex flex-wrap items-center gap-3 rounded-xl border border-[var(--hairline)] glass p-4">
+            <button
+              onClick={descargarMarkdown}
+              className="rounded-lg border border-accent/50 bg-accent/10 px-4 py-2 text-sm font-medium text-accent-2"
+            >
+              ⬇️ Descargar Markdown
+            </button>
+            <span className="text-xs text-muted">
+              Baja <b>identidad + avatar + ángulos + oferta + precios</b> en un <code>.md</code>.
+              Pégaselo a Claude (u otra IA) para que te redacte los guiones de los anuncios.
+            </span>
+          </div>
 
           <div className="sticky bottom-0 flex items-center gap-3 border-t border-[var(--hairline)] bg-bg/80 py-4 backdrop-blur">
             <button

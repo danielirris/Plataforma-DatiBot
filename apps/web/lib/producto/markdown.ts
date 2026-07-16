@@ -1,14 +1,17 @@
 import {
   AVATAR_SECCIONES,
+  CAMPOS_PRECIO,
+  PAISES,
   type Avatar,
   type Angulo,
   type Oferta,
+  type PreciosPais,
   type Producto,
 } from "@plataforma/products/schema";
 
-// Exporta TODO lo investigado del producto (identidad, avatar, ángulos, oferta)
-// a un Markdown legible, pensado para pegárselo a una IA y que redacte guiones
-// de anuncios. Solo lectura: no toca nada del producto.
+// Exporta TODO lo investigado del producto (identidad, avatar, ángulos, oferta y
+// precios) a un Markdown legible, pensado para pegárselo a una IA y que redacte
+// guiones de anuncios. Solo lectura: no toca nada del producto.
 
 function bloque(titulo: string, cuerpo: string): string {
   const c = (cuerpo ?? "").trim();
@@ -120,10 +123,33 @@ function seccionOferta(o: Oferta | null): string {
   return md;
 }
 
+function seccionPrecios(precios: Record<string, PreciosPais> | undefined): string {
+  // Solo los países que tienen algún precio puesto: el wizard deja en blanco los
+  // que no se usan, y una fila vacía solo despista a la IA que lee el dossier.
+  const conPrecio = PAISES.filter((pa) =>
+    CAMPOS_PRECIO.some((c) => String(precios?.[pa.codigo]?.[c.key] ?? "").trim()),
+  );
+  if (!conPrecio.length) return "";
+
+  let md = "## 5. Precios por país\n\n";
+  md += `| País | ${CAMPOS_PRECIO.map((c) => c.label).join(" | ")} |\n`;
+  md += `| --- | ${CAMPOS_PRECIO.map(() => "---:").join(" | ")} |\n`;
+  for (const pa of conPrecio) {
+    const fila = CAMPOS_PRECIO.map(
+      (c) => String(precios?.[pa.codigo]?.[c.key] ?? "").trim() || "—",
+    );
+    md += `| ${pa.nombre} (${pa.codigo}) | ${fila.join(" | ")} |\n`;
+  }
+  md +=
+    "\n> Cifras sin moneda, tal como se cargaron. El combo, los regateos y los pisos\n" +
+    "> los deriva el motor a partir de estos precios: no se guardan aquí.\n";
+  return md;
+}
+
 export function productoAMarkdown(p: Producto): string {
   let md = `# ${p.nombre || "Producto"}\n\n`;
   md +=
-    "> Dossier del producto (identidad, avatar, ángulos y oferta) para redactar guiones de anuncios.\n\n";
+    "> Dossier del producto (identidad, avatar, ángulos, oferta y precios) para redactar guiones de anuncios.\n\n";
 
   md += "## 1. Identidad del producto\n\n";
   md += campo("Nombre", p.nombre);
@@ -135,6 +161,7 @@ export function productoAMarkdown(p: Producto): string {
   md += seccionAvatar(p.avatar);
   md += seccionAngulos(p.angulos ?? []);
   md += seccionOferta(p.oferta);
+  md += seccionPrecios(p.precios);
 
   return md.replace(/\n{3,}/g, "\n\n").trim() + "\n";
 }
