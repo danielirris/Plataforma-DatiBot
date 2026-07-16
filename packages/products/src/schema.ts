@@ -314,9 +314,21 @@ export interface EbookProducto {
   /** tema de diseño del motor (amigurumi, capital, …) */
   tema: string;
   foto_portada: EbookFoto | null;
+  /**
+   * Órdenes del usuario para la IA: mandan sobre la oferta al crear el libro.
+   * Ej.: "céntrate en la limpieza facial, nada de captar clientes; 8 sesiones
+   * por cada uno de los 5 tipos de piel".
+   */
+  instrucciones: string;
 }
 export function ebookVacio(): EbookProducto {
-  return { idea: null, capitulos: [], tema: "capital", foto_portada: null };
+  return {
+    idea: null,
+    capitulos: [],
+    tema: "capital",
+    foto_portada: null,
+    instrucciones: "",
+  };
 }
 
 // ── VIDEOS del producto (materia prima para editar los anuncios) ──

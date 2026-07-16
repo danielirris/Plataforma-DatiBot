@@ -120,6 +120,22 @@ function contextoProducto(p: Producto): string {
   return partes.filter(Boolean).join("\n");
 }
 
+/**
+ * Órdenes del usuario para este libro. Van SIEMPRE al final del prompt y mandan
+ * sobre la oferta: la oferta dice qué se vende, pero esto dice qué se escribe.
+ * Sin ellas, la IA tiende a escribir sobre el negocio (captar clientes,
+ * fidelizar) en vez del tema en sí.
+ */
+function bloqueInstrucciones(p: Producto): string {
+  const t = (p.ebook?.instrucciones ?? "").trim();
+  if (!t) return "";
+  return `
+
+⚠️ ÓRDENES DEL AUTOR (MANDAN SOBRE TODO LO ANTERIOR, incluida la oferta).
+Si chocan con la oferta, OBEDECE ESTO:
+${t}`;
+}
+
 // ── FASE 1: IDEA ──────────────────────────────────────────────
 export async function generarIdea(p: Producto): Promise<EbookIdea> {
   const prompt = `Eres un editor experto en infoproductos de respuesta directa. Devuelves SOLO JSON.
@@ -131,6 +147,7 @@ Define la IDEA del ebook que materializa esa oferta (es el entregable que el cli
 - "subtitulo": una línea que amplía la promesa.
 - "concepto": 2-4 frases: qué es el libro, qué logra el lector y cómo lo entrega.
 - "publico": a quién le habla, en una línea.
+${bloqueInstrucciones(p)}
 
 Devuelve JSON exacto: {"titulo":"...","subtitulo":"...","concepto":"...","publico":"..."}`;
 
@@ -160,6 +177,9 @@ IDEA del libro (ya aprobada):
 - Público: ${idea.publico}
 
 Crea el ÍNDICE: EXACTAMENTE ${numCapitulos} capítulos que cumplen la promesa del libro de principio a fin, con progresión lógica (de fundamentos a resultados). Si la oferta promete una cantidad (ej. 120 recetas), repártela entre los capítulos de forma creíble. Español neutral.
+
+El libro va del TEMA en sí, no del negocio alrededor: salvo que el autor lo pida abajo, NO incluyas capítulos de captar clientes, marketing, fidelización, precios ni cómo emprender. Todo el índice debe ser contenido útil del tema.
+${bloqueInstrucciones(p)}
 
 Devuelve JSON exacto: {"capitulos":[{"titulo":"...","resumen":"1-2 frases de qué cubre"}, ...]}`;
 
@@ -199,6 +219,7 @@ Redacta SOLO el capítulo ${index + 1}: «${cap.titulo}» (${cap.resumen}).
 - Extensión: unas 4-6 páginas (párrafos claros, listas prácticas y alguna caja destacada).
 - Contenido ACCIONABLE y específico (si son recetas: ingredientes y pasos reales), español neutral, sin relleno.
 - NO menciones precios ni links.
+${bloqueInstrucciones(p)}
 
 Devuelve SOLO la lista JSON de bloques.`;
 

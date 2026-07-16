@@ -365,6 +365,34 @@ export function EbooksCreator({ productos }: { productos: Producto[] }) {
 
       {p && (
         <section className="mt-4 space-y-5">
+          {/* ── Órdenes para la IA: mandan sobre la oferta en las 3 fases ── */}
+          <div className="space-y-2 rounded-2xl border border-[var(--hairline)] glass p-5">
+            <div>
+              <p className="text-sm font-medium text-text">🎯 Órdenes para la IA</p>
+              <p className="mt-1 text-xs text-muted">
+                Dile de qué va el libro y <b>mandan sobre la oferta</b>. Sin esto, la IA
+                escribe sobre el negocio (captar clientes, fidelizar) en vez del tema.
+                Pídele también <b>cantidad</b>: es lo que hace el libro largo y con
+                contenido puro.
+              </p>
+            </div>
+            <AutoTextarea
+              value={p.ebook.instrucciones ?? ""}
+              onChange={(e) => setEbook((eb) => ({ ...eb, instrucciones: e.target.value }))}
+              rows={3}
+              placeholder={
+                "Ej.: Céntrate SOLO en la limpieza facial: nada de captar clientes, marketing ni fidelización.\n" +
+                "Cubre los 5 tipos de piel y, para cada uno, 8 sesiones distintas paso a paso (40 en total).\n" +
+                "Incluye para cada sesión: productos, tiempos y contraindicaciones."
+              }
+              className="w-full rounded-lg border border-[var(--hairline)] bg-[var(--field)] px-3 py-2 text-sm text-text outline-none focus:border-accent"
+            />
+            <p className="text-[11px] text-muted">
+              Se aplican al generar la <b>idea</b>, el <b>índice</b> y cada <b>módulo</b>. Si
+              cambias las órdenes, regenera el índice para que se noten.
+            </p>
+          </div>
+
           {/* ── Fase 1: Idea ── */}
           <div className="space-y-3 rounded-2xl border border-[var(--hairline)] glass p-5">
             <div className="flex flex-wrap items-center gap-3">
