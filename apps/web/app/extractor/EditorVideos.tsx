@@ -452,9 +452,10 @@ export function EditorVideos({ productos }: { productos: ProductoItem[] }) {
         <div>
           <p className="text-sm font-medium text-text">🎙️ Audio del video (tu locución)</p>
           <p className="mt-1 text-xs text-muted">
-            Sube tu audio y <b>manda sobre el video</b>: el montaje se ajusta a su duración
-            y los <b>subtítulos salen de él</b> (no del audio original de tus videos). Si no
-            subes ninguno, se usa el audio de los videos.
+            Tu audio <b>manda</b>: el video <b>dura exactamente lo que dura el audio</b> — se
+            recortan tantos extractos como haga falta para cubrirlo — y los{" "}
+            <b>subtítulos salen de él</b> (no del audio original de tus videos). Si no subes
+            ninguno, el video dura {"~"}45s y se usa el audio de tus videos.
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-3">

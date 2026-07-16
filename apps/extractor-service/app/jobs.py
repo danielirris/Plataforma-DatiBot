@@ -569,10 +569,25 @@ class JobManager:
                 dur = max(0.6, min(5.0, float(hook.get("dur", 2.0))))
                 forced_hook = Beat(vi, sources[vi], round(start, 3), round(dur, 3))
 
+        # LA LOCUCIÓN MANDA: si el usuario subió su audio, el montaje se compone
+        # con la duración de ESE audio (si no, se quedaría en los 48s fijos y el
+        # video se repetiría al estirarlo hasta la voz, o sobraría material).
+        objetivo_s = float(settings.duracion_total_s)
+        voz = self._voz.get(job_id)
+        if voz is not None:
+            try:
+                d = audio.probe_duration(voz)
+                if d > 0.5:
+                    objetivo_s = d
+                    logger.info("Job %s: el montaje dura lo que la locución (%.1fs)",
+                                job_id, d)
+            except Exception as e:  # noqa: BLE001
+                logger.warning("No pude medir la locución (%s); uso %.0fs", e, objetivo_s)
+
         clips = compose_clips(
             pool, moments, videos, rng,
             num_clips=n_clips,
-            duracion_total_s=settings.duracion_total_s + buffer_s,
+            duracion_total_s=objetivo_s + buffer_s,
             hook_beats=settings.hook_beats,
             beat_min=settings.beat_min_s,
             beat_max=settings.beat_max_s,
