@@ -349,7 +349,12 @@ export function EditorVideos({ productos }: { productos: ProductoItem[] }) {
       <p className="mt-2 mb-8 text-sm text-muted">
         Elige un producto y sus videos (los que subiste en Productos). El editor
         <b> recorta extractos de esos videos y arma un video nuevo</b> de ~45s, con
-        subtítulos, animaciones y CTA. Antes de renderizar puedes previsualizar.
+        subtítulos, animaciones y CTA. Antes de renderizar puedes previsualizar. Los
+        que ya creaste están en{" "}
+        <Link href="/anuncios" className="text-accent-2 hover:underline">
+          Mis anuncios
+        </Link>
+        .
       </p>
 
       {/* Producto + videos */}

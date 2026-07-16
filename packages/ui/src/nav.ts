@@ -56,6 +56,12 @@ export const NAV_ITEMS: NavItem[] = [
       "Convierte videos largos en clips verticales listos para publicar.",
   },
   {
+    href: "/anuncios",
+    label: "Mis anuncios",
+    icon: "🎞️",
+    description: "Los anuncios que ya creaste, listos para ver y descargar.",
+  },
+  {
     href: "/configuracion",
     label: "Configuración",
     icon: "⚙️",
