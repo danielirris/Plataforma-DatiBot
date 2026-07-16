@@ -163,6 +163,9 @@ def build_ad_project(
         "musica": {"volumen": vol, "ducking": vol_duck},
         "sfx": sfx_names,
         "intro": intro_name,
+        # La fuente elegida: el render la hornea en font.ts, y la PREVIEW la lee
+        # de aquí (si no, se quedaría siempre con la de por defecto).
+        "font": font if font in ALLOWED_FONTS else "Anton",
         "videos": entries,
     }
     (root / "ad.json").write_text(json.dumps(ad, ensure_ascii=False, indent=2),

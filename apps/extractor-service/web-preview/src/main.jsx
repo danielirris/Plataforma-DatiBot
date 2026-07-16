@@ -5,9 +5,30 @@ import {
   AbsoluteFill, Audio, Img, Sequence, Video, interpolate, spring,
   useCurrentFrame, useVideoConfig,
 } from 'remotion';
-import { loadFont } from '@remotion/google-fonts/Anton';
+// Las 6 fuentes permitidas: se cargan todas y se elige la del anuncio en
+// caliente. (Antes se importaba solo Anton y el selector de fuente no hacía
+// nada en la previsualización.)
+import { loadFont as loadAnton } from '@remotion/google-fonts/Anton';
+import { loadFont as loadBebas } from '@remotion/google-fonts/BebasNeue';
+import { loadFont as loadOswald } from '@remotion/google-fonts/Oswald';
+import { loadFont as loadMontserrat } from '@remotion/google-fonts/Montserrat';
+import { loadFont as loadPoppins } from '@remotion/google-fonts/Poppins';
+import { loadFont as loadArchivo } from '@remotion/google-fonts/ArchivoBlack';
 
-const { fontFamily } = loadFont();
+const FUENTES = {
+  Anton: loadAnton().fontFamily,
+  BebasNeue: loadBebas().fontFamily,
+  Oswald: loadOswald().fontFamily,
+  Montserrat: loadMontserrat().fontFamily,
+  Poppins: loadPoppins().fontFamily,
+  ArchivoBlack: loadArchivo().fontFamily,
+};
+/** Familia de la fuente elegida en el editor (ad.font); Anton si no se conoce. */
+const familia = (f) => FUENTES[f] || FUENTES.Anton;
+// Fuente activa: se fija al cargar el ad.json (antes de pintar). Los componentes
+// la leen por nombre, así no hay que pasarla por props uno a uno.
+let fontFamily = FUENTES.Anton;
+
 const emojiFamily = '"Apple Color Emoji","Noto Color Emoji","Segoe UI Emoji","Twemoji Mozilla",sans-serif';
 
 // --------------------------------------------------------------------------- //
@@ -36,7 +57,8 @@ function Subtitles({ words, plan }) {
   const frame = useCurrentFrame();
   const t = frame / fps;
   const lines = useMemo(() => buildLines(words || []), [words]);
-  const accent = plan?.accent || '#FFD400';
+  // El color de resaltado elegido en el editor manda sobre el del estilo.
+  const accent = plan?.highlight || plan?.accent || '#FFD400';
   const style = plan?.subtitle_style || 'pop';
   const intensidad = (plan?.intensidad ?? 70) / 100;
   const emphasis = useMemo(() => new Set((plan?.emphasis || []).map((w) => clean(w))), [plan]);
@@ -418,7 +440,10 @@ function App() {
     fetch(`/api/jobs/${jobId}/ad.json`).then((r) => {
       if (!r.ok) throw new Error('No se encontró el proyecto');
       return r.json();
-    }).then(setData).catch((e) => setErr(e.message));
+    }).then((j) => {
+      fontFamily = familia(j.font); // la fuente elegida, antes de pintar
+      setData(j);
+    }).catch((e) => setErr(e.message));
   }, [jobId]);
 
   const assetBase = `/api/jobs/${jobId}/r`;
