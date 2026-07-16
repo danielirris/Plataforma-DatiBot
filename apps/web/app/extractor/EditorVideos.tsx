@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import type { VideoProducto } from "@plataforma/products";
 
@@ -60,6 +60,20 @@ interface HookCandidato {
   thumb: string | null;
 }
 
+interface ColaItem {
+  id: string;
+  estado: string;
+  modo: string;
+  creado: string;
+  mensaje?: string;
+  videos: number;
+}
+interface ColaInfo {
+  en_cola: ColaItem[];
+  en_proceso: ColaItem[];
+  total_en_cola: number;
+}
+
 interface JobState {
   status: string;
   progress: number;
@@ -104,6 +118,11 @@ export function EditorVideos({ productos }: { productos: ProductoItem[] }) {
   const [publicBase, setPublicBase] = useState<string>("");
   const [trabajando, setTrabajando] = useState<boolean>(false);
 
+  // Cola del editor: hay UN worker, los trabajos se hacen de uno en uno. Si se
+  // acumulan (p. ej. reanudados tras un redeploy), el tuyo espera detrás.
+  const [cola, setCola] = useState<ColaInfo | null>(null);
+  const [colaMsg, setColaMsg] = useState<string>("");
+
   // Los candidatos de gancho van atados al orden/selección de videos; si cambia
   // la selección, hay que descartarlos (el video_idx ya no coincidiría).
   function limpiarGanchos() {
@@ -137,6 +156,48 @@ export function EditorVideos({ productos }: { productos: ProductoItem[] }) {
     limpiarGanchos();
   }
 
+
+  // ── Cola del editor ──
+  async function verCola() {
+    try {
+      const r = await fetch("/api/editor/cola", { cache: "no-store" });
+      const d = await r.json().catch(() => ({}));
+      if (!r.ok) {
+        setColaMsg("⚠️ " + (d.error ?? `Error ${r.status}`));
+        return;
+      }
+      setCola(d as ColaInfo);
+      setColaMsg("");
+    } catch {
+      /* silencioso: es informativo */
+    }
+  }
+
+  async function vaciarCola() {
+    setColaMsg("Vaciando la cola…");
+    try {
+      const r = await fetch("/api/editor/cola", { method: "POST" });
+      const d = await r.json().catch(() => ({}));
+      if (!r.ok) {
+        setColaMsg("⚠️ " + (d.error ?? `Error ${r.status}`));
+        return;
+      }
+      const enCurso = (d.en_curso ?? []).length;
+      setColaMsg(
+        `✓ ${d.cancelados ?? 0} trabajo(s) cancelado(s).` +
+          (enCurso ? " El que ya se estaba procesando termina solo." : ""),
+      );
+      verCola();
+    } catch (e) {
+      setColaMsg("⚠️ Fallo de red: " + (e instanceof Error ? e.message : "?"));
+    }
+  }
+
+  // Al abrir el editor, mira la cola: si hay atasco, se ve de inmediato.
+  useEffect(() => {
+    verCola();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Sube la locución (cuerpo crudo: el proxy no lo corta).
   async function subirVoz(file: File | null | undefined) {
@@ -595,6 +656,46 @@ export function EditorVideos({ productos }: { productos: ProductoItem[] }) {
             ? ` (${job.progress}%)`
             : ""}
         </span>
+      </div>
+
+      {/* Cola: hay UN worker, así que todo se procesa de uno en uno. */}
+      <div className="mt-4 space-y-2 rounded-2xl border border-[var(--hairline)] glass p-4">
+        <div className="flex flex-wrap items-center gap-3">
+          <span className="text-sm font-medium text-text">🚦 Cola del editor</span>
+          <button
+            onClick={verCola}
+            className="rounded border border-[var(--hairline)] px-2 py-1 text-xs text-muted hover:text-text"
+          >
+            🔄 Actualizar
+          </button>
+          {(cola?.total_en_cola ?? 0) > 0 && (
+            <button
+              onClick={vaciarCola}
+              className="rounded border border-red-500/40 bg-red-500/10 px-2 py-1 text-xs text-red-300 hover:text-red-200"
+              title="Cancela los trabajos pendientes (el que ya corre termina solo)"
+            >
+              🧹 Vaciar cola ({cola?.total_en_cola})
+            </button>
+          )}
+          <span className="text-xs text-muted">{colaMsg}</span>
+        </div>
+        {cola && (
+          <p className="text-xs text-muted">
+            {cola.en_proceso.length > 0 ? (
+              <>
+                Procesando <b>1</b> ({cola.en_proceso[0].mensaje || cola.en_proceso[0].estado})
+                {cola.total_en_cola > 0 && <> · <b>{cola.total_en_cola}</b> esperando detrás</>}
+              </>
+            ) : cola.total_en_cola > 0 ? (
+              <>
+                <b>{cola.total_en_cola}</b> trabajo(s) esperando. Se procesan{" "}
+                <b>de uno en uno</b>: si se acumularon de intentos anteriores, vacía la cola.
+              </>
+            ) : (
+              <>Vacía: tu anuncio empieza al instante.</>
+            )}
+          </p>
+        )}
       </div>
 
       {/* Resultado */}

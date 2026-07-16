@@ -421,6 +421,53 @@ class JobManager:
                 fields[key] = value
         self._store.update(job_id, fields)
 
+    # Estados de un job que ya está siendo procesado por el worker.
+    _EN_PROCESO = (JobStatus.EXTRACTING, JobStatus.TRANSCRIBING,
+                   JobStatus.ANALYZING, JobStatus.RENDERING)
+
+    def queue_info(self) -> dict:
+        """Qué hay en la cola: lo que espera y lo que se está procesando.
+
+        Hay UN worker: los trabajos se hacen de uno en uno, así que todo lo que
+        esté en cola espera a que termine el de arriba.
+        """
+        def resumen(j: Job) -> dict:
+            return {"id": j.id, "estado": j.status.value, "modo": j.mode,
+                    "creado": j.created_at, "mensaje": j.message,
+                    "videos": len(j.filenames)}
+
+        with self._lock:
+            jobs = list(self._jobs.values())
+        en_cola = [resumen(j) for j in jobs if j.status == JobStatus.QUEUED]
+        en_proceso = [resumen(j) for j in jobs if j.status in self._EN_PROCESO]
+        en_cola.sort(key=lambda d: d["creado"] or "")
+        return {"en_cola": en_cola, "en_proceso": en_proceso,
+                "total_en_cola": len(en_cola)}
+
+    def reset_queue(self) -> dict:
+        """Vacía la cola: descarta lo pendiente y lo marca como cancelado.
+
+        El trabajo EN CURSO no se puede interrumpir (corre en el hilo del
+        worker); terminará o fallará solo, pero ya no arrastra a los demás.
+        """
+        descartados: list[str] = []
+        while True:
+            try:
+                _kind, job_id = self._queue.get_nowait()
+            except queue.Empty:
+                break
+            descartados.append(job_id)
+            self._queue.task_done()
+
+        for jid in descartados:
+            self._update(jid, status=JobStatus.ERROR, progress=100,
+                         message="Cancelado",
+                         error="Cancelado al vaciar la cola.")
+        logger.info("Cola vaciada: %d trabajo(s) cancelado(s)", len(descartados))
+        with self._lock:
+            en_curso = [j.id for j in self._jobs.values() if j.status in self._EN_PROCESO]
+        return {"cancelados": len(descartados), "en_curso": en_curso}
+
     def _run_worker(self) -> None:
         """Bucle del trabajador: procesa jobs de la cola de a uno."""
         cleanup.purge_keep_recent(

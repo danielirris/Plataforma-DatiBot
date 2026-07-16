@@ -677,6 +677,18 @@ async def create_job(
     )
 
 
+@app.get("/api/queue")
+async def queue_info() -> JSONResponse:
+    """Qué trabajos hay en cola y cuál se está procesando (hay un solo worker)."""
+    return JSONResponse(manager.queue_info())
+
+
+@app.post("/api/queue/reset")
+async def queue_reset() -> JSONResponse:
+    """Vacía la cola (cancela lo pendiente). El que ya corre no se interrumpe."""
+    return JSONResponse(manager.reset_queue())
+
+
 @app.get("/api/jobs/{job_id}")
 async def get_job(job_id: str) -> JSONResponse:
     """Devuelve el estado del job."""
