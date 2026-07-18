@@ -111,8 +111,15 @@ llegan redesplegando este servicio.
 Crea una **segunda App** en EasyPanel:
 
 - **Build:** igual que `web` — Dockerfile · Build context `/` · `apps/web/Dockerfile`.
-- **Puerto:** 3000.
-- **Dominio:** `editor.tudominio.com` (activa HTTPS).
+  > ⚠️ **No lo crees duplicando el servicio `extractor`**: la copia hereda su
+  > Dockerfile (`apps/extractor-service/...`) y construiría el motor Python en vez
+  > de la pantalla del editor. Créalo desde cero.
+- **Puerto:** el que diga el log al arrancar (`Network: http://0.0.0.0:XX`).
+  El Dockerfile declara 3000, pero **EasyPanel suele inyectar `PORT=80`** y
+  entonces el dominio debe apuntar al **80**, no al 3000. Si no coincide, sale
+  "Service is not reachable".
+- **Dominio:** `editor.tudominio.com` (activa HTTPS). Necesita su registro DNS
+  propio (una `A` a la IP del VPS, igual que `app`), o no resolverá.
 - **Basic Auth de EasyPanel:** **NO** lo actives (el login lo hace la app).
 - **Volumen:** **no montes el volumen `/data` de `web`.** No lo necesita, y sin él
   es imposible que se filtren tus productos aunque algo falle.
