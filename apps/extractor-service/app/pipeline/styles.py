@@ -126,12 +126,22 @@ STYLE_MOVES: dict[str, dict] = {
 #                seguir forzando otra en el editor.
 #   sub_bottom — a qué % del fondo va el subtítulo (ritmo vertical distinto).
 #   sub_scale  — multiplicador de tamaño del subtítulo (sobrio vs. grande).
+#   cards      — qué layouts de tarjeta usa el estilo, en orden. Se van rotando
+#                por las tarjetas del anuncio para que NO se parezcan entre sí.
+#                Tipos: "cover" (color a pantalla completa, tapa el video),
+#                "lower" (rótulo abajo, el video se ve), "poster" (banda tipo
+#                cartel), "bigword" (palabra gigante con el video detrás).
 STYLE_LOOK: dict[str, dict] = {
-    "editorial_mono": {"font": "Oswald", "sub_bottom": 30, "sub_scale": 0.82},
-    "premium_noir": {"font": "Montserrat", "sub_bottom": 12, "sub_scale": 0.90},
-    "afiche_retro": {"font": "BebasNeue", "sub_bottom": 16, "sub_scale": 1.08},
-    "modo_bestia": {"font": "Anton", "sub_bottom": 15, "sub_scale": 1.00},
-    "relato_doc": {"font": "Poppins", "sub_bottom": 22, "sub_scale": 0.85},
+    "editorial_mono": {"font": "Oswald", "sub_bottom": 30, "sub_scale": 0.82,
+                       "cards": ["lower", "cover"]},
+    "premium_noir": {"font": "Montserrat", "sub_bottom": 12, "sub_scale": 0.90,
+                     "cards": ["cover", "lower"]},
+    "afiche_retro": {"font": "BebasNeue", "sub_bottom": 16, "sub_scale": 1.08,
+                     "cards": ["poster", "bigword", "cover"]},
+    "modo_bestia": {"font": "Anton", "sub_bottom": 15, "sub_scale": 1.00,
+                    "cards": ["bigword", "poster", "lower"]},
+    "relato_doc": {"font": "Poppins", "sub_bottom": 22, "sub_scale": 0.85,
+                   "cards": ["lower", "cover"]},
 }
 
 
@@ -278,4 +288,10 @@ def apply_style(plan: dict, style_id: str, seed: str) -> dict:
     look = STYLE_LOOK.get(style_id) or {}
     plan["subBottom"] = look.get("sub_bottom", 15)
     plan["subScale"] = look.get("sub_scale", 1.0)
+    # Layout de cada tarjeta: se rota entre los del estilo para dar variedad
+    # (una de rótulo, otra de cartel, otra gigante…), en vez de todas iguales.
+    layouts = look.get("cards") or ["cover"]
+    for i, c in enumerate(plan.get("fullscreen") or []):
+        if isinstance(c, dict):
+            c["layout"] = layouts[i % len(layouts)]
     return plan

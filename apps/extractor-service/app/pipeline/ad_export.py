@@ -410,7 +410,7 @@ export const Ad: React.FC<{ v: any; cta: any; musica: any; sfx: any; intro?: any
       {/* Tarjetas full-screen (donde la IA dijo, según la voz). */}
       {cards.map((c: any, i: number) => (
         <Sequence key={`card${i}`} from={c.f} durationInFrames={Math.round(CARD_S * fps)}>
-          <Card top={c.top} keyText={c.key} sub={c.sub} emoji={c.emoji} accent={pick(i)} />
+          <Card top={c.top} keyText={c.key} sub={c.sub} emoji={c.emoji} accent={pick(i)} layout={c.layout} />
         </Sequence>
       ))}
 
@@ -518,21 +518,76 @@ function darken(hex: string, k: number) {
   return `rgb(${r},${g},${b})`;
 }
 
-export const Card: React.FC<{ top?: string; keyText: string; sub?: string; emoji?: string; accent: string }> = ({ top, keyText, sub, emoji, accent }) => {
+export const Card: React.FC<{ top?: string; keyText: string; sub?: string; emoji?: string; accent: string; layout?: string }> = ({ top, keyText, sub, emoji, accent, layout }) => {
   const { fps, width, height, durationInFrames } = useVideoConfig();
   const f = useCurrentFrame();
   const enter = spring({ frame: f, fps, config: { damping: 16, mass: 0.6 } });
   const out = interpolate(f, [durationInFrames - 7, durationInFrames], [1, 0], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' });
   const o = Math.min(enter, out);
-  // Entradas escalonadas: emoji -> top -> key (punch) -> sub.
+  const dark = darken(accent, 0.45);
+  const key = String(keyText || '');
+  // La palabra clave se achica si es larga, para que quepa en cada layout.
+  const fit = (base: number, cap: number) => Math.round(Math.min(base, (width * cap) / Math.max(4, key.length)));
+
+  // ── 2) RÓTULO INFERIOR: el video SE VE; texto abajo, entra desde abajo ──
+  if (layout === 'lower') {
+    const up = interpolate(enter, [0, 1], [70, 0]);
+    return (
+      <AbsoluteFill style={{ opacity: o, justifyContent: 'flex-end' }}>
+        <AbsoluteFill style={{ top: '46%', background: 'linear-gradient(transparent, rgba(0,0,0,0.82) 62%)' }} />
+        <div style={{ margin: '0 7% 12%', transform: `translateY(${up}px)` }}>
+          <div style={{ color: '#fff', fontFamily, fontWeight: 900, lineHeight: 1.0, fontSize: fit(Math.round(width * 0.115), 1.2),
+            textTransform: 'uppercase', textShadow: '0 6px 20px rgba(0,0,0,0.6)' }}>{key}</div>
+          {sub ? <div style={{ display: 'inline-block', marginTop: 16, background: accent, color: '#141414',
+            fontFamily, fontWeight: 900, fontSize: Math.round(width * 0.04), textTransform: 'uppercase',
+            padding: '7px 20px', borderRadius: 999, boxShadow: '0 8px 20px rgba(0,0,0,0.35)' }}>{sub}</div> : null}
+        </div>
+      </AbsoluteFill>
+    );
+  }
+
+  // ── 3) CARTEL: banda de color GIRADA con la palabra clave (póster) ──
+  if (layout === 'poster') {
+    const rot = interpolate(enter, [0, 1], [-16, -6]);
+    const sc = 0.72 + 0.28 * Math.min(1, enter);
+    return (
+      <AbsoluteFill style={{ opacity: o, justifyContent: 'center', overflow: 'hidden' }}>
+        {top ? <div style={{ position: 'absolute', top: '22%', left: 0, right: 0, textAlign: 'center',
+          color: '#fff', fontFamily, fontWeight: 900, letterSpacing: 4, fontSize: Math.round(width * 0.045),
+          textTransform: 'uppercase', opacity: enter, textShadow: '0 3px 12px rgba(0,0,0,0.6)' }}>{top}</div> : null}
+        <div style={{ margin: '0 -8%', background: accent, padding: '4.5% 0',
+          transform: `rotate(${rot}deg) scale(${sc})`, boxShadow: '0 20px 46px rgba(0,0,0,0.45)' }}>
+          <div style={{ color: '#141414', textAlign: 'center', fontFamily, fontWeight: 900,
+            fontSize: fit(Math.round(width * 0.135), 1.4), lineHeight: 1, textTransform: 'uppercase' }}>{key}</div>
+        </div>
+      </AbsoluteFill>
+    );
+  }
+
+  // ── 4) PALABRA GIGANTE: enorme, abajo-izquierda, el video detrás ──
+  if (layout === 'bigword') {
+    const sc = 0.55 + 0.45 * Math.min(1, enter);
+    return (
+      <AbsoluteFill style={{ opacity: o }}>
+        <AbsoluteFill style={{ top: '55%', background: 'linear-gradient(transparent, rgba(0,0,0,0.5))' }} />
+        <div style={{ position: 'absolute', left: '5%', right: '5%', bottom: '18%', transformOrigin: 'left bottom', transform: `scale(${sc})` }}>
+          <div style={{ color: '#fff', fontFamily, fontWeight: 900, lineHeight: 0.82, fontSize: fit(Math.round(width * 0.30), 2.7),
+            textTransform: 'uppercase', textShadow: '0 8px 30px rgba(0,0,0,0.6)', wordBreak: 'break-word' }}>{key}</div>
+          {sub ? <div style={{ color: accent, fontFamily, fontWeight: 900, fontSize: Math.round(width * 0.05),
+            textTransform: 'uppercase', marginTop: 10 }}>{sub}</div> : null}
+        </div>
+      </AbsoluteFill>
+    );
+  }
+
+  // ── 1) COVER (por defecto): tarjeta de color a pantalla completa, centrada ──
   const emo = spring({ frame: f - 2, fps, config: { damping: 9, mass: 0.5 } });
   const topIn = spring({ frame: f - 6, fps, config: { damping: 18 } });
   const keyPop = spring({ frame: f - 9, fps, config: { damping: 11, mass: 0.5 } });
   const subIn = spring({ frame: f - 14, fps, config: { damping: 18 } });
-  const bgScale = interpolate(enter, [0, 1], [1.15, 1]);     // fondo entra con zoom
-  const pulse = 1 + 0.02 * Math.sin(f / fps * 5);             // micro-movimiento del key
+  const bgScale = interpolate(enter, [0, 1], [1.15, 1]);
+  const pulse = 1 + 0.02 * Math.sin(f / fps * 5);
   const float = Math.sin(f / fps * 3) * 6;
-  const dark = darken(accent, 0.45);
 
   return (
     <AbsoluteFill style={{ justifyContent: 'center', alignItems: 'center', opacity: o, overflow: 'hidden' }}>
@@ -548,10 +603,10 @@ export const Card: React.FC<{ top?: string; keyText: string; sub?: string; emoji
           fontSize: Math.round(width * 0.045), textTransform: 'uppercase', opacity: topIn,
           transform: `translateY(${(1 - topIn) * 20}px)` }}>{top}</div> : null}
         <div style={{ color: '#fff', fontFamily, fontWeight: 900, lineHeight: 1.02,
-          fontSize: Math.round(width * 0.135), textTransform: 'uppercase',
+          fontSize: fit(Math.round(width * 0.135), 1.6), textTransform: 'uppercase',
           WebkitTextStroke: '2px rgba(0,0,0,0.3)', paintOrder: 'stroke fill',
           textShadow: '0 10px 30px rgba(0,0,0,0.35)',
-          transform: `scale(${(0.6 + 0.4 * Math.min(1, keyPop)) * pulse})` }}>{keyText}</div>
+          transform: `scale(${(0.6 + 0.4 * Math.min(1, keyPop)) * pulse})` }}>{key}</div>
         {sub ? <div style={{ color: '#ffffffe6', fontFamily, fontWeight: 700, marginTop: 14,
           fontSize: Math.round(width * 0.046), opacity: subIn, transform: `translateY(${(1 - subIn) * 16}px)` }}>{sub}</div> : null}
       </div>
