@@ -2,8 +2,16 @@
 .env
 .env.local
 
-# Almacenamiento de trabajo (uploads, temporales, outputs)
-storage/
+# Almacenamiento de trabajo (uploads, temporales, outputs). Se usa "storage/*"
+# (no "storage/") para que git PUEDA descender y re-incluir la biblioteca base.
+storage/*
+# EXCEPCIÓN: la biblioteca base (música de fondo + sfx) SÍ se versiona — es la
+# que el motor usa por defecto y debe viajar dentro de la imagen Docker.
+!storage/library/
+!storage/library/music/
+!storage/library/sfx/
+!storage/library/music/*.m4a
+!storage/library/sfx/*.m4a
 
 # Python
 __pycache__/
@@ -21,6 +29,9 @@ env/
 *.wav
 *.mp3
 *.m4a
+# …salvo la biblioteca base, que sí se versiona (ver arriba).
+!storage/library/music/*.m4a
+!storage/library/sfx/*.m4a
 
 # Sistema / editores
 .DS_Store

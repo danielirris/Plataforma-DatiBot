@@ -41,6 +41,10 @@ COPY apps/extractor-service/remotion/ ./remotion/
 
 # Carpeta de almacenamiento (volumen persistente en EasyPanel).
 RUN mkdir -p /app/storage
+# Biblioteca base horneada en la imagen: la música de fondo por defecto
+# (fondo.m4a) y los efectos. Sin esto no suena la música (el archivo no existía
+# en el contenedor). Los sfx además se regeneran solos si faltaran.
+COPY apps/extractor-service/storage/library/ ./storage/library/
 
 EXPOSE 8000
 
