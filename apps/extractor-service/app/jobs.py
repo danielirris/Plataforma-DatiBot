@@ -573,7 +573,10 @@ class JobManager:
                 job_id, status=JobStatus.EXTRACTING,
                 message=f"Procesando audio {vid + 1}/{len(sources)}",
             )
-            duration = audio.probe_duration(src)
+            # Duración de la PISTA DE VIDEO, no del contenedor: si el audio dura
+            # más que la imagen, trocear hasta el contenedor deja un fragmento sin
+            # frames y el concat del montaje revienta ("matches no streams").
+            duration = audio.probe_video_duration(src)
             if audio.has_audio(src):
                 audio_path = work_dir / f"audio_{vid:03d}.wav"
                 audio.extract_audio(src, audio_path)

@@ -54,6 +54,53 @@ def probe_duration(source: Path) -> float:
         return 0.0
 
 
+def probe_video_duration(source: Path) -> float:
+    """Duración de la PISTA DE VIDEO (no del contenedor), en segundos.
+
+    Es distinta de ``probe_duration`` (que mide ``format=duration``, el
+    contenedor): cuando el audio dura más que la imagen —muy común en clips de
+    móvil o de pantalla— el contenedor es más largo que el último frame de
+    video. Trocear el video hasta esa duración de más produce un fragmento sin
+    frames, y luego el ``concat`` falla con "matches no streams". Aquí tomamos la
+    extensión REAL del video: el mínimo entre la duración de su stream y la del
+    contenedor, restando un pequeño margen para no rozar el último frame.
+    """
+    proc = subprocess.run(
+        [
+            "ffprobe", "-v", "error", "-select_streams", "v:0",
+            "-show_entries", "stream=duration",
+            "-of", "default=noprint_wrappers=1:nokey=1",
+            str(source),
+        ],
+        capture_output=True, text=True,
+    )
+    fmt = probe_duration(source)
+    try:
+        stream = float(proc.stdout.strip())
+    except (ValueError, AttributeError):
+        stream = 0.0
+    # Algunos contenedores no reportan duración del stream (N/A): se usa el
+    # contenedor con un margen de seguridad. Si ambos existen, el menor manda.
+    if stream > 0 and fmt > 0:
+        base = min(stream, fmt)
+    else:
+        base = stream or fmt
+    return max(0.0, base - 0.05) if base > 0 else 0.0
+
+
+def has_video(source: Path) -> bool:
+    """Indica si el archivo tiene al menos un frame de video decodificable."""
+    proc = subprocess.run(
+        [
+            "ffprobe", "-v", "error", "-select_streams", "v:0",
+            "-show_entries", "stream=codec_type",
+            "-of", "csv=p=0", str(source),
+        ],
+        capture_output=True, text=True,
+    )
+    return "video" in proc.stdout
+
+
 def probe_resolution(source: Path) -> tuple[int, int]:
     """Devuelve (ancho, alto) del primer stream de video (o 1080x1920 si falla)."""
     proc = subprocess.run(

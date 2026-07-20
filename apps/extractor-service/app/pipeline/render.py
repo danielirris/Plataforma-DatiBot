@@ -16,6 +16,7 @@ import subprocess
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from app.pipeline import audio
 from app.pipeline.fragments import Beat
 from app.pipeline.transcribe import Segment
 
@@ -352,8 +353,22 @@ def render_clips(
         _run(build_beat_cmd(beat.source, beat.start, beat.dur, dest, modo_fondo,
                             ass_path, threads),
              f"beat v{v}@{beat.start:.1f}s")
-        cache[beat.key()] = dest
+        # Red de seguridad: si el fragmento salió sin frames (start pasado el
+        # final real del video, VFR raro…), NO lo cacheamos. Meterlo al concat lo
+        # rompería entero; mejor perder ese trozo que el anuncio completo.
+        if audio.has_video(dest):
+            cache[beat.key()] = dest
+        else:
+            logger.warning("Fragmento vacío descartado: v%d @%.2fs (%.2fs)",
+                           v, beat.start, beat.dur)
     logger.info("Beats únicos renderizados: %d", len(cache))
+
+    # Quitar de los clips los beats descartados; si un clip se queda sin nada,
+    # se omite. Así un fragmento malo no aborta el render.
+    clips = [[b for b in clip if b.key() in cache] for clip in clips]
+    clips = [clip for clip in clips if clip]
+    if not clips:
+        raise RuntimeError("Todos los fragmentos salieron vacíos (revisa los videos de origen).")
 
     # 2) Armar cada clip (grupos + xfade) y añadir música.
     outputs: list[Path] = []
