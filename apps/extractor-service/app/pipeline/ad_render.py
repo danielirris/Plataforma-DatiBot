@@ -9,7 +9,9 @@ import logging
 import os
 import shutil
 import subprocess
+from collections import deque
 from pathlib import Path
+from typing import Callable
 
 from app.config import BASE_DIR, get_settings
 
@@ -23,8 +25,17 @@ def render_available() -> bool:
     return bool(shutil.which("node")) and (RUNTIME / "node_modules").exists()
 
 
-def render_ad_project(project_dir: Path, out_dir: Path, timeout: int = 1800) -> list[Path]:
+def render_ad_project(
+    project_dir: Path,
+    out_dir: Path,
+    timeout: int = 1800,
+    on_progress: Callable[[int, int, int, int], None] | None = None,
+) -> list[Path]:
     """Renderiza todas las composiciones del proyecto a ``out_dir/clip_N.mp4``.
+
+    ``on_progress(anuncio, total_anuncios, frame, total_frames)`` se llama en vivo
+    mientras Chromium dibuja, para mover el % del job (si no, se queda fijo en 70%
+    todo el render y parece colgado).
 
     Returns:
         Lista de rutas de los mp4 renderizados.
@@ -44,12 +55,31 @@ def render_ad_project(project_dir: Path, out_dir: Path, timeout: int = 1800) -> 
     logger.info("Renderizando anuncio con Remotion: %s", project_dir.name)
     env = dict(os.environ)
     env["REMOTION_CONCURRENCY"] = str(get_settings().remotion_concurrency or 0)
-    proc = subprocess.run(
+
+    # Una sola tubería (stderr -> stdout) para leer en streaming sin deadlock.
+    proc = subprocess.Popen(
         ["node", str(script), str(project_dir), str(out_dir)],
-        capture_output=True, text=True, cwd=str(RUNTIME), timeout=timeout, env=env,
+        stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True,
+        cwd=str(RUNTIME), env=env,
     )
-    if proc.returncode != 0:
-        raise RuntimeError(f"Render Remotion falló: {proc.stderr[-1000:]}")
+    tail: deque[str] = deque(maxlen=40)
+    try:
+        for line in proc.stdout or []:
+            line = line.rstrip()
+            tail.append(line)
+            if line.startswith("PROGRESS") and on_progress:
+                p = line.split()
+                if len(p) == 5:
+                    try:
+                        on_progress(int(p[1]), int(p[2]), int(p[3]), int(p[4]))
+                    except Exception:  # noqa: BLE001 - el progreso no debe tumbar el render
+                        pass
+        ret = proc.wait(timeout=timeout)
+    except subprocess.TimeoutExpired:
+        proc.kill()
+        raise RuntimeError("El render de Remotion excedió el tiempo límite.")
+    if ret != 0:
+        raise RuntimeError("Render Remotion falló: " + "\n".join(tail)[-1000:])
 
     clips = sorted(out_dir.glob("clip_*.mp4"))
     if not clips:

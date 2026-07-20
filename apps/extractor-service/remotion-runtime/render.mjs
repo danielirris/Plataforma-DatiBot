@@ -27,10 +27,12 @@ console.log('[render] composiciones:', comps.map((c) => c.id).join(', '));
 const conc = Number(process.env.REMOTION_CONCURRENCY) || null;
 console.log('[render] concurrency:', conc ?? 'auto');
 
+const total = comps.length;
 let i = 1;
 for (const comp of comps) {
   const out = path.join(outDir, `clip_${i}.mp4`);
   console.log(`[render] ${comp.id} -> ${out} (${comp.durationInFrames}f)`);
+  let ultimo = -1;
   await renderMedia({
     composition: comp,
     serveUrl,
@@ -38,6 +40,14 @@ for (const comp of comps) {
     outputLocation: out,
     concurrency: conc,
     logLevel: 'error',
+    // Progreso en vivo: el motor Python parsea estas líneas "PROGRESS ..." para
+    // mover el % del job mientras Chromium dibuja los fotogramas.
+    onProgress: ({ renderedFrames }) => {
+      if (renderedFrames - ultimo >= 10 || renderedFrames === comp.durationInFrames) {
+        ultimo = renderedFrames;
+        console.log(`PROGRESS ${i} ${total} ${renderedFrames} ${comp.durationInFrames}`);
+      }
+    },
   });
   console.log(`[render] OK ${out}`);
   i++;

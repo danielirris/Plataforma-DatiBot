@@ -429,7 +429,7 @@ class JobManager:
             if key == "status":
                 fields["status"] = value.value if isinstance(value, JobStatus) else value
                 fields["progress"] = progress
-            elif key in ("message", "error", "aviso", "n_clips", "output_dir"):
+            elif key in ("message", "error", "aviso", "n_clips", "output_dir", "progress"):
                 fields[key] = value
         self._store.update(job_id, fields)
 
@@ -876,8 +876,17 @@ class JobManager:
             return
         self._update(job_id, status=JobStatus.RENDERING,
                      message="Renderizando anuncio (Remotion)")
+
+        # Progreso en vivo: el render ocupa el tramo 70→95% del job. Sin esto el
+        # % se queda fijo en 70 todo el render y parece colgado.
+        def _prog(anuncio: int, total: int, frame: int, total_frames: int) -> None:
+            frac = (anuncio - 1 + frame / max(1, total_frames)) / max(1, total)
+            pct = 70 + int(25 * min(1.0, max(0.0, frac)))
+            self._update(job_id, progress=pct,
+                         message=f"Renderizando anuncio {anuncio}/{total}")
+
         try:
-            rendered = ad_render.render_ad_project(project_dir, output_dir)
+            rendered = ad_render.render_ad_project(project_dir, output_dir, on_progress=_prog)
             n = len(rendered)
             aviso = ""
         except Exception as exc:  # noqa: BLE001
