@@ -129,9 +129,10 @@ export function EditorVideos({
   const [buscandoHook, setBuscandoHook] = useState<boolean>(false);
   const [hookMsg, setHookMsg] = useState<string>("");
 
-  // Locución: el audio que le pones tú al video. Manda sobre la duración y de
-  // él salen los subtítulos (el motor lo transcribe).
-  const [voz, setVoz] = useState<{ nombre: string; original: string } | null>(null);
+  // Locución: UNA por anuncio (en orden). Manda sobre la duración de su anuncio y
+  // de ella salen los subtítulos (el motor la transcribe). Deben ser tantas como
+  // anuncios (numClips).
+  const [voces, setVoces] = useState<{ nombre: string; original: string }[]>([]);
   const [vozEstado, setVozEstado] = useState<string>("");
   const [subiendoVoz, setSubiendoVoz] = useState<boolean>(false);
 
@@ -265,29 +266,39 @@ export function EditorVideos({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Sube la locución (cuerpo crudo: el proxy no lo corta).
-  async function subirVoz(file: File | null | undefined) {
-    if (!file) return;
+  // Sube una o varias locuciones (cuerpo crudo: el proxy no lo corta). Se
+  // acumulan EN ORDEN: la 1ª es para el anuncio 1, etc.
+  async function subirVoces(files: FileList | null) {
+    if (!files?.length) return;
     setSubiendoVoz(true);
-    setVozEstado(`Subiendo ${file.name}…`);
-    try {
-      const res = await fetch(`/api/editor/voz?name=${encodeURIComponent(file.name)}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/octet-stream" },
-        body: file,
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        setVozEstado("⚠️ " + (data.error ?? `Error ${res.status}`));
-        setSubiendoVoz(false);
-        return;
+    const lista = Array.from(files);
+    let ok = 0;
+    for (let i = 0; i < lista.length; i++) {
+      const file = lista[i];
+      setVozEstado(`Subiendo audio ${i + 1}/${lista.length}: ${file.name}…`);
+      try {
+        const res = await fetch(`/api/editor/voz?name=${encodeURIComponent(file.name)}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/octet-stream" },
+          body: file,
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          setVozEstado("⚠️ " + (data.error ?? `Error ${res.status}`));
+          continue;
+        }
+        setVoces((prev) => [...prev, { nombre: data.voz as string, original: data.original as string }]);
+        ok += 1;
+      } catch (e) {
+        setVozEstado("⚠️ Fallo de red: " + (e instanceof Error ? e.message : "?"));
       }
-      setVoz({ nombre: data.voz as string, original: data.original as string });
-      setVozEstado(`✓ ${data.original} (${((data.bytes ?? 0) / (1024 * 1024)).toFixed(1)} MB)`);
-    } catch (e) {
-      setVozEstado("⚠️ Fallo de red: " + (e instanceof Error ? e.message : "?"));
     }
+    if (ok) setVozEstado(`✓ ${ok} audio(s) subido(s).`);
     setSubiendoVoz(false);
+  }
+  function quitarVoz(idx: number) {
+    setVoces((prev) => prev.filter((_, i) => i !== idx));
+    setVozEstado("");
   }
 
   async function buscarGanchos() {
@@ -331,6 +342,16 @@ export function EditorVideos({
       setEstado("⚠️ Marca al menos un video del producto.");
       return;
     }
+    // Un audio por anuncio: exactamente numClips.
+    if (voces.length !== numClips) {
+      setEstado(
+        `⚠️ Necesitas ${numClips} audio(s), uno por anuncio. ` +
+          (voces.length < numClips
+            ? `Faltan ${numClips - voces.length}.`
+            : `Sobran ${voces.length - numClips}, quita alguno.`),
+      );
+      return;
+    }
     const cand = hookSel != null ? hookCands.find((c) => c.i === hookSel) : null;
     const hook = cand ? { video_idx: cand.video_idx, start: cand.start, dur: cand.dur } : null;
     setTrabajando(true);
@@ -350,7 +371,7 @@ export function EditorVideos({
           use_music: useMusic,
           use_intro: useIntro,
           hook,
-          voz: voz?.nombre ?? null,
+          voces: voces.map((v) => v.nombre),
         }),
       });
       const data = await res.json().catch(() => ({}));
@@ -636,45 +657,71 @@ export function EditorVideos({
         </label>
       </div>
 
-      {/* Locución: el audio que le pones tú al video. */}
+      {/* Locución: UNA por anuncio (obligatorio, tantas como numClips). */}
       <div className="mt-4 space-y-3 rounded-2xl border border-[var(--hairline)] glass p-5">
         <div>
-          <p className="text-sm font-medium text-text">🎙️ Audio del video (tu locución)</p>
+          <p className="text-sm font-medium text-text">
+            🎙️ Audios — uno por anuncio ({voces.length}/{numClips})
+          </p>
           <p className="mt-1 text-xs text-muted">
-            Tu audio <b>manda</b>: el video <b>dura exactamente lo que dura el audio</b> — se
-            recortan tantos extractos como haga falta para cubrirlo — y los{" "}
-            <b>subtítulos salen de él</b> (no del audio original de tus videos). Si no subes
-            ninguno, el video dura {"~"}45s y se usa el audio de tus videos.
+            Cada anuncio lleva <b>su propia locución</b>: no se repite el mismo audio. Sube{" "}
+            <b>{numClips} audio(s)</b>, uno por anuncio. Cada anuncio <b>dura lo que dura su
+            audio</b> y sus subtítulos salen de él. Puedes seleccionar varios de golpe.
           </p>
         </div>
+
+        {/* Ranura por anuncio, en orden. */}
+        <div className="space-y-2">
+          {Array.from({ length: numClips }).map((_, i) => (
+            <div
+              key={i}
+              className="flex items-center gap-3 rounded-lg border border-[var(--hairline)] bg-[var(--field)] p-2.5 text-sm"
+            >
+              <span className="shrink-0 text-muted">Anuncio {i + 1}</span>
+              {voces[i] ? (
+                <>
+                  <span className="min-w-0 flex-1 truncate text-text">🎧 {voces[i].original}</span>
+                  <button
+                    type="button"
+                    onClick={() => quitarVoz(i)}
+                    title="Quitar este audio"
+                    className="shrink-0 rounded px-1.5 text-xs text-muted hover:text-red-400"
+                  >
+                    ✕
+                  </button>
+                </>
+              ) : (
+                <span className="flex-1 text-xs text-amber-400">— falta el audio —</span>
+              )}
+            </div>
+          ))}
+        </div>
+
         <div className="flex flex-wrap items-center gap-3">
           <label className="cursor-pointer rounded-lg border border-accent/50 bg-accent/10 px-4 py-2 text-sm font-medium text-accent-2">
-            {subiendoVoz ? "Subiendo…" : voz ? "🔄 Cambiar audio" : "⬆️ Subir audio"}
+            {subiendoVoz ? "Subiendo…" : "⬆️ Subir audios"}
             <input
               type="file"
               accept="audio/*,.mp3,.m4a,.wav,.aac,.ogg"
+              multiple
               disabled={subiendoVoz}
               onChange={(e) => {
-                subirVoz(e.target.files?.[0]);
+                subirVoces(e.target.files);
                 e.target.value = "";
               }}
               className="hidden"
             />
           </label>
-          {voz && (
-            <button
-              onClick={() => {
-                setVoz(null);
-                setVozEstado("");
-              }}
-              className="rounded border border-[var(--hairline)] px-2 py-1 text-xs text-muted hover:text-red-400"
-              title="Quitar el audio"
-            >
-              ✕ Quitar
-            </button>
-          )}
           <span className="text-sm text-muted">{vozEstado}</span>
         </div>
+
+        {voces.length !== numClips && (
+          <p className="text-xs text-amber-400">
+            {voces.length < numClips
+              ? `Faltan ${numClips - voces.length} audio(s) para poder generar.`
+              : `Sobran ${voces.length - numClips}; quita alguno (deben ser ${numClips}).`}
+          </p>
+        )}
         <p className="text-[11px] text-muted">Formatos: mp3, m4a, wav, aac, ogg.</p>
       </div>
 
@@ -773,8 +820,9 @@ export function EditorVideos({
       <div className="mt-4 flex flex-wrap items-center gap-3 rounded-2xl border border-[var(--hairline)] glass p-4">
         <button
           onClick={generar}
-          disabled={trabajando || seleccion.size === 0}
+          disabled={trabajando || seleccion.size === 0 || voces.length !== numClips}
           className="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
+          title={voces.length !== numClips ? `Sube ${numClips} audios (uno por anuncio)` : ""}
         >
           {trabajando ? "Procesando…" : "✨ Crear anuncios"}
         </button>

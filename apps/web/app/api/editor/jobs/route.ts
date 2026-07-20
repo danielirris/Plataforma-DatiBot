@@ -24,8 +24,8 @@ export async function POST(req: Request) {
     highlight?: string;
     font?: string;
     hook?: { video_idx: number; start: number; dur: number } | null;
-    /** nombre devuelto por /api/editor/voz: la locución que manda sobre el video */
-    voz?: string | null;
+    /** nombres devueltos por /api/editor/voz: UNA locución por anuncio, en orden */
+    voces?: string[] | null;
   };
   try {
     body = (await req.json()) as typeof body;
@@ -35,6 +35,18 @@ export async function POST(req: Request) {
   const urls = (body.video_urls ?? []).filter(Boolean);
   if (!urls.length)
     return NextResponse.json({ error: "Elige al menos un video del producto." }, { status: 400 });
+
+  // Un audio por anuncio: si hay audios, deben ser exactamente num_clips (la UI
+  // ya lo bloquea; esto es defensa). Sin audios: permitido (usa el del video).
+  const voces = (body.voces ?? []).filter(Boolean);
+  const nAnuncios = body.num_clips ?? 0;
+  if (voces.length > 0 && nAnuncios > 0 && voces.length !== nAnuncios)
+    return NextResponse.json(
+      {
+        error: `Subiste ${voces.length} audio(s) pero pediste ${nAnuncios} anuncio(s). Sube exactamente ${nAnuncios}, uno por anuncio.`,
+      },
+      { status: 400 },
+    );
 
   // Preferimos mandarle los BYTES al extractor (red interna): así no depende de
   // que la URL pública del video sea alcanzable (nginx/volumen/dominio). El web
@@ -55,7 +67,7 @@ export async function POST(req: Request) {
   }
   const porArchivos = rutas.length === urls.length && rutas.length > 0;
   // La locución solo viaja por el camino de archivos (multipart al extractor).
-  if (body.voz && !porArchivos)
+  if (voces.length && !porArchivos)
     return NextResponse.json(
       {
         error:
@@ -100,19 +112,21 @@ export async function POST(req: Request) {
       // Editor suelto (subdominio): quien lo usa no tiene la página de preview del
       // extractor, así que el anuncio debe renderizarse solo, sin esperar a nadie.
       if (esSoloEditor()) form.append("auto_render", "1");
-      // Locución del usuario: manda sobre la duración y de ella salen los subtítulos.
-      if (body.voz) {
-        const rutaVoz = path.join(DIR_VOZ, path.basename(body.voz));
+      // Locución del usuario: UNA por anuncio, EN ORDEN. Cada archivo se manda con
+      // la clave "voz" repetida — así FastAPI las recibe como lista (main.py:
+      // voz: list[UploadFile]). No cambiar la clave a "voces" ni reordenar.
+      for (const v of voces) {
+        const rutaVoz = path.join(DIR_VOZ, path.basename(v));
         try {
           await stat(rutaVoz);
           form.append(
             "voz",
             new Blob([new Uint8Array(await readFile(rutaVoz))]),
-            path.basename(body.voz),
+            path.basename(v),
           );
         } catch {
           return NextResponse.json(
-            { error: "El audio subido ya no está disponible. Vuelve a subirlo." },
+            { error: "Uno de los audios subidos ya no está disponible. Vuelve a subirlo." },
             { status: 400 },
           );
         }

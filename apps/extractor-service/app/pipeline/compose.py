@@ -82,7 +82,7 @@ def compose_clips(
     rng: random.Random,
     *,
     num_clips: int,
-    duracion_total_s: float,
+    duraciones_s: list[float],
     hook_beats: int,
     beat_min: float,
     beat_max: float,
@@ -90,9 +90,12 @@ def compose_clips(
 ) -> list[list[Beat]]:
     """Compone ``num_clips`` listas de beats (una por clip).
 
+    ``duraciones_s`` da la duración objetivo de CADA clip (una por anuncio, la
+    de su locución). Debe tener ``num_clips`` elementos.
+
     Returns:
         Lista de clips; cada clip es una lista de ``Beat`` cuya suma de
-        duraciones es ``duracion_total_s``.
+        duraciones se acerca a la suya en ``duraciones_s``.
 
     Raises:
         RuntimeError: si no hay ningún fragmento disponible.
@@ -102,18 +105,20 @@ def compose_clips(
 
     hook_pool = build_hook_beats(moments, videos, rng, beat_min, beat_max)
     hook_n = max(0, hook_beats)
-    # Tamaño aproximado de la ventana de cuerpo por clip (para desplazar).
-    aprox_beats = max(1, int(duracion_total_s / max(beat_min, 0.5)))
 
     clips: list[list[Beat]] = []
     for k in range(num_clips):
+        # Cada clip dura lo que su propia locución (audio del anuncio k).
+        objetivo_k = duraciones_s[k] if k < len(duraciones_s) else duraciones_s[-1]
+        # Tamaño aproximado de la ventana de cuerpo por clip (para desplazar).
+        aprox_beats = max(1, int(objetivo_k / max(beat_min, 0.5)))
         # Gancho VISUAL elegido por el usuario: abre TODOS los clips.
         forzados = [forced_hook] if forced_hook is not None else []
         restantes = max(0, hook_n - len(forzados))
         hooks = forzados + ([hook_pool[(k * max(1, restantes) + j) % len(hook_pool)]
                              for j in range(restantes)] if restantes and hook_pool else [])
         body_offset = (k * aprox_beats) % len(pool)
-        clip = _fill_clip(hooks, pool, body_offset, duracion_total_s)
+        clip = _fill_clip(hooks, pool, body_offset, objetivo_k)
         clips.append(clip)
         logger.info(
             "Clip %d/%d: %d fragmentos, %.1fs, %d videos distintos",

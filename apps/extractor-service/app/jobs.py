@@ -106,7 +106,7 @@ class JobManager:
         self._sources: dict[str, list[Path]] = {}
         self._music: dict[str, list[Path]] = {}
         self._guias: dict[str, list[Path]] = {}  # videos de guía por job (PiP)
-        self._voz: dict[str, Path] = {}
+        self._voz: dict[str, list[Path]] = {}  # una locución por anuncio
         self._req_clips: dict[str, int] = {}  # nº de clips pedido (0 = por defecto)
         self._use_music: dict[str, bool] = {}  # música de fondo opcional por job
         self._intro: dict[str, Path] = {}  # sonido de inicio opcional por job
@@ -135,7 +135,17 @@ class JobManager:
                 sources = [Path(p) for p in json.loads(row["sources"])]
                 music = [Path(p) for p in json.loads(row["music"] or "[]")]
                 guias = [Path(p) for p in json.loads((row["guias"] if "guias" in row.keys() else None) or "[]")]
-                voz = Path(row["voz"]) if row["voz"] else None
+                # 'voz' ahora es un JSON array (una locución por anuncio); los
+                # jobs viejos lo tienen como ruta plana. Se aceptan ambos.
+                voz_raw = row["voz"]
+                voces: list[Path] = []
+                if voz_raw:
+                    try:
+                        parsed = json.loads(voz_raw)
+                        voces = ([Path(p) for p in parsed] if isinstance(parsed, list)
+                                 else [Path(str(parsed))])
+                    except (ValueError, TypeError):
+                        voces = [Path(voz_raw)]  # formato viejo: ruta plana
                 if not sources or not all(p.exists() for p in sources):
                     self._store.update(row["id"], {
                         "status": JobStatus.ERROR.value, "progress": 100,
@@ -160,8 +170,8 @@ class JobManager:
                         self._music[job.id] = music  # lista de pistas
                     if guias:
                         self._guias[job.id] = guias
-                    if voz:
-                        self._voz[job.id] = voz
+                    if voces:
+                        self._voz[job.id] = voces
                     if row["num_clips_req"]:
                         self._req_clips[job.id] = int(row["num_clips_req"])
                     self._use_music[job.id] = use_music
@@ -184,7 +194,7 @@ class JobManager:
         source_tmps: list[tuple[Path, str]],
         music_tmps: list[tuple[Path, str]] | None = None,
         mode: str = "montage",
-        voz_tmp: tuple[Path, str] | None = None,
+        voz_tmps: list[tuple[Path, str]] | None = None,  # una locución por anuncio
         num_clips: int = 0,
         guias_tmps: list[tuple[Path, str]] | None = None,
         use_music: bool = True,
@@ -222,12 +232,14 @@ class JobManager:
             shutil.move(str(mtmp), str(mdest))
             music_paths.append(mdest)
 
-        voz_path: Path | None = None
-        if voz_tmp is not None:
-            vtmp, vname = voz_tmp
+        # Una locución por anuncio: se guardan en orden (voz_000, voz_001, …), y
+        # ese orden es el mapeo audio i → clip i → anuncio i. NO reordenar.
+        voz_paths: list[Path] = []
+        for i, (vtmp, vname) in enumerate(voz_tmps or []):
             vext = Path(vname).suffix.lower() or ".mp3"
-            voz_path = sources_dir / f"voz{vext}"
-            shutil.move(str(vtmp), str(voz_path))
+            vdest = sources_dir / f"voz_{i:03d}{vext}"
+            shutil.move(str(vtmp), str(vdest))
+            voz_paths.append(vdest)
 
         guia_paths: list[Path] = []
         for i, (gtmp, gname) in enumerate(guias_tmps or []):
@@ -251,8 +263,8 @@ class JobManager:
                 self._music[job_id] = music_paths
             if guia_paths:
                 self._guias[job_id] = guia_paths
-            if voz_path is not None:
-                self._voz[job_id] = voz_path
+            if voz_paths:
+                self._voz[job_id] = voz_paths
             if num_clips:
                 self._req_clips[job_id] = int(num_clips)
             self._use_music[job_id] = bool(use_music)
@@ -264,7 +276,7 @@ class JobManager:
                 self._params[job_id] = params
         self._store.save(id=job_id, filenames=filenames, status=JobStatus.QUEUED.value,
                          created_at=job.created_at, sources=paths, music=music_paths,
-                         mode=mode, voz=voz_path, num_clips_req=int(num_clips or 0),
+                         mode=mode, voz=voz_paths, num_clips_req=int(num_clips or 0),
                          guias=guia_paths, use_music=bool(use_music), intro=intro_path,
                          style=style, params=params)
         self._queue.put(("job", job_id))
@@ -602,7 +614,9 @@ class JobManager:
         # Construir pool y componer N clips (cortes de duración variable).
         rng = random.Random(f"{settings.seed}:{job_id}")
         pool = build_pool(videos, rng, settings.beat_min_s, settings.beat_max_s)
-        n_clips = max(1, self._req_clips.get(job_id) or settings.num_clips)
+        # Un audio por anuncio: si hay locuciones, mandan ELLAS el nº de anuncios.
+        voces = self._voz.get(job_id) or []
+        n_clips = len(voces) if voces else max(1, self._req_clips.get(job_id) or settings.num_clips)
         # Las transiciones (xfade) solapan y acortan el clip; compensamos
         # componiendo un poco más de material para acabar cerca de la duración.
         buffer_s = 0.0
@@ -619,25 +633,24 @@ class JobManager:
                 dur = max(0.6, min(5.0, float(hook.get("dur", 2.0))))
                 forced_hook = Beat(vi, sources[vi], round(start, 3), round(dur, 3))
 
-        # LA LOCUCIÓN MANDA: si el usuario subió su audio, el montaje se compone
-        # con la duración de ESE audio (si no, se quedaría en los 48s fijos y el
-        # video se repetiría al estirarlo hasta la voz, o sobraría material).
-        objetivo_s = float(settings.duracion_total_s)
-        voz = self._voz.get(job_id)
-        if voz is not None:
-            try:
-                d = audio.probe_duration(voz)
-                if d > 0.5:
-                    objetivo_s = d
-                    logger.info("Job %s: el montaje dura lo que la locución (%.1fs)",
-                                job_id, d)
-            except Exception as e:  # noqa: BLE001
-                logger.warning("No pude medir la locución (%s); uso %.0fs", e, objetivo_s)
+        # LA LOCUCIÓN MANDA: cada anuncio dura lo que su propio audio. Sin audio,
+        # el clip cae a la duración fija por defecto (~48s) como antes.
+        duraciones: list[float] = []
+        for k in range(n_clips):
+            d = float(settings.duracion_total_s)
+            if k < len(voces):
+                try:
+                    dv = audio.probe_duration(voces[k])
+                    if dv > 0.5:
+                        d = dv
+                except Exception as e:  # noqa: BLE001
+                    logger.warning("No pude medir la locución %d (%s); uso %.0fs", k, e, d)
+            duraciones.append(d + buffer_s)  # el buffer va POR clip, no una vez
 
         clips = compose_clips(
             pool, moments, videos, rng,
             num_clips=n_clips,
-            duracion_total_s=objetivo_s + buffer_s,
+            duraciones_s=duraciones,
             hook_beats=settings.hook_beats,
             beat_min=settings.beat_min_s,
             beat_max=settings.beat_max_s,
@@ -718,23 +731,22 @@ class JobManager:
         music_paths = (self._music.get(job_id) or library.list_music()) if use_music else []
         sfx = library.ensure_sfx()  # whoosh/pop/ding generados, sin copyright
         intro = self._intro.get(job_id)  # sonido de inicio opcional
-        voz = self._voz.get(job_id)  # locución subida para ponerle al video
-        # Si hay locución, se transcribe ESA (es el audio que se oirá) una sola vez.
-        voz_words = None
-        voz_dur = 0.0
-        if voz is not None:
-            self._update(job_id, status=JobStatus.TRANSCRIBING,
-                         message="Transcribiendo la locución")
-            voz_dur = audio.probe_duration(voz)
-            voz_words = transcribe.transcribe_words(voz)
+        # UNA locución por anuncio: el anuncio (clip) i usa la voz i. Si solo hay
+        # una voz, se aplica a todos (compat con el modo de un audio).
+        voces = self._voz.get(job_id) or []
         try:
             videos: list[AdVideo] = []
             for vid, src in enumerate(sources):
                 width, height = audio.probe_resolution(src)
-                if voz is not None:
-                    # La locución manda: dura lo que la voz y el video se repite.
-                    words = voz_words or []
-                    duration = voz_dur or audio.probe_duration(src)
+                voz_i = (voces[vid] if vid < len(voces)
+                         else (voces[0] if len(voces) == 1 else None))
+                if voz_i is not None:
+                    # La locución de ESTE anuncio manda: dura lo que ella y de ella
+                    # salen los subtítulos. Se transcribe la suya, no una común.
+                    self._update(job_id, status=JobStatus.TRANSCRIBING,
+                                 message=f"Transcribiendo la locución {vid + 1}/{len(sources)}")
+                    words = transcribe.transcribe_words(voz_i) or []
+                    duration = audio.probe_duration(voz_i) or audio.probe_duration(src)
                 else:
                     self._update(job_id, status=JobStatus.EXTRACTING,
                                  message=f"Procesando audio {vid + 1}/{len(sources)}")
@@ -754,7 +766,7 @@ class JobManager:
                 videos.append(AdVideo(
                     id=vid, path=src, name=self.get(job_id).filenames[vid],
                     width=width, height=height, duration=duration,
-                    words=words, music=music, voz=voz,
+                    words=words, music=music, voz=voz_i,
                 ))
 
             # Director de edición: la IA, leyendo la voz con timestamps, decide el
