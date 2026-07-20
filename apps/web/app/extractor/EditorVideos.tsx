@@ -30,9 +30,10 @@ const SUBTITULOS: { id: string; nombre: string }[] = [
   { id: "color", nombre: "Color (solo cambia de color)" },
 ];
 
-// Tipografías (módulos de @remotion/google-fonts).
+// Tipografías (módulos de @remotion/google-fonts). "" = la del estilo elegido.
 const FUENTES: { id: string; nombre: string }[] = [
-  { id: "Anton", nombre: "Anton (condensada, por defecto)" },
+  { id: "", nombre: "Automático (según el estilo)" },
+  { id: "Anton", nombre: "Anton (condensada)" },
   { id: "BebasNeue", nombre: "Bebas Neue" },
   { id: "Oswald", nombre: "Oswald" },
   { id: "Montserrat", nombre: "Montserrat" },
@@ -112,7 +113,9 @@ export function EditorVideos({
   const [subtitulo, setSubtitulo] = useState<string>("");
   const [resaltado, setResaltado] = useState<string>("#10b981");
   const [usarResaltado, setUsarResaltado] = useState<boolean>(false);
-  const [fuente, setFuente] = useState<string>("Anton");
+  // "" = automática: cada estilo pone su tipografía (Parte B). El usuario puede
+  // forzar otra en el selector.
+  const [fuente, setFuente] = useState<string>("");
   // Música de fondo y golpe de inicio: por defecto ENCENDIDOS. Son de biblioteca
   // local (no cuestan API), y un anuncio casi siempre los quiere. Se pueden
   // apagar con su interruptor.

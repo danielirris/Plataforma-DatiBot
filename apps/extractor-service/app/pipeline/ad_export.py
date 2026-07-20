@@ -459,16 +459,18 @@ export const Subtitles: React.FC<{ words: W[]; plan?: any }> = ({ words, plan })
   const accent = plan?.highlight || plan?.accent || '#FFD400';
   const style = plan?.subtitle_style || 'pop';
   const intensidad = (plan?.intensidad ?? 70) / 100;
+  const subBottom = plan?.subBottom ?? 15;
+  const subScale = plan?.subScale ?? 1;
   const emphasis = useMemo(() => new Set((plan?.emphasis || []).map((w: string) => clean(w))), [plan]);
 
   const line = lines.find((l) => t >= l[0].start && t <= l[l.length - 1].end);
   if (!line) return null;
   const activeIdx = line.findIndex((w) => t >= w.start && t < w.end);
-  const fontSize = Math.round(width * (0.07 + 0.012 * intensidad));
+  const fontSize = Math.round(width * (0.07 + 0.012 * intensidad) * subScale);
 
   return (
     <div style={{
-      position: 'absolute', left: '8%', right: '8%', bottom: '15%',
+      position: 'absolute', left: '8%', right: '8%', bottom: subBottom + '%',
       display: 'flex', flexWrap: 'wrap', gap: '0.28em 0.75em',
       justifyContent: 'center', alignItems: 'center', textAlign: 'center',
     }}>

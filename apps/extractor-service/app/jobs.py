@@ -28,7 +28,7 @@ from app.pipeline import audio, transcribe, analyze, render, cleanup
 from app.pipeline.compose import compose_clips
 from app.pipeline.fragments import Beat, VideoSource, build_pool
 from app.pipeline.remotion_export import export_remotion
-from app.pipeline.ad_export import build_ad_project, AdVideo
+from app.pipeline.ad_export import build_ad_project, AdVideo, ALLOWED_FONTS
 from app.pipeline import ad_render
 from app import library
 from app.store import JobStore
@@ -772,7 +772,12 @@ class JobManager:
             sub_over = str(params.get("subtitle_style") or "").strip().lower()
             highlight = str(params.get("highlight") or "").strip()
             import re as _re
-            font = str(params.get("font") or "Anton").strip()
+            # La fuente: si el usuario eligió una en el editor, manda; si dejó
+            # "Automático" (vacío), usa la del estilo (Parte B: cada estilo su
+            # tipografía). Sin estilo, Anton como siempre.
+            font_user = str(params.get("font") or "").strip()
+            font = font_user if font_user in ALLOWED_FONTS else (
+                styles.style_font(style_id) if usar_estilo else "Anton")
             for v in videos:
                 v.plan = analyze.plan_ad(v.words, v.duration, prompt_text)
                 seed = f"{settings.seed}:{job_id}:{v.id}"

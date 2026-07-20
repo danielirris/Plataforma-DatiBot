@@ -514,6 +514,8 @@ def client_chat(settings, system: str, user: str) -> str:
         messages=[{"role": "system", "content": system},
                   {"role": "user", "content": user}],
         response_format={"type": "json_object"},
-        temperature=0.5,
+        # Un poco más de creatividad (0.5 -> 0.7) para que los textos y decisiones
+        # varíen entre anuncios. El formato JSON forzado evita que se desmadre.
+        temperature=0.7,
     )
     return resp.choices[0].message.content or "{}"

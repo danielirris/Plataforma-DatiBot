@@ -119,6 +119,26 @@ STYLE_MOVES: dict[str, dict] = {
     "relato_doc": {"bw": "arc", "punch": "soft"},
 }
 
+# ── Personalidad visual por estilo (Parte B) ──
+# Hasta ahora los 5 estilos usaban la MISMA fuente y el subtítulo SIEMPRE abajo
+# al 15%, así que se veían casi iguales. Cada estilo trae ahora:
+#   font       — su tipografía por defecto (de ALLOWED_FONTS); el usuario puede
+#                seguir forzando otra en el editor.
+#   sub_bottom — a qué % del fondo va el subtítulo (ritmo vertical distinto).
+#   sub_scale  — multiplicador de tamaño del subtítulo (sobrio vs. grande).
+STYLE_LOOK: dict[str, dict] = {
+    "editorial_mono": {"font": "Oswald", "sub_bottom": 30, "sub_scale": 0.82},
+    "premium_noir": {"font": "Montserrat", "sub_bottom": 12, "sub_scale": 0.90},
+    "afiche_retro": {"font": "BebasNeue", "sub_bottom": 16, "sub_scale": 1.08},
+    "modo_bestia": {"font": "Anton", "sub_bottom": 15, "sub_scale": 1.00},
+    "relato_doc": {"font": "Poppins", "sub_bottom": 22, "sub_scale": 0.85},
+}
+
+
+def style_font(style_id: str) -> str:
+    """Fuente por defecto del estilo (Anton si no tiene o no existe el estilo)."""
+    return (STYLE_LOOK.get(style_id) or {}).get("font", "Anton")
+
 
 def plan_moves(plan: dict, line_starts: list[float], duration: float,
                seed: str = "") -> list[dict]:
@@ -253,4 +273,9 @@ def apply_style(plan: dict, style_id: str, seed: str) -> dict:
     plan["palette"] = pal
     plan["accent"] = pal[0]
     plan["estilo"] = style_id
+    # Colocación del subtítulo propia del estilo (la lee Subtitles.tsx; si falta,
+    # la plantilla cae al 15% y tamaño 1 de siempre).
+    look = STYLE_LOOK.get(style_id) or {}
+    plan["subBottom"] = look.get("sub_bottom", 15)
+    plan["subScale"] = look.get("sub_scale", 1.0)
     return plan
