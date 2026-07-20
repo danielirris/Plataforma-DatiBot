@@ -165,7 +165,10 @@ def plan_moves(plan: dict, line_starts: list[float], duration: float,
         hard = punch == "hard"
         amount = 0.14 if hard else 0.06
         ramp = 0.10 if hard else 0.45
-        hold = 0.45 if hard else 1.2
+        # El zoom de énfasis es un GOLPE, no un estado: si se queda pegado
+        # segundo y pico se siente "filtro puesto todo el rato". El suave baja
+        # de 1.2s a 0.6s.
+        hold = 0.45 if hard else 0.6
         step = 1 if hard else 2
         for i in range(0, len(ls), step):
             add("punch", ls[i], ls[i] + hold, amount=amount, ramp=round(ramp, 3))
@@ -182,12 +185,13 @@ def plan_moves(plan: dict, line_starts: list[float], duration: float,
         for t in puntos:
             add("flash", t, t + 0.14)
 
-    # A7 — spotlight en la palabra clave (píldoras).
+    # A7 — spotlight en la palabra clave (píldoras). Tope de 0.9s: si dura toda
+    # la píldora (varios segundos) parece un filtro permanente, no un realce.
     if cfg.get("spotlight"):
         for p in (plan.get("pills") or []):
             s = float(p.get("start", 0.0))
             e = float(p.get("end", s + 1.0))
-            add("spotlight", s, e)
+            add("spotlight", s, min(e, s + 0.9))
 
     # A8 — reframe cada N segundos (variedad de encuadre).
     if cfg.get("reframe"):

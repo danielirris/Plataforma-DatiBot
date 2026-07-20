@@ -113,8 +113,11 @@ export function EditorVideos({
   const [resaltado, setResaltado] = useState<string>("#10b981");
   const [usarResaltado, setUsarResaltado] = useState<boolean>(false);
   const [fuente, setFuente] = useState<string>("Anton");
-  const [useMusic, setUseMusic] = useState<boolean>(false);
-  const [useIntro, setUseIntro] = useState<boolean>(false);
+  // Música de fondo y golpe de inicio: por defecto ENCENDIDOS. Son de biblioteca
+  // local (no cuestan API), y un anuncio casi siempre los quiere. Se pueden
+  // apagar con su interruptor.
+  const [useMusic, setUseMusic] = useState<boolean>(true);
+  const [useIntro, setUseIntro] = useState<boolean>(true);
 
   // Fase 4 — Hook visual: candidatos (marco de referencia) y el elegido.
   const [hookCands, setHookCands] = useState<HookCandidato[]>([]);
