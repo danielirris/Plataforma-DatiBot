@@ -121,6 +121,9 @@ export function EditorVideos({
   // apagar con su interruptor.
   const [useMusic, setUseMusic] = useState<boolean>(true);
   const [useIntro, setUseIntro] = useState<boolean>(true);
+  // Quitar el silencio de cabeza/cola de cada locución: anuncios más compactos.
+  // Por defecto ON (mejora casi siempre); nunca corta voz, solo el aire muerto.
+  const [trimSilence, setTrimSilence] = useState<boolean>(true);
 
   // Fase 4 — Hook visual: candidatos (marco de referencia) y el elegido.
   const [hookCands, setHookCands] = useState<HookCandidato[]>([]);
@@ -370,6 +373,7 @@ export function EditorVideos({
           font: fuente,
           use_music: useMusic,
           use_intro: useIntro,
+          trim_silence: trimSilence,
           hook,
           voces: voces.map((v) => v.nombre),
         }),
@@ -654,6 +658,15 @@ export function EditorVideos({
         <label className="flex items-center gap-2 text-sm text-muted">
           <input type="checkbox" checked={useIntro} onChange={(e) => setUseIntro(e.target.checked)} />
           🔔 Sonido de inicio (opcional) — un golpe de apertura al arrancar.
+        </label>
+        <label className="flex items-center gap-2 text-sm text-muted">
+          <input
+            type="checkbox"
+            checked={trimSilence}
+            onChange={(e) => setTrimSilence(e.target.checked)}
+          />
+          ✂️ Quitar silencios de la locución — recorta el aire muerto del principio
+          y del final para que el anuncio no arranque lento (no corta la voz).
         </label>
       </div>
 

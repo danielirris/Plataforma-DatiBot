@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import logging
+import re
 import subprocess
 from pathlib import Path
 
@@ -157,3 +158,64 @@ def extract_audio(source: Path, dest: Path) -> Path:
     if not dest.exists() or dest.stat().st_size == 0:
         raise RuntimeError("El audio extraído está vacío.")
     return dest
+
+
+def _detectar_silencios(source: Path, umbral_db: int, min_s: float) -> list[tuple[float, float]]:
+    """Devuelve los tramos de silencio [(inicio, fin), …] usando ffmpeg
+    silencedetect. Solo DETECTA (no corta): es la base para recortar sin riesgo."""
+    proc = subprocess.run(
+        ["ffmpeg", "-hide_banner", "-i", str(source),
+         "-af", f"silencedetect=noise={umbral_db}dB:d={min_s}", "-f", "null", "-"],
+        capture_output=True, text=True,
+    )
+    log = proc.stderr or ""
+    inicios = [float(x) for x in re.findall(r"silence_start:\s*(-?[\d.]+)", log)]
+    fines = [float(x) for x in re.findall(r"silence_end:\s*([\d.]+)", log)]
+    return list(zip(inicios, fines))
+
+
+def strip_silence(source: Path, dest: Path, *, umbral_db: int = -40, min_s: float = 0.35) -> bool:
+    """Recorta SOLO el silencio del principio y del final de ``source`` a ``dest``.
+
+    Método seguro: detecta los tramos de silencio (silencedetect) y recorta al
+    rango de contenido. Nunca corta voz — si no hay silencio en los extremos, no
+    toca nada y devuelve False (el llamador usa el original).
+
+    Returns:
+        True si escribió ``dest`` recortado; False si no había nada que recortar
+        (o si algo falló y hay que quedarse con el original).
+    """
+    total = probe_duration(source)
+    if total <= 0.6:  # audios muy cortos: no arriesgar
+        return False
+    tramos = _detectar_silencios(source, umbral_db, min_s)
+    if not tramos:
+        return False
+
+    inicio = 0.0
+    fin = total
+    # Silencio de cabeza: un tramo que empieza pegado al inicio (~0).
+    if tramos[0][0] <= 0.1:
+        inicio = tramos[0][1]
+    # Silencio de cola: un tramo que termina pegado al final.
+    if tramos[-1][1] >= total - 0.1:
+        fin = tramos[-1][0]
+
+    # Nada que recortar en los extremos, o quedaría demasiado corto: no tocar.
+    if inicio <= 0.05 and fin >= total - 0.05:
+        return False
+    if fin - inicio < 0.5:
+        return False
+
+    proc = subprocess.run(
+        ["ffmpeg", "-y", "-i", str(source),
+         "-af", f"atrim=start={inicio:.3f}:end={fin:.3f},asetpts=PTS-STARTPTS",
+         "-c:a", "aac", "-b:a", "160k", str(dest)],
+        capture_output=True, text=True,
+    )
+    if proc.returncode != 0 or not dest.exists() or dest.stat().st_size == 0:
+        logger.warning("No pude recortar silencios (%s); uso el original", source.name)
+        dest.unlink(missing_ok=True)
+        return False
+    logger.info("Silencios recortados: %s  %.1fs -> %.1fs", source.name, total, fin - inicio)
+    return True

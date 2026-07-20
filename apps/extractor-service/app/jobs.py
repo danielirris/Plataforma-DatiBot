@@ -501,6 +501,23 @@ class JobManager:
             finally:
                 self._queue.task_done()
 
+    def _quitar_silencios(self, job_id: str) -> None:
+        """Si el job lo pidió (trim_silence), recorta el silencio de cabeza y cola
+        de cada locución ANTES de usarla, para anuncios más compactos. Se hace una
+        sola vez, actualizando self._voz, así todo el pipeline usa la versión
+        recortada (duración, subtítulos y audio quedan en sync)."""
+        if not (self._params.get(job_id, {}) or {}).get("trim_silence"):
+            return
+        voces = self._voz.get(job_id) or []
+        if not voces:
+            return
+        self._update(job_id, message="Quitando silencios del audio")
+        limpias: list[Path] = []
+        for v in voces:
+            dest = v.with_name(f"{v.stem}_sinsil.m4a")
+            limpias.append(dest if audio.strip_silence(v, dest) else v)
+        self._voz[job_id] = limpias
+
     def _process(self, job_id: str) -> None:
         """Ejecuta el pipeline completo para un job (compendio -> N clips)."""
         settings = self._settings
@@ -508,6 +525,9 @@ class JobManager:
         if not sources:
             self._update(job_id, status=JobStatus.ERROR, error="Sin videos en el job")
             return
+
+        # Recorta silencios de las locuciones si se pidió (antes de medirlas/usarlas).
+        self._quitar_silencios(job_id)
 
         work_dir = settings.jobs_dir / job_id
         output_dir = settings.outputs_dir / job_id

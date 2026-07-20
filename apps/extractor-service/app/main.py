@@ -294,6 +294,7 @@ async def create_job_from_files(
     font: str = Form("Anton"),
     hook: str = Form(""),
     auto_render: str = Form(""),
+    trim_silence: str = Form(""),  # recortar silencios de la locución
 ) -> JSONResponse:
     """Igual que /api/jobs/from-urls pero el web MANDA LOS VIDEOS como archivos.
 
@@ -330,6 +331,8 @@ async def create_job_from_files(
     # página de preview del extractor, así que el anuncio debe renderizarse solo.
     if auto_render in ("1", "true", "True"):
         params["auto_render"] = True
+    if trim_silence in ("1", "true", "True"):
+        params["trim_silence"] = True
     if hook:
         try:
             h = json.loads(hook)

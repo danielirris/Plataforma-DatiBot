@@ -19,6 +19,7 @@ export async function POST(req: Request) {
     num_clips?: number;
     use_music?: boolean;
     use_intro?: boolean;
+    trim_silence?: boolean;
     style?: string;
     subtitle_style?: string;
     highlight?: string;
@@ -104,6 +105,7 @@ export async function POST(req: Request) {
       form.append("num_clips", String(body.num_clips ?? 0));
       form.append("use_music", body.use_music ? "1" : "0");
       form.append("use_intro", body.use_intro ? "1" : "0");
+      form.append("trim_silence", body.trim_silence ? "1" : "0");
       form.append("style", body.style ?? "");
       form.append("subtitle_style", body.subtitle_style ?? "");
       form.append("highlight", body.highlight ?? "");
