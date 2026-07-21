@@ -444,15 +444,19 @@ class JobManager:
         esté en cola espera a que termine el de arriba.
         """
         def resumen(j: Job) -> dict:
-            return {"id": j.id, "estado": j.status.value, "modo": j.mode,
-                    "creado": j.created_at, "mensaje": j.message,
-                    "videos": len(j.filenames)}
+            estado = j.status.value if hasattr(j.status, "value") else str(j.status)
+            creado = j.created_at if isinstance(j.created_at, (int, float)) else 0.0
+            return {"id": j.id, "estado": estado, "modo": j.mode,
+                    "creado": creado, "mensaje": j.message or "",
+                    "videos": len(j.filenames or [])}
 
         with self._lock:
             jobs = list(self._jobs.values())
         en_cola = [resumen(j) for j in jobs if j.status == JobStatus.QUEUED]
         en_proceso = [resumen(j) for j in jobs if j.status in self._EN_PROCESO]
-        en_cola.sort(key=lambda d: d["creado"] or "")
+        # Ordena por fecha de creación; "creado" ya es siempre un número (0.0 si
+        # faltaba), así que nunca mezcla texto y número (el bug del 500).
+        en_cola.sort(key=lambda d: d["creado"])
         return {"en_cola": en_cola, "en_proceso": en_proceso,
                 "total_en_cola": len(en_cola)}
 

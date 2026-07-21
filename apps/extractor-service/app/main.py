@@ -719,8 +719,15 @@ async def create_job(
 
 @app.get("/api/queue")
 async def queue_info() -> JSONResponse:
-    """Qué trabajos hay en cola y cuál se está procesando (hay un solo worker)."""
-    return JSONResponse(manager.queue_info())
+    """Qué trabajos hay en cola y cuál se está procesando (hay un solo worker).
+
+    A prueba de balas: si algo falla al leer la cola, devolvemos una cola vacía en
+    vez de un 500 (la cola es solo informativa; nunca debe tumbar el editor)."""
+    try:
+        return JSONResponse(manager.queue_info())
+    except Exception:  # noqa: BLE001
+        logger.exception("Fallo leyendo la cola; devuelvo vacía")
+        return JSONResponse({"en_cola": [], "en_proceso": [], "total_en_cola": 0})
 
 
 @app.post("/api/queue/reset")
