@@ -1,3 +1,4 @@
+// build-marker: BUILD-2 (fuerza reconstrucción, invalida la caché de EasyPanel)
 // Editor de videos — página NATIVA de Datibot (ya no es un iframe).
 // Eliges un PRODUCTO, marcas cuáles de sus videos (subidos en Productos → paso
 // Videos) entran a la edición, configuras y generas. El motor del extractor
