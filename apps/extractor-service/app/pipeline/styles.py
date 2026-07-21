@@ -291,7 +291,12 @@ def apply_style(plan: dict, style_id: str, seed: str) -> dict:
     # Layout de cada tarjeta: se rota entre los del estilo para dar variedad
     # (una de rótulo, otra de cartel, otra gigante…), en vez de todas iguales.
     layouts = look.get("cards") or ["cover"]
-    for i, c in enumerate(plan.get("fullscreen") or []):
+    cards = plan.get("fullscreen") or []
+    for i, c in enumerate(cards):
         if isinstance(c, dict):
             c["layout"] = layouts[i % len(layouts)]
+    # GANCHO: la 1ª tarjeta abre el anuncio en el segundo 0 (frena el scroll). Si
+    # la IA la puso más tarde, se adelanta a 0.
+    if cards and isinstance(cards[0], dict):
+        cards[0]["at"] = 0.0
     return plan

@@ -295,6 +295,11 @@ async def create_job_from_files(
     hook: str = Form(""),
     auto_render: str = Form(""),
     trim_silence: str = Form(""),  # recortar silencios de la locución
+    use_cta: str = Form("1"),      # poner o no la llamada a la acción final
+    cta_texto: str = Form(""),     # título del CTA (si vacío, el de config)
+    cta_boton: str = Form(""),     # etiqueta del botón (WhatsApp →, Pídelo ahora…)
+    cta_wa: str = Form("1"),       # el botón es WhatsApp (verde) o genérico (acento)
+    oferta_pill: str = Form(""),   # texto de la píldora de oferta a mitad (opcional)
 ) -> JSONResponse:
     """Igual que /api/jobs/from-urls pero el web MANDA LOS VIDEOS como archivos.
 
@@ -333,6 +338,15 @@ async def create_job_from_files(
         params["auto_render"] = True
     if trim_silence in ("1", "true", "True"):
         params["trim_silence"] = True
+    # Controles de CTA / oferta.
+    params["use_cta"] = use_cta in ("1", "true", "True")
+    params["cta_wa"] = cta_wa in ("1", "true", "True")
+    if cta_texto.strip():
+        params["cta_texto"] = cta_texto.strip()[:80]
+    if cta_boton.strip():
+        params["cta_boton"] = cta_boton.strip()[:24]
+    if oferta_pill.strip():
+        params["oferta_pill"] = oferta_pill.strip()[:60]
     if hook:
         try:
             h = json.loads(hook)

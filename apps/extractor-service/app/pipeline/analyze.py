@@ -375,9 +375,14 @@ Reglas:
   en la transcripción. Si la voz no dice un precio, no pongas precio. Cero invenciones.
 - TODO sale del guion: el texto de cada gráfico es lo que dice la voz en ese momento.
 - "at"/"start"/"end" en segundos dentro de [0, {duration:.1f}], tomados de los timestamps.
-- fullscreen: 2-3 tarjetas a PANTALLA COMPLETA (cubren todo el cuadro). Una al inicio
-  (~0s), una al centro, opcional antes del cierre. VARÍA los títulos: cada tarjeta con
-  texto distinto, no repitas la misma palabra/estructura.
+- fullscreen: 2-3 tarjetas a PANTALLA COMPLETA (cubren todo el cuadro). VARÍA los títulos:
+  cada tarjeta con texto distinto, no repitas la misma palabra/estructura.
+  * La PRIMERA tarjeta es el GANCHO y va en "at":0: la frase MÁS FUERTE del guion para
+    FRENAR EL SCROLL — la promesa, el resultado o una pregunta que pique (2-5 palabras,
+    en MAYÚS). Sácala de lo que dice la voz, pero elige el momento más impactante, no
+    necesariamente la primera frase. PROHIBIDO abrir con saludos ("hola", "bienvenidos",
+    "hoy te cuento"): eso es un valle muerto y la gente se va.
+  * Las demás: una al centro y, opcional, una antes del cierre.
 - lists: SOLO si la voz ENUMERA varios elementos (beneficios, pasos, razones,
   ingredientes...). Conviértelo en una escena de lista a pantalla completa: el
   "title" y cada "item" salen del guion. 1-2 listas máx, 2-6 items. Si la voz no

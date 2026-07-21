@@ -836,10 +836,17 @@ class JobManager:
 
             self._update(job_id, status=JobStatus.RENDERING,
                          message="Generando proyecto Remotion (anuncio)")
+            # Controles de CTA del usuario (sobre los defaults de config).
+            cta_texto = str(params.get("cta_texto") or "").strip() or settings.cta_texto
+            cta_on = params.get("use_cta", True) is not False
+            cta_boton = str(params.get("cta_boton") or "").strip() or "WhatsApp →"
+            cta_wa = params.get("cta_wa", True) is not False
+            oferta_pill = str(params.get("oferta_pill") or "").strip()
             build_ad_project(
                 videos, output_dir,
-                cta_texto=settings.cta_texto, whatsapp=settings.whatsapp_link,
-                cta_sub=settings.cta_sub,
+                cta_texto=cta_texto, whatsapp=settings.whatsapp_link,
+                cta_sub=settings.cta_sub, cta_on=cta_on, cta_boton=cta_boton, cta_wa=cta_wa,
+                oferta_pill=oferta_pill,
                 vol=settings.musica_volumen, vol_duck=settings.musica_volumen_ducking,
                 sfx=sfx, guides=self._guias.get(job_id, []),
                 intro=intro, font=font,

@@ -125,6 +125,13 @@ export function EditorVideos({
   // Por defecto ON (mejora casi siempre); nunca corta voz, solo el aire muerto.
   const [trimSilence, setTrimSilence] = useState<boolean>(true);
 
+  // Llamada a la acción (CTA) del cierre y píldora de oferta a mitad.
+  const [useCta, setUseCta] = useState<boolean>(true);
+  const [ctaTexto, setCtaTexto] = useState<string>("Haz clic para conseguir el tuyo");
+  const [ctaTipo, setCtaTipo] = useState<"whatsapp" | "otro">("whatsapp");
+  const [ctaBoton, setCtaBoton] = useState<string>("Pídelo ahora →");
+  const [ofertaPill, setOfertaPill] = useState<string>("");
+
   // Fase 4 — Hook visual: candidatos (marco de referencia) y el elegido.
   const [hookCands, setHookCands] = useState<HookCandidato[]>([]);
   const [hookBase, setHookBase] = useState<string>("");
@@ -374,6 +381,11 @@ export function EditorVideos({
           use_music: useMusic,
           use_intro: useIntro,
           trim_silence: trimSilence,
+          use_cta: useCta,
+          cta_texto: ctaTexto,
+          cta_wa: ctaTipo === "whatsapp",
+          cta_boton: ctaTipo === "whatsapp" ? "WhatsApp →" : ctaBoton,
+          oferta_pill: ofertaPill,
           hook,
           voces: voces.map((v) => v.nombre),
         }),
@@ -667,6 +679,70 @@ export function EditorVideos({
           />
           ✂️ Quitar silencios de la locución — recorta el aire muerto del principio
           y del final para que el anuncio no arranque lento (no corta la voz).
+        </label>
+      </div>
+
+      {/* Cierre (CTA) + oferta */}
+      <div className="mt-4 space-y-4 rounded-2xl border border-[var(--hairline)] glass p-5">
+        <label className="flex items-center gap-2 text-sm font-medium text-text">
+          <input type="checkbox" checked={useCta} onChange={(e) => setUseCta(e.target.checked)} />
+          🎯 Poner llamada a la acción (CTA) al final
+        </label>
+
+        {useCta && (
+          <div className="space-y-3 pl-6">
+            <label className="flex flex-col gap-1 text-sm">
+              <span className="text-muted">Título del CTA</span>
+              <input
+                type="text"
+                value={ctaTexto}
+                onChange={(e) => setCtaTexto(e.target.value)}
+                placeholder="Haz clic para conseguir el tuyo"
+                maxLength={80}
+                className="rounded-lg border border-[var(--hairline)] bg-[var(--field)] px-3 py-2 text-text outline-none focus:border-accent"
+              />
+            </label>
+            <div className="flex flex-wrap items-end gap-3">
+              <label className="flex flex-col gap-1 text-sm">
+                <span className="text-muted">Botón</span>
+                <select
+                  value={ctaTipo}
+                  onChange={(e) => setCtaTipo(e.target.value as "whatsapp" | "otro")}
+                  className="rounded-lg border border-[var(--hairline)] bg-[var(--field)] px-3 py-2 text-text outline-none focus:border-accent"
+                >
+                  <option value="whatsapp">WhatsApp (botón verde)</option>
+                  <option value="otro">Otro (personalizado)</option>
+                </select>
+              </label>
+              {ctaTipo === "otro" && (
+                <label className="flex flex-1 flex-col gap-1 text-sm">
+                  <span className="text-muted">Texto del botón</span>
+                  <input
+                    type="text"
+                    value={ctaBoton}
+                    onChange={(e) => setCtaBoton(e.target.value)}
+                    placeholder="Pídelo ahora →"
+                    maxLength={24}
+                    className="rounded-lg border border-[var(--hairline)] bg-[var(--field)] px-3 py-2 text-text outline-none focus:border-accent"
+                  />
+                </label>
+              )}
+            </div>
+          </div>
+        )}
+
+        <label className="flex flex-col gap-1 text-sm">
+          <span className="text-muted">
+            🔥 Oferta a destacar (opcional) — aparece como píldora antes del cierre
+          </span>
+          <input
+            type="text"
+            value={ofertaPill}
+            onChange={(e) => setOfertaPill(e.target.value)}
+            placeholder="Ej: 2x1 solo hoy · Envío gratis · 40% OFF"
+            maxLength={60}
+            className="rounded-lg border border-[var(--hairline)] bg-[var(--field)] px-3 py-2 text-text outline-none focus:border-accent"
+          />
         </label>
       </div>
 

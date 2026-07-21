@@ -66,6 +66,10 @@ def build_ad_project(
     cta_texto: str,
     whatsapp: str,
     cta_sub: str = "",
+    cta_on: bool = True,
+    cta_boton: str = "WhatsApp →",
+    cta_wa: bool = True,
+    oferta_pill: str = "",
     vol: float,
     vol_duck: float,
     sfx: dict[str, Path] | None = None,
@@ -125,6 +129,16 @@ def build_ad_project(
 
         plan = {**_DEFAULT_PLAN, **(v.plan or {})}
 
+        # Píldora de OFERTA: recuerda el premio/urgencia en la 2ª mitad, justo
+        # antes del cierre (~68% del anuncio), para reactivar el deseo. Reusa el
+        # componente Pill. Solo si el usuario puso un texto de oferta.
+        if oferta_pill.strip():
+            s = round(max(1.0, v.duration * 0.68), 2)
+            plan["pills"] = list(plan.get("pills") or []) + [
+                {"start": s, "end": round(min(v.duration - 0.3, s + 2.4), 2),
+                 "text": oferta_pill.strip()[:60], "emoji": "🔥"}
+            ]
+
         # A este video le corresponde la guía de su misma posición (1:1 si subes
         # una guía por video). Todos los momentos "guia" de este video usan esa.
         guia_out = []
@@ -160,7 +174,8 @@ def build_ad_project(
 
     ad = {
         "fps": FPS,
-        "cta": {"texto": cta_texto, "whatsapp": whatsapp, "sub": cta_sub},
+        "cta": {"on": bool(cta_on), "texto": cta_texto, "whatsapp": whatsapp,
+                "sub": cta_sub, "boton": cta_boton or "WhatsApp →", "wa": bool(cta_wa)},
         "musica": {"volumen": vol, "ducking": vol_duck},
         "sfx": sfx_names,
         "intro": intro_name,
@@ -269,7 +284,10 @@ export const Ad: React.FC<{ v: any; cta: any; musica: any; sfx: any; intro?: any
   const palette = (plan.palette && plan.palette.length) ? plan.palette : [accent];
   const pick = (i: number) => palette[((i % palette.length) + palette.length) % palette.length];
 
-  const ctaFrames = Math.round(3 * fps);
+  // CTA opcional: si se apaga, no reservamos su tiempo al final (el contenido
+  // ocupa todo el anuncio).
+  const ctaOn = cta && cta.on !== false;
+  const ctaFrames = ctaOn ? Math.round(3 * fps) : 0;
   const ctaStart = durationInFrames - ctaFrames;
 
   const cards = (plan.fullscreen || []).map((c: any) => ({ ...c, f: Math.round(c.at * fps) }));
@@ -422,13 +440,13 @@ export const Ad: React.FC<{ v: any; cta: any; musica: any; sfx: any; intro?: any
       {/* Tarjetas full-screen (donde la IA dijo, según la voz). */}
       {cards.map((c: any, i: number) => (
         <Sequence key={`card${i}`} from={c.f} durationInFrames={Math.round(CARD_S * fps)}>
-          <Card top={c.top} keyText={c.key} sub={c.sub} emoji={c.emoji} accent={pick(i)} layout={c.layout} />
+          <Card top={c.top} keyText={c.key} sub={c.sub} emoji={c.emoji} accent={pick(i)} layout={c.layout} hook={i === 0 && c.f < fps} />
         </Sequence>
       ))}
 
-      {/* CTA final. */}
-      {frame >= ctaStart ? (
-        <Cta texto={cta.texto} whatsapp={cta.whatsapp} sub={cta.sub} startFrame={ctaStart} accent={accent} />
+      {/* CTA final (opcional). */}
+      {ctaOn && frame >= ctaStart ? (
+        <Cta texto={cta.texto} whatsapp={cta.whatsapp} sub={cta.sub} boton={cta.boton} wa={cta.wa} accent={accent} startFrame={ctaStart} />
       ) : null}
 
       {/* Letterbox cine (barras) — look premium, encima de todo. */}
@@ -530,10 +548,12 @@ function darken(hex: string, k: number) {
   return `rgb(${r},${g},${b})`;
 }
 
-export const Card: React.FC<{ top?: string; keyText: string; sub?: string; emoji?: string; accent: string; layout?: string }> = ({ top, keyText, sub, emoji, accent, layout }) => {
+export const Card: React.FC<{ top?: string; keyText: string; sub?: string; emoji?: string; accent: string; layout?: string; hook?: boolean }> = ({ top, keyText, sub, emoji, accent, layout, hook }) => {
   const { fps, width, height, durationInFrames } = useVideoConfig();
   const f = useCurrentFrame();
-  const enter = spring({ frame: f, fps, config: { damping: 16, mass: 0.6 } });
+  // El GANCHO (1ª tarjeta) entra a CORTE SECO: casi instantáneo, para frenar el
+  // scroll con el texto ya visible en los primeros frames. El resto, suave.
+  const enter = spring({ frame: f, fps, config: hook ? { damping: 30, mass: 0.3 } : { damping: 16, mass: 0.6 } });
   const out = interpolate(f, [durationInFrames - 7, durationInFrames], [1, 0], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' });
   const o = Math.min(enter, out);
   const dark = darken(accent, 0.45);
@@ -783,13 +803,25 @@ import React from 'react';
 import { AbsoluteFill, interpolate, spring, useCurrentFrame, useVideoConfig } from 'remotion';
 import { fontFamily, emojiFamily } from './font';
 
-export const Cta: React.FC<{ texto: string; whatsapp: string; sub?: string; startFrame: number; accent?: string }> = ({ texto, whatsapp, sub, startFrame, accent }) => {
+function darkenHex(hex: string, k: number) {
+  try {
+    const n = parseInt(hex.slice(1), 16);
+    return `rgb(${Math.round(((n >> 16) & 255) * k)},${Math.round(((n >> 8) & 255) * k)},${Math.round((n & 255) * k)})`;
+  } catch { return '#0b0b0b'; }
+}
+
+export const Cta: React.FC<{ texto: string; whatsapp: string; sub?: string; boton?: string; wa?: boolean; startFrame: number; accent?: string }> = ({ texto, whatsapp, sub, boton, wa, startFrame, accent }) => {
   const { fps, width } = useVideoConfig();
   const f = useCurrentFrame() - startFrame;
   const enter = spring({ frame: f, fps, config: { damping: 200 } });
   const pulse = 1 + 0.04 * Math.sin((f / fps) * 6);
   // Muro más SUAVE (antes 0.88): el video se sigue viendo detrás, no un negro seco.
   const bg = interpolate(enter, [0, 1], [0, 0.55]);
+  // Botón: verde WhatsApp si es WhatsApp, si no el color de acento del anuncio.
+  const esWa = wa !== false;
+  const btnBg = esWa ? '#25D366' : (accent || '#FFD400');
+  const btnFg = esWa ? '#0b3d2e' : darkenHex(accent || '#FFD400', 0.16);
+  const label = boton || 'WhatsApp →';
 
   return (
     <AbsoluteFill style={{ background: `linear-gradient(rgba(0,0,0,${bg * 0.6}), rgba(0,0,0,${bg}))`, justifyContent: 'center', alignItems: 'center' }}>
@@ -799,9 +831,9 @@ export const Cta: React.FC<{ texto: string; whatsapp: string; sub?: string; star
         {sub ? <div style={{ color: '#fff', fontFamily: emojiFamily, fontWeight: 800, fontSize: Math.round(width * 0.042),
           marginBottom: 34, textShadow: '0 4px 14px rgba(0,0,0,0.7)' }}>{sub}</div> : null}
         <a href={whatsapp} style={{ textDecoration: 'none' }}>
-          <div style={{ display: 'inline-block', background: '#25D366', color: '#0b3d2e', fontFamily,
+          <div style={{ display: 'inline-block', background: btnBg, color: btnFg, fontFamily,
             fontWeight: 900, fontSize: Math.round(width * 0.05), padding: '24px 48px', borderRadius: 999,
-            transform: `scale(${pulse})`, boxShadow: '0 10px 30px rgba(0,0,0,0.4)' }}>WhatsApp →</div>
+            transform: `scale(${pulse})`, boxShadow: '0 10px 30px rgba(0,0,0,0.4)' }}>{label}</div>
         </a>
       </div>
     </AbsoluteFill>
