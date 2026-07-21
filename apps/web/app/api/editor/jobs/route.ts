@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { readFile, stat } from "node:fs/promises";
+import { stat } from "node:fs/promises";
+import { openAsBlob } from "node:fs";
 import path from "node:path";
 import os from "node:os";
 import { leerVpsConfig } from "@/lib/vps/upload";
@@ -104,8 +105,10 @@ export async function POST(req: Request) {
   try {
     if (porArchivos) {
       const form = new FormData();
-      for (const r of rutas)
-        form.append("videos", new Blob([new Uint8Array(await readFile(r.ruta))]), r.nombre);
+      // openAsBlob: el Blob LEE del disco bajo demanda; NO carga el video entero
+      // en RAM. Sin esto, generar con videos grandes podía tumbar el contenedor
+      // por falta de memoria (OOM) → error 500.
+      for (const r of rutas) form.append("videos", await openAsBlob(r.ruta), r.nombre);
       form.append("mode", "full");
       form.append("num_clips", String(body.num_clips ?? 0));
       form.append("use_music", body.use_music ? "1" : "0");
@@ -131,11 +134,7 @@ export async function POST(req: Request) {
         const rutaVoz = path.join(DIR_VOZ, path.basename(v));
         try {
           await stat(rutaVoz);
-          form.append(
-            "voz",
-            new Blob([new Uint8Array(await readFile(rutaVoz))]),
-            path.basename(v),
-          );
+          form.append("voz", await openAsBlob(rutaVoz), path.basename(v));
         } catch {
           return NextResponse.json(
             { error: "Uno de los audios subidos ya no está disponible. Vuelve a subirlo." },
