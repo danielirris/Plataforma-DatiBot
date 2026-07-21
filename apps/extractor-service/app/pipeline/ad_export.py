@@ -65,6 +65,7 @@ def build_ad_project(
     *,
     cta_texto: str,
     whatsapp: str,
+    cta_sub: str = "",
     vol: float,
     vol_duck: float,
     sfx: dict[str, Path] | None = None,
@@ -159,7 +160,7 @@ def build_ad_project(
 
     ad = {
         "fps": FPS,
-        "cta": {"texto": cta_texto, "whatsapp": whatsapp},
+        "cta": {"texto": cta_texto, "whatsapp": whatsapp, "sub": cta_sub},
         "musica": {"volumen": vol, "ducking": vol_duck},
         "sfx": sfx_names,
         "intro": intro_name,
@@ -279,6 +280,14 @@ export const Ad: React.FC<{ v: any; cta: any; musica: any; sfx: any; intro?: any
     || guias.some((g: any) => frame >= g.f && frame < g.f + g.df);
 
   const isSpeaking = (f: number) => v.words.some((w: any) => f / fps >= w.start && f / fps < w.end);
+  // Ducking SUAVE de la música: baja cuando hay voz y NO rebota en las micro-pausas
+  // entre palabras. Se considera "hay voz" si hay palabra en ±0.5s, así los huecos
+  // cortos mantienen la música baja en vez de subir de golpe (el "bombeo" barato).
+  const musicVol = (f: number) => {
+    const t = f / fps;
+    const cerca = v.words.some((w: any) => t >= w.start - 0.5 && t < w.end + 0.5);
+    return cerca ? musica.ducking : musica.volumen;
+  };
 
   // Ken Burns suave: el video nunca queda 100% quieto.
   const kb = interpolate(frame, [0, durationInFrames], [1.03, 1.1], { extrapolateRight: 'clamp' });
@@ -311,7 +320,9 @@ export const Ad: React.FC<{ v: any; cta: any; musica: any; sfx: any; intro?: any
     else if (m.kind === 'spotlight') mSpot = Math.max(mSpot, k);
   }
   const videoScale = kb + mScale;
-  const videoFilter = mGray > 0 ? `grayscale(${mGray.toFixed(2)})` : undefined;
+  // Grade base "de agencia": un pelín más de contraste y saturación SIEMPRE, para
+  // que el metraje crudo no se vea plano. Se suma el b&n de las movidas si aplica.
+  const videoFilter = `contrast(1.06) saturate(1.12)${mGray > 0 ? ` grayscale(${mGray.toFixed(2)})` : ''}`;
 
   return (
     <AbsoluteFill style={{ backgroundColor: 'black', overflow: 'hidden' }}>
@@ -319,6 +330,8 @@ export const Ad: React.FC<{ v: any; cta: any; musica: any; sfx: any; intro?: any
         <Video src={staticFile(v.video)} muted={!!v.voz} loop={!!v.voz}
                style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
       </AbsoluteFill>
+      {/* Viñeta sutil: oscurece los bordes para dar acabado premium y centrar la mirada. */}
+      <AbsoluteFill style={{ background: 'radial-gradient(120% 88% at 50% 44%, transparent 58%, rgba(0,0,0,0.34))' }} />
 
       {/* Movidas sobre el video: spotlight (dirige la mirada) y flash (destello). */}
       {mSpot > 0 ? (
@@ -331,8 +344,7 @@ export const Ad: React.FC<{ v: any; cta: any; musica: any; sfx: any; intro?: any
       {v.voz ? <Audio src={staticFile(v.voz)} /> : null}
 
       {v.music ? (
-        <Audio src={staticFile(v.music)} loop
-               volume={(f) => (isSpeaking(f) ? musica.ducking : musica.volumen)} />
+        <Audio src={staticFile(v.music)} loop volume={musicVol} />
       ) : null}
 
       {/* Sonido de inicio opcional (golpe de apertura). */}
@@ -416,7 +428,7 @@ export const Ad: React.FC<{ v: any; cta: any; musica: any; sfx: any; intro?: any
 
       {/* CTA final. */}
       {frame >= ctaStart ? (
-        <Cta texto={cta.texto} whatsapp={cta.whatsapp} startFrame={ctaStart} accent={accent} />
+        <Cta texto={cta.texto} whatsapp={cta.whatsapp} sub={cta.sub} startFrame={ctaStart} accent={accent} />
       ) : null}
 
       {/* Letterbox cine (barras) — look premium, encima de todo. */}
@@ -771,18 +783,21 @@ import React from 'react';
 import { AbsoluteFill, interpolate, spring, useCurrentFrame, useVideoConfig } from 'remotion';
 import { fontFamily, emojiFamily } from './font';
 
-export const Cta: React.FC<{ texto: string; whatsapp: string; startFrame: number; accent?: string }> = ({ texto, whatsapp, startFrame, accent }) => {
+export const Cta: React.FC<{ texto: string; whatsapp: string; sub?: string; startFrame: number; accent?: string }> = ({ texto, whatsapp, sub, startFrame, accent }) => {
   const { fps, width } = useVideoConfig();
   const f = useCurrentFrame() - startFrame;
   const enter = spring({ frame: f, fps, config: { damping: 200 } });
   const pulse = 1 + 0.04 * Math.sin((f / fps) * 6);
-  const bg = interpolate(enter, [0, 1], [0, 0.88]);
+  // Muro más SUAVE (antes 0.88): el video se sigue viendo detrás, no un negro seco.
+  const bg = interpolate(enter, [0, 1], [0, 0.55]);
 
   return (
-    <AbsoluteFill style={{ backgroundColor: `rgba(0,0,0,${bg})`, justifyContent: 'center', alignItems: 'center' }}>
+    <AbsoluteFill style={{ background: `linear-gradient(rgba(0,0,0,${bg * 0.6}), rgba(0,0,0,${bg}))`, justifyContent: 'center', alignItems: 'center' }}>
       <div style={{ margin: '0 8%', textAlign: 'center', transform: `translateY(${(1 - enter) * 60}px)`, opacity: enter }}>
         <div style={{ color: '#fff', fontFamily, fontWeight: 900, fontSize: Math.round(width * 0.078),
-          lineHeight: 1.15, WebkitTextStroke: '3px #000', paintOrder: 'stroke fill', marginBottom: 40 }}>{texto}</div>
+          lineHeight: 1.15, WebkitTextStroke: '3px #000', paintOrder: 'stroke fill', marginBottom: 26 }}>{texto}</div>
+        {sub ? <div style={{ color: '#fff', fontFamily: emojiFamily, fontWeight: 800, fontSize: Math.round(width * 0.042),
+          marginBottom: 34, textShadow: '0 4px 14px rgba(0,0,0,0.7)' }}>{sub}</div> : null}
         <a href={whatsapp} style={{ textDecoration: 'none' }}>
           <div style={{ display: 'inline-block', background: '#25D366', color: '#0b3d2e', fontFamily,
             fontWeight: 900, fontSize: Math.round(width * 0.05), padding: '24px 48px', borderRadius: 999,

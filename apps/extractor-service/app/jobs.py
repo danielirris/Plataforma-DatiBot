@@ -501,22 +501,29 @@ class JobManager:
             finally:
                 self._queue.task_done()
 
-    def _quitar_silencios(self, job_id: str) -> None:
-        """Si el job lo pidió (trim_silence), recorta el silencio de cabeza y cola
-        de cada locución ANTES de usarla, para anuncios más compactos. Se hace una
-        sola vez, actualizando self._voz, así todo el pipeline usa la versión
-        recortada (duración, subtítulos y audio quedan en sync)."""
-        if not (self._params.get(job_id, {}) or {}).get("trim_silence"):
-            return
+    def _preparar_voces(self, job_id: str) -> None:
+        """Prepara cada locución antes de usarla, una sola vez, actualizando
+        self._voz (duración, subtítulos y audio quedan en sync):
+          - recorta silencios de cabeza/cola SI el job lo pidió (trim_silence),
+          - NORMALIZA SIEMPRE el volumen (loudnorm), para que todas las voces
+            suenen al mismo nivel, claras y sin saturar."""
         voces = self._voz.get(job_id) or []
         if not voces:
             return
-        self._update(job_id, message="Quitando silencios del audio")
-        limpias: list[Path] = []
+        trim = bool((self._params.get(job_id, {}) or {}).get("trim_silence"))
+        self._update(job_id, message="Preparando el audio")
+        listas: list[Path] = []
         for v in voces:
-            dest = v.with_name(f"{v.stem}_sinsil.m4a")
-            limpias.append(dest if audio.strip_silence(v, dest) else v)
-        self._voz[job_id] = limpias
+            cur = v
+            if trim:
+                d = cur.with_name(f"{cur.stem}_sinsil.m4a")
+                if audio.strip_silence(cur, d):
+                    cur = d
+            dn = cur.with_name(f"{cur.stem}_norm.m4a")
+            if audio.normalize_voz(cur, dn):
+                cur = dn
+            listas.append(cur)
+        self._voz[job_id] = listas
 
     def _process(self, job_id: str) -> None:
         """Ejecuta el pipeline completo para un job (compendio -> N clips)."""
@@ -526,8 +533,9 @@ class JobManager:
             self._update(job_id, status=JobStatus.ERROR, error="Sin videos en el job")
             return
 
-        # Recorta silencios de las locuciones si se pidió (antes de medirlas/usarlas).
-        self._quitar_silencios(job_id)
+        # Prepara las locuciones (normaliza volumen, y recorta silencios si se pidió)
+        # antes de medirlas/usarlas.
+        self._preparar_voces(job_id)
 
         work_dir = settings.jobs_dir / job_id
         output_dir = settings.outputs_dir / job_id
@@ -831,6 +839,7 @@ class JobManager:
             build_ad_project(
                 videos, output_dir,
                 cta_texto=settings.cta_texto, whatsapp=settings.whatsapp_link,
+                cta_sub=settings.cta_sub,
                 vol=settings.musica_volumen, vol_duck=settings.musica_volumen_ducking,
                 sfx=sfx, guides=self._guias.get(job_id, []),
                 intro=intro, font=font,

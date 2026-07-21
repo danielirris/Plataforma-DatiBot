@@ -72,6 +72,9 @@ class Settings(BaseSettings):
     # --- Modo anuncio (proyecto Remotion por video) ---
     whatsapp_link: str = "https://wa.me/0000000000"  # CTA (placeholder editable)
     cta_texto: str = "Haz clic para conseguir el tuyo"
+    # Línea de refuerzo en el cierre. COD manda en LatAm: "pagas al recibir" quita
+    # el miedo a pagar por adelantado y sube la conversión. Editable/vaciable.
+    cta_sub: str = "🚚 Pago contra entrega · pagas al recibir"
     musica_volumen: float = 0.32  # volumen base de la música (0-1), sin voz
     # Volumen de la música MIENTRAS habla la voz. Como la locución suele hablar
     # casi todo el video, este es el nivel que de verdad se oye: 0.08 lo dejaba

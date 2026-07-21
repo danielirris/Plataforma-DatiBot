@@ -160,6 +160,24 @@ def extract_audio(source: Path, dest: Path) -> Path:
     return dest
 
 
+def normalize_voz(source: Path, dest: Path, target_i: float = -16.0) -> bool:
+    """Nivela la locución a un loudness estándar (loudnorm) para que TODAS las voces
+    suenen al mismo volumen, claras y sin saturar. -16 LUFS es el objetivo típico de
+    voz en video social. Devuelve True si escribió ``dest``; False si falló (se usa
+    el original)."""
+    proc = subprocess.run(
+        ["ffmpeg", "-y", "-i", str(source),
+         "-af", f"loudnorm=I={target_i}:TP=-1.5:LRA=11", "-ar", "44100",
+         "-c:a", "aac", "-b:a", "160k", str(dest)],
+        capture_output=True, text=True,
+    )
+    if proc.returncode != 0 or not dest.exists() or dest.stat().st_size == 0:
+        logger.warning("No pude normalizar la voz (%s); uso el original", source.name)
+        dest.unlink(missing_ok=True)
+        return False
+    return True
+
+
 def _detectar_silencios(source: Path, umbral_db: int, min_s: float) -> list[tuple[float, float]]:
     """Devuelve los tramos de silencio [(inicio, fin), …] usando ffmpeg
     silencedetect. Solo DETECTA (no corta): es la base para recortar sin riesgo."""
