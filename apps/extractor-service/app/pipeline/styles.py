@@ -193,7 +193,8 @@ def plan_moves(plan: dict, line_starts: list[float], duration: float,
     punch = cfg.get("punch")
     if punch and ls:
         hard = punch == "hard"
-        amount = 0.14 if hard else 0.06
+        # Golpes de zoom MÁS marcados (antes 0.14/0.06 apenas se notaban).
+        amount = 0.20 if hard else 0.10
         ramp = 0.10 if hard else 0.45
         # El zoom de énfasis es un GOLPE, no un estado: si se queda pegado
         # segundo y pico se siente "filtro puesto todo el rato". El suave baja
@@ -211,7 +212,7 @@ def plan_moves(plan: dict, line_starts: list[float], duration: float,
 
     # A6 — flash de color en cambios de bloque (o cada varias líneas).
     if cfg.get("flash"):
-        puntos = cards or ls[::3]
+        puntos = cards or ls[::2]
         for t in puntos:
             add("flash", t, t + 0.14)
 

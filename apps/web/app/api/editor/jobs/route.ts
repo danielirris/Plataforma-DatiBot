@@ -11,7 +11,13 @@ const DIR_VOZ = path.join(os.tmpdir(), "datibot-voz");
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-export const maxDuration = 120;
+// Subir varios videos grandes por la red interna al extractor (que los escribe a
+// disco antes de responder) puede pasar de 2 min; 120s cortaba y daba 5xx.
+export const maxDuration = 300;
+// Tope propio del fetch al extractor: si el motor está atascado (worker único
+// renderizando, o en pleno OOM), fallamos limpio con un 502 legible en vez de
+// colgarnos hasta que el proxy dispare su HTML de error.
+const EXTRACTOR_TIMEOUT_MS = 280_000;
 
 // Crea un job de edición en el extractor a partir de los videos del producto.
 export async function POST(req: Request) {
@@ -87,6 +93,7 @@ export async function POST(req: Request) {
     fetch(`${extractorUrl()}/api/jobs/from-urls`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
+      signal: AbortSignal.timeout(EXTRACTOR_TIMEOUT_MS),
       body: JSON.stringify({
         video_urls: urls,
         num_clips: body.num_clips ?? 0,
@@ -142,18 +149,26 @@ export async function POST(req: Request) {
           );
         }
       }
-      res = await fetch(`${extractorUrl()}/api/jobs/from-files`, { method: "POST", body: form });
+      res = await fetch(`${extractorUrl()}/api/jobs/from-files`, {
+        method: "POST",
+        body: form,
+        signal: AbortSignal.timeout(EXTRACTOR_TIMEOUT_MS),
+      });
       // 404 = el extractor aún no tiene el endpoint nuevo (no se ha redesplegado):
       // se intenta por el camino antiguo antes de rendirse.
       if (res.status === 404) res = await enviarPorUrls();
     } else {
       res = await enviarPorUrls();
     }
-  } catch {
-    return NextResponse.json(
-      { error: `No se pudo contactar al editor de video (${extractorUrl()}).` },
-      { status: 502 },
-    );
+  } catch (e) {
+    // AbortSignal.timeout dispara un TimeoutError; distinguimos para dar un
+    // mensaje útil en vez del genérico "no se pudo contactar".
+    const nombre = (e as { name?: string })?.name ?? "";
+    const msg =
+      nombre === "TimeoutError"
+        ? "El editor de video tardó demasiado (puede estar saturado). Espera un momento y reintenta."
+        : `No se pudo contactar al editor de video (${extractorUrl()}).`;
+    return NextResponse.json({ error: msg }, { status: 502 });
   }
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {

@@ -139,19 +139,47 @@ export async function investigarConGemini(
   return { text, fuentes };
 }
 
+// Llama a OpenAI con timeout y reintentos, igual que geminiFetch. SIN timeout, una
+// llamada lenta de OpenAI (frecuente al generar un capítulo largo) quedaba colgada
+// hasta que el proxy (EasyPanel/Traefik) la mataba y devolvía su HTML de error 500
+// —el 500 intermitente del creador de ebooks—. Ahora un cuelgue falla limpio y el
+// usuario puede reintentar.
+async function openaiFetch(body: unknown, key: string): Promise<Response> {
+  const INTENTOS = 2;
+  const TIMEOUT_MS = 90_000;
+  let ultimo: unknown = null;
+  for (let i = 0; i < INTENTOS; i++) {
+    try {
+      const res = await fetch("https://api.openai.com/v1/chat/completions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${key}` },
+        body: JSON.stringify(body),
+        signal: AbortSignal.timeout(TIMEOUT_MS),
+      });
+      if (res.ok || ![429, 500, 502, 503, 504].includes(res.status)) return res;
+      ultimo = new Error(`OpenAI respondió ${res.status}: ${await res.text()}`);
+    } catch (e) {
+      // Un timeout/abort NO se reintenta (reintentar una llamada lenta solo agota
+      // el tiempo del proxy); los cortes de red sí, una vez.
+      const nombre = (e as { name?: string })?.name ?? "";
+      if (nombre === "TimeoutError" || nombre === "AbortError")
+        throw new Error("OpenAI tardó demasiado (timeout). Reintenta.");
+      ultimo = e;
+    }
+    if (i < INTENTOS - 1) await new Promise((r) => setTimeout(r, 1500 * (i + 1)));
+  }
+  throw ultimo instanceof Error ? ultimo : new Error("OpenAI no respondió (timeout).");
+}
+
 async function openaiChat(prompt: string, key: string): Promise<string> {
-  const res = await fetch("https://api.openai.com/v1/chat/completions", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${key}`,
-    },
-    body: JSON.stringify({
+  const res = await openaiFetch(
+    {
       model: OPENAI_TEXT_MODEL,
       messages: [{ role: "user", content: prompt }],
       temperature: 0.8,
-    }),
-  });
+    },
+    key,
+  );
   if (!res.ok) {
     throw new Error(`OpenAI respondió ${res.status}: ${await res.text()}`);
   }

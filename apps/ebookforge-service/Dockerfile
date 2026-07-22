@@ -20,5 +20,11 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY apps/ebookforge-service/ .
 
 EXPOSE 8600
+# Sonda de vida: si el servicio se atasca (WeasyPrint colgado, event loop
+# bloqueado), /healthz deja de responder y EasyPanel reinicia el contenedor en
+# vez de dejarlo devolviendo 5xx para siempre. Usa python (no hay curl en la
+# imagen). start-period holgado para el arranque de uvicorn.
+HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
+  CMD python -c "import os,urllib.request; urllib.request.urlopen('http://127.0.0.1:'+os.environ.get('PORT','8600')+'/healthz',timeout=5)"
 # Lee el puerto de la env PORT (EasyPanel lo inyecta); default 8600.
 CMD ["sh", "-c", "uvicorn app:app --host 0.0.0.0 --port ${PORT:-8600}"]

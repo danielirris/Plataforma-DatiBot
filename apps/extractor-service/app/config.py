@@ -42,8 +42,11 @@ class Settings(BaseSettings):
     # --- Especificación de los clips ---
     num_clips: int = 5            # cuántos clips generar por compendio (3-5 típico)
     duracion_total_s: int = 48
-    beat_min_s: float = 2.0       # duración mínima de cada fragmento (corte)
-    beat_max_s: float = 4.0       # duración máxima de cada fragmento (corte)
+    # Ritmo de cortes. Cortos = anuncio DINÁMICO (el ojo no se aburre). Antes 2-4s
+    # se sentía lento/plano; 1.2-2.2s es el pulso de un anuncio social que engancha
+    # sin marear. Es el factor #1 de "dinamismo".
+    beat_min_s: float = 1.2       # duración mínima de cada fragmento (corte)
+    beat_max_s: float = 2.2       # duración máxima de cada fragmento (corte)
     min_fragmentos: int = 50      # tamaño mínimo del pool de fragmentos
     hook_beats: int = 2           # fragmentos "impactantes" al inicio de cada clip
     modo_fondo: str = "blur"      # blur | crop | pad_negro
@@ -67,7 +70,14 @@ class Settings(BaseSettings):
 
     # --- Recursos / velocidad ---
     ffmpeg_threads: int = 0        # 0 = auto (usa todos los núcleos = más rápido)
-    remotion_concurrency: int = 0  # 0 = auto (Remotion elige según los núcleos)
+    # Nº de pestañas Chromium que Remotion abre EN PARALELO para renderizar.
+    # NO usar "auto" (0): Remotion abriría ~1 pestaña por núcleo del VPS y cada una
+    # decodifica el video y consume cientos de MB → el pico de RAM revienta el
+    # límite del contenedor (OOM) → el contenedor se reinicia a mitad de render →
+    # 500 al front. Un tope fijo (2) acota la memoria pase lo que pase. Se puede
+    # sobrescribir con la env var REMOTION_CONCURRENCY en EasyPanel (1 si el VPS
+    # es pequeño). Ver DEPLOY.md.
+    remotion_concurrency: int = 2
 
     # --- Modo anuncio (proyecto Remotion por video) ---
     whatsapp_link: str = "https://wa.me/0000000000"  # CTA (placeholder editable)

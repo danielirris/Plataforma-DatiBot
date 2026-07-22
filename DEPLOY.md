@@ -56,12 +56,20 @@ Para cada uno: **Create → App → Source: GitHub** (este repo, rama `main`).
 - **Puerto:** 8000.
 - **Dominio:** `extractor.tudominio.com` · **Basic Auth** activado.
 - **Volumen persistente:** monta uno en `/app/storage` (videos/jobs/outputs).
-- **Recursos:** este es el pesado (Chromium de Remotion). Dale ≥ 2 GB RAM.
+- **Recursos:** este es el pesado (Chromium de Remotion). **Dale 4–5 GB de RAM**
+  (Memory Limit). Con menos, un anuncio pesado revienta el límite → OOM → el
+  contenedor se reinicia a mitad de render → **500 intermitente** en el editor.
+- **Réplicas / workers:** deja **1 réplica** y **1 worker** (el CMD ya es 1). NO
+  subas `--workers` ni pongas 2+ réplicas: la cola y el estado son en memoria y
+  SQLite es de un solo escritor → se rompería. Para más carga, sube RAM, no copias.
 - **Env:**
   ```
   OPENAI_API_KEY=...        (obligatorio: transcripción + análisis)
   ELEVENLABS_API_KEY=...    (opcional, solo voz)
   WHATSAPP_LINK=...         (CTA)
+  REMOTION_CONCURRENCY=2    (IMPORTANTE: pestañas Chromium en paralelo al render.
+                             Acota el pico de RAM. Pon 1 si el VPS es pequeño. Sin
+                             esto, Remotion abre 1 por núcleo y se dispara el OOM.)
   ```
 
 ### ebooks

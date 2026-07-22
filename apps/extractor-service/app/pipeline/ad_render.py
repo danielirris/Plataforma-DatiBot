@@ -7,8 +7,10 @@ from __future__ import annotations
 
 import logging
 import os
+import signal
 import shutil
 import subprocess
+import threading
 from collections import deque
 from pathlib import Path
 from typing import Callable
@@ -57,11 +59,45 @@ def render_ad_project(
     env["REMOTION_CONCURRENCY"] = str(get_settings().remotion_concurrency or 0)
 
     # Una sola tubería (stderr -> stdout) para leer en streaming sin deadlock.
+    # start_new_session=True: el proceso node arranca en su PROPIO grupo de
+    # procesos. Así, al matarlo, podemos llevarnos por delante a TODOS sus
+    # descendientes (los chrome-headless-shell que Remotion lanza). Sin esto,
+    # proc.kill() mata solo a node y los Chromium quedan huérfanos comiendo RAM;
+    # se acumulan render tras render y adelantan el OOM del siguiente job (el
+    # clásico "a veces sí, a veces no" que empeora cuanto más se usa).
     proc = subprocess.Popen(
         ["node", str(script), str(project_dir), str(out_dir)],
         stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True,
-        cwd=str(RUNTIME), env=env,
+        cwd=str(RUNTIME), env=env, start_new_session=True,
     )
+
+    def _matar_arbol() -> None:
+        """Mata a node Y a todos sus Chromium hijos (el grupo entero)."""
+        try:
+            os.killpg(os.getpgid(proc.pid), signal.SIGKILL)
+        except (ProcessLookupError, PermissionError, OSError):
+            try:
+                proc.kill()
+            except OSError:
+                pass
+        try:
+            proc.wait(timeout=15)
+        except Exception:  # noqa: BLE001 - el reap es best-effort
+            pass
+
+    # Vigilante: si el render supera ``timeout`` segundos, mata el árbol. Es más
+    # fiable que proc.wait(timeout=): si Chromium se cuelga a mitad, la tubería de
+    # stdout se estanca y el bucle de abajo se quedaría esperando para siempre; el
+    # timer corta pase lo que pase.
+    caducado = {"v": False}
+
+    def _al_caducar() -> None:
+        caducado["v"] = True
+        _matar_arbol()
+
+    vigilante = threading.Timer(timeout, _al_caducar)
+    vigilante.daemon = True
+    vigilante.start()
     tail: deque[str] = deque(maxlen=40)
     try:
         for line in proc.stdout or []:
@@ -74,9 +110,13 @@ def render_ad_project(
                         on_progress(int(p[1]), int(p[2]), int(p[3]), int(p[4]))
                     except Exception:  # noqa: BLE001 - el progreso no debe tumbar el render
                         pass
-        ret = proc.wait(timeout=timeout)
-    except subprocess.TimeoutExpired:
-        proc.kill()
+        ret = proc.wait()
+    except BaseException:
+        _matar_arbol()
+        raise
+    finally:
+        vigilante.cancel()
+    if caducado["v"]:
         raise RuntimeError("El render de Remotion excedió el tiempo límite.")
     if ret != 0:
         raise RuntimeError("Render Remotion falló: " + "\n".join(tail)[-1000:])

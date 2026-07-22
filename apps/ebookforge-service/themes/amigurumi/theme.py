@@ -5,8 +5,12 @@ Tema 'amigurumi'. Expone lo que el motor necesita:
 Añadir un tipo de bloque nuevo = añadir una función y registrarla en RENDERERS.
 Crear otro tema = copiar esta carpeta y cambiar theme.css + components.py.
 """
+import logging
 from pathlib import Path
+from themes import _base
 from . import components as C
+
+logger = logging.getLogger(__name__)
 
 NAME = "amigurumi"
 _DIR = Path(__file__).parent
@@ -102,18 +106,44 @@ def _closing(b):
             f'<div class="cbig">{b["big"]}</div>{small}{brand}</section>')
 
 
+def _html(b):
+    """Gráfico en HTML que escribe la IA (ficha/tabla). La IA emite bloques
+    ``html`` por defecto; este tema NO los tenía y lanzaba ValueError → 500 al
+    generar el PDF. Se sanea con la lista blanca de _base (fuera script/style/iframe
+    y manejadores de eventos) porque no confiamos a ciegas en el HTML del modelo."""
+    cuerpo = _base._sanear_html(str(b.get("html") or ""))
+    if not cuerpo.strip():
+        return ""
+    titulo = f'<div class="ftitle">{b["title"]}</div>' if b.get("title") else ""
+    return f'<figure class="figura">{titulo}{cuerpo}</figure>'
+
+
 RENDERERS = {
     "cover": _cover, "section": _section, "paragraph": _paragraph, "list": _list,
     "card": _card, "image": _image, "callout": _callout, "chips": _chips,
-    "divider": _divider, "closing": _closing,
+    "divider": _divider, "closing": _closing, "html": _html,
 }
 
 
 def render_block(block: dict) -> str:
+    """Renderiza un bloque. TOLERANTE a propósito: ni un tipo desconocido ni un
+    bloque mal formado deben tumbar el PDF entero con un 500 — el ebook lo arma la
+    IA y su salida no es determinista. Un bloque problemático se omite y se sigue."""
     t = block.get("type")
-    if t not in RENDERERS:
-        raise ValueError(f"Tipo de bloque desconocido: {t!r}. Disponibles: {list(RENDERERS)}")
-    return RENDERERS[t](block)
+    fn = RENDERERS.get(t)
+    if fn is None:
+        # Tipo no soportado por este tema: en vez de reventar, degradamos a su
+        # html/texto saneado si lo trae; si no, se omite.
+        crudo = _base._sanear_html(str(block.get("html") or block.get("text") or ""))
+        if crudo.strip():
+            return f'<div class="para">{crudo}</div>'
+        logger.warning("Bloque de tipo %r omitido (no soportado por amigurumi)", t)
+        return ""
+    try:
+        return fn(block)
+    except Exception:  # noqa: BLE001 - un bloque roto no debe tumbar el ebook
+        logger.exception("Bloque %r mal formado; se omite", t)
+        return ""
 
 
 def wrap(body: str, title: str = "Ebook") -> str:

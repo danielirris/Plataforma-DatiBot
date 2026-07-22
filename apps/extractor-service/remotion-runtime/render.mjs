@@ -23,9 +23,11 @@ const serveUrl = await bundle({ entryPoint: entry, publicDir });
 const comps = await getCompositions(serveUrl, { logLevel: 'error' });
 console.log('[render] composiciones:', comps.map((c) => c.id).join(', '));
 
-// Concurrencia: REMOTION_CONCURRENCY (0/ausente => null = auto, Remotion elige).
-const conc = Number(process.env.REMOTION_CONCURRENCY) || null;
-console.log('[render] concurrency:', conc ?? 'auto');
+// Concurrencia: nº de pestañas Chromium en paralelo. NUNCA "auto": en auto,
+// Remotion abre ~1 por núcleo y el pico de RAM revienta el contenedor (OOM).
+// Si REMOTION_CONCURRENCY no llega (0/ausente/NaN), caemos a un tope fijo de 2.
+const conc = Number(process.env.REMOTION_CONCURRENCY) || 2;
+console.log('[render] concurrency:', conc);
 
 const total = comps.length;
 let i = 1;

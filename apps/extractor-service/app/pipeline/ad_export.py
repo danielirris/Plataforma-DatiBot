@@ -307,8 +307,12 @@ export const Ad: React.FC<{ v: any; cta: any; musica: any; sfx: any; intro?: any
     return cerca ? musica.ducking : musica.volumen;
   };
 
-  // Ken Burns suave: el video nunca queda 100% quieto.
-  const kb = interpolate(frame, [0, durationInFrames], [1.03, 1.1], { extrapolateRight: 'clamp' });
+  // Ken Burns MÁS marcado: el video viaja de 1.05 a 1.22 durante el clip — movimiento
+  // que se NOTA (antes 1.03→1.1 apenas se percibía y parecía imagen quieta).
+  const kb = interpolate(frame, [0, durationInFrames], [1.05, 1.22], { extrapolateRight: 'clamp' });
+  // Golpe de entrada: el arranque (el gancho) "patea" con un zoom rápido que se asienta
+  // en ~7 frames. Energía desde el frame 0.
+  const punchIn = interpolate(frame, [0, 7], [1.10, 1.0], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' });
 
   // ── Movidas de editor (Fase 5): se acumulan por frame sobre el video. ──
   const moves = plan.moves || [];
@@ -337,10 +341,10 @@ export const Ad: React.FC<{ v: any; cta: any; musica: any; sfx: any; intro?: any
     else if (m.kind === 'flash') mFlash = Math.max(mFlash, k);
     else if (m.kind === 'spotlight') mSpot = Math.max(mSpot, k);
   }
-  const videoScale = kb + mScale;
-  // Grade base "de agencia": un pelín más de contraste y saturación SIEMPRE, para
-  // que el metraje crudo no se vea plano. Se suma el b&n de las movidas si aplica.
-  const videoFilter = `contrast(1.06) saturate(1.12)${mGray > 0 ? ` grayscale(${mGray.toFixed(2)})` : ''}`;
+  const videoScale = kb * punchIn + mScale;
+  // Grade "de agencia" con MÁS punch: contraste/saturación arriba y un pelín de brillo
+  // para que el metraje crudo no se vea plano (antes 1.06/1.12 era casi invisible).
+  const videoFilter = `contrast(1.13) saturate(1.24) brightness(1.03)${mGray > 0 ? ` grayscale(${mGray.toFixed(2)})` : ''}`;
 
   return (
     <AbsoluteFill style={{ backgroundColor: 'black', overflow: 'hidden' }}>
@@ -349,7 +353,7 @@ export const Ad: React.FC<{ v: any; cta: any; musica: any; sfx: any; intro?: any
                style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
       </AbsoluteFill>
       {/* Viñeta sutil: oscurece los bordes para dar acabado premium y centrar la mirada. */}
-      <AbsoluteFill style={{ background: 'radial-gradient(120% 88% at 50% 44%, transparent 58%, rgba(0,0,0,0.34))' }} />
+      <AbsoluteFill style={{ background: 'radial-gradient(120% 88% at 50% 44%, transparent 54%, rgba(0,0,0,0.44))' }} />
 
       {/* Movidas sobre el video: spotlight (dirige la mirada) y flash (destello). */}
       {mSpot > 0 ? (
@@ -515,8 +519,8 @@ export const Subtitles: React.FC<{ words: W[]; plan?: any }> = ({ words, plan })
         if (box) color = '#0b0b0b';
         else if (active && (style === 'karaoke' || style === 'pop' || style === 'punch')) color = accent;
         else if (isKey && (style === 'color' || style === 'karaoke')) color = accent;
-        const baseScale = (isKey ? 1.06 : 1) * (active ? 1.05 : 1) * (punch ? 1.22 : 1);
-        const scale = baseScale * (0.84 + 0.16 * pop);
+        const baseScale = (isKey ? 1.12 : 1) * (active ? 1.10 : 1) * (punch ? 1.30 : 1);
+        const scale = baseScale * (0.68 + 0.32 * pop);
         return (
           <span key={i} style={{
             fontFamily, fontWeight: 900, fontSize,
@@ -526,7 +530,7 @@ export const Subtitles: React.FC<{ words: W[]; plan?: any }> = ({ words, plan })
             WebkitTextStroke: box ? '0' : `${Math.max(2, fontSize * 0.06)}px #000`,
             paintOrder: 'stroke fill',
             textShadow: box ? '0 6px 16px rgba(0,0,0,0.45)' : '0 6px 18px rgba(0,0,0,0.6)',
-            transform: `translateY(${(1 - pop) * 16}px) scale(${scale})`,
+            transform: `translateY(${(1 - pop) * 26}px) scale(${scale})`,
             opacity: pop, display: 'inline-block',
           }}>{w.word}</span>
         );

@@ -152,6 +152,23 @@ class JobManager:
                         "error": "Interrumpido por un reinicio; vuelve a subir los videos.",
                     })
                     continue
+                # Anti-bucle: si este job YA se reanudó antes y volvió a quedar a
+                # medias, es sospechoso de estar tumbando el contenedor (OOM en un
+                # render pesado). No lo reprocesamos: lo damos por perdido para no
+                # entrar en un ciclo de reinicios que da 500 sin parar.
+                cols_row = row.keys()
+                intentos = (row["recover_attempts"]
+                            if "recover_attempts" in cols_row and row["recover_attempts"] is not None
+                            else 0)
+                if intentos >= 1:
+                    self._store.update(row["id"], {
+                        "status": JobStatus.ERROR.value, "progress": 100,
+                        "error": "Se interrumpió por un reinicio (posible falta de memoria). "
+                                 "Vuelve a generarlo.",
+                    })
+                    logger.warning("Job %s NO se reanuda (ya se intentó %d vez/veces)",
+                                   row["id"], intentos)
+                    continue
                 job = Job(id=row["id"], filenames=json.loads(row["filenames"]),
                           created_at=row["created_at"], status=JobStatus.QUEUED,
                           mode=row["mode"], message="Reanudado tras reinicio")
@@ -182,9 +199,10 @@ class JobManager:
                     if params:
                         self._params[job.id] = params
                 self._store.update(row["id"], {"status": "queued", "progress": 0,
-                                               "message": "Reanudado tras reinicio"})
+                                               "message": "Reanudado tras reinicio",
+                                               "recover_attempts": int(intentos) + 1})
                 self._queue.put(("job", job.id))
-                logger.info("Job %s reanudado tras reinicio", job.id)
+                logger.info("Job %s reanudado tras reinicio (intento %d)", job.id, int(intentos) + 1)
             except Exception:  # noqa: BLE001
                 logger.exception("No se pudo recuperar el job %s", row["id"])
 
@@ -486,9 +504,16 @@ class JobManager:
 
     def _run_worker(self) -> None:
         """Bucle del trabajador: procesa jobs de la cola de a uno."""
-        cleanup.purge_keep_recent(
-            self._settings.outputs_dir, self._settings.galeria_max
-        )
+        # La limpieza inicial NUNCA debe poder matar al worker: si lanzara (p.ej.
+        # OSError por permisos o disco), el hilo moriría antes del bucle y NINGÚN
+        # job volvería a procesarse en toda la vida del proceso (todo quedaría en
+        # "en cola" para siempre). Por eso va envuelta y es best-effort.
+        try:
+            cleanup.purge_keep_recent(
+                self._settings.outputs_dir, self._settings.galeria_max
+            )
+        except Exception:  # noqa: BLE001 - la limpieza es opcional, el worker es crítico
+            logger.exception("Fallo en la limpieza inicial; el worker sigue igual")
         while True:
             kind, job_id = self._queue.get()
             try:

@@ -71,65 +71,82 @@ export async function recibirTrozo(req: Request): Promise<Trozo> {
       res: NextResponse.json({ error: "Parámetros de subida inválidos." }, { status: 400 }),
     };
 
-  const buf = Buffer.from(await req.arrayBuffer());
-  if (!buf.length)
-    return {
-      estado: "respuesta",
-      res: NextResponse.json(
-        { error: "Llegó un trozo vacío; reintenta la subida." },
-        { status: 400 },
-      ),
-    };
-  if (buf.length > MAX_CHUNK)
-    return {
-      estado: "respuesta",
-      res: NextResponse.json({ error: "Trozo demasiado grande." }, { status: 413 }),
-    };
-
-  await mkdir(TMP, { recursive: true });
-  if (index === 0) void barrerHuerfanos(); // oportunista, no bloquea la subida
-  const tmp = path.join(TMP, `${uploadId}.part`);
-
-  if (index === 0) {
-    await writeFile(tmp, buf); // trunca: reintento con el mismo id parte de cero
-  } else {
-    // El .part debe existir y llevar exactamente los trozos previos. Si no, la
-    // subida se perdió (reinicio del contenedor, /tmp limpiado…): mejor 409 que
-    // re-armar en silencio un video TRUNCADO y darlo por bueno.
-    let previo = -1;
-    try {
-      previo = (await stat(tmp)).size;
-    } catch {
-      previo = -1;
-    }
-    if (previo !== index * chunkSize)
+  // A partir de aquí hay E/S (leer el cuerpo, escribir en disco). TODO va dentro
+  // de un try: si el disco se llena (ENOSPC), el cliente aborta a mitad, o hay un
+  // EIO, antes la excepción salía SIN capturar y Next devolvía un HTTP 500 (página
+  // HTML) que el cliente interpretaba como "subida caída". Ahora se traduce a un
+  // 502 legible y el usuario puede reintentar.
+  try {
+    const buf = Buffer.from(await req.arrayBuffer());
+    if (!buf.length)
       return {
         estado: "respuesta",
         res: NextResponse.json(
-          { error: "La subida se perdió a mitad de camino. Reintenta el archivo." },
-          { status: 409 },
+          { error: "Llegó un trozo vacío; reintenta la subida." },
+          { status: 400 },
         ),
       };
-    await appendFile(tmp, buf);
-  }
+    if (buf.length > MAX_CHUNK)
+      return {
+        estado: "respuesta",
+        res: NextResponse.json({ error: "Trozo demasiado grande." }, { status: 413 }),
+      };
 
-  const size = (await stat(tmp)).size;
-  if (size > MAX_TOTAL) {
-    await unlink(tmp).catch(() => {});
+    await mkdir(TMP, { recursive: true });
+    if (index === 0) void barrerHuerfanos(); // oportunista, no bloquea la subida
+    const tmp = path.join(TMP, `${uploadId}.part`);
+
+    if (index === 0) {
+      await writeFile(tmp, buf); // trunca: reintento con el mismo id parte de cero
+    } else {
+      // El .part debe existir y llevar exactamente los trozos previos. Si no, la
+      // subida se perdió (reinicio del contenedor, /tmp limpiado…): mejor 409 que
+      // re-armar en silencio un video TRUNCADO y darlo por bueno.
+      let previo = -1;
+      try {
+        previo = (await stat(tmp)).size;
+      } catch {
+        previo = -1;
+      }
+      if (previo !== index * chunkSize)
+        return {
+          estado: "respuesta",
+          res: NextResponse.json(
+            { error: "La subida se perdió a mitad de camino. Reintenta el archivo." },
+            { status: 409 },
+          ),
+        };
+      await appendFile(tmp, buf);
+    }
+
+    const size = (await stat(tmp)).size;
+    if (size > MAX_TOTAL) {
+      await unlink(tmp).catch(() => {});
+      return {
+        estado: "respuesta",
+        res: NextResponse.json({ error: "El video supera el máximo (2 GB)." }, { status: 413 }),
+      };
+    }
+
+    // Trozos intermedios: confirmar y seguir.
+    if (index < total - 1)
+      return {
+        estado: "respuesta",
+        res: NextResponse.json({ ok: true, recibidos: index + 1, bytes: size }),
+      };
+
+    return { estado: "completo", tmp, size, original, uploadId };
+  } catch (e) {
+    console.error("[uploads/chunks] fallo de E/S al recibir trozo:", e);
+    const msg =
+      (e as { code?: string })?.code === "ENOSPC"
+        ? "El servidor se quedó sin espacio en disco. Avisa al administrador."
+        : "No se pudo guardar el trozo (error de disco). Reintenta la subida.";
     return {
       estado: "respuesta",
-      res: NextResponse.json({ error: "El video supera el máximo (2 GB)." }, { status: 413 }),
+      res: NextResponse.json({ error: msg }, { status: 502 }),
     };
   }
-
-  // Trozos intermedios: confirmar y seguir.
-  if (index < total - 1)
-    return {
-      estado: "respuesta",
-      res: NextResponse.json({ ok: true, recibidos: index + 1, bytes: size }),
-    };
-
-  return { estado: "completo", tmp, size, original, uploadId };
 }
 
 /** Extensión saneada del nombre original (sin punto). `mp4` si no se puede leer. */

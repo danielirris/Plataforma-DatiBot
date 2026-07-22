@@ -21,6 +21,10 @@ class JobStore:
 
     def __init__(self, db_path: Path) -> None:
         db_path.parent.mkdir(parents=True, exist_ok=True)
+        # ¿La base ya existía? Es la señal de si /app/storage PERSISTE entre
+        # reinicios. Si no persiste, cada reinicio borra jobs.db y los archivos del
+        # proyecto → las previsualizaciones de anuncios ya generados dan 404.
+        ya_existia = db_path.exists()
         self._lock = threading.Lock()
         self._conn = sqlite3.connect(str(db_path), check_same_thread=False)
         self._conn.row_factory = sqlite3.Row
@@ -64,7 +68,26 @@ class JobStore:
             self._conn.execute("ALTER TABLE jobs ADD COLUMN style TEXT DEFAULT ''")
         if "params" not in cols:
             self._conn.execute("ALTER TABLE jobs ADD COLUMN params TEXT")
+        # Nº de veces que un job se ha REANUDADO tras un reinicio. Si un job pesado
+        # provoca un OOM (mata el contenedor), al arrancar se reanudaría y volvería
+        # a hacer OOM: un bucle de reinicios que da 500 sin parar. Con este contador
+        # lo reanudamos como mucho una vez y, si vuelve a quedar a medias, lo damos
+        # por perdido en vez de reprocesarlo.
+        if "recover_attempts" not in cols:
+            self._conn.execute("ALTER TABLE jobs ADD COLUMN recover_attempts INTEGER DEFAULT 0")
         self._conn.commit()
+        # Diagnóstico de persistencia (clave para que las previews sobrevivan a
+        # reinicios): si la base ya existía, el volumen persiste; si es nueva cuando
+        # debería haber trabajos, /app/storage NO es persistente y hay que montar un
+        # volumen en EasyPanel (ver DEPLOY.md).
+        n = self._conn.execute("SELECT COUNT(*) FROM jobs").fetchone()[0]
+        if ya_existia:
+            logger.info("JobStore: base encontrada en %s (%d trabajos) — persistencia OK.", db_path, n)
+        else:
+            logger.warning(
+                "JobStore: base NUEVA en %s. Si esperabas trabajos previos, /app/storage "
+                "NO es un volumen persistente: móntalo en EasyPanel o las previews se "
+                "perderán en cada reinicio.", db_path)
 
     def save(
         self,
@@ -107,7 +130,7 @@ class JobStore:
     def update(self, job_id: str, fields: dict[str, Any]) -> None:
         """Actualiza columnas de un job."""
         allowed = {"status", "progress", "message", "error", "aviso",
-                   "n_clips", "output_dir", "filenames"}
+                   "n_clips", "output_dir", "filenames", "recover_attempts"}
         fields = {k: v for k, v in fields.items() if k in allowed}
         if not fields:
             return
