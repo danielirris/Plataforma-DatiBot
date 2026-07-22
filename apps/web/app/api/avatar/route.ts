@@ -8,7 +8,7 @@ import {
   type ObjecionUso,
   type Producto,
 } from "@plataforma/products";
-import { investigarConGemini } from "@/lib/ai/textProvider";
+import { investigarConGemini, generarJsonGemini } from "@/lib/ai/textProvider";
 import { crearAvatarJob, terminarAvatarJob, fallarAvatarJob } from "@/lib/ai/avatarJobs";
 
 export const runtime = "nodejs";
@@ -125,51 +125,90 @@ function normObjeciones(
     .filter((o) => o.objecion.length > 0);
 }
 
-// Investiga el avatar (Gemini + Google Search). Tarda ~40-90s; por eso corre en
-// segundo plano. Devuelve el avatar o LANZA un Error con mensaje claro.
-async function ejecutarInvestigacion(producto: Producto): Promise<Avatar> {
-  // Genera y parsea; valida los dos bloques nuevos. Un solo retry si falta alguno.
-  async function intento(notaRetry = "") {
-    const { text, fuentes } = await investigarConGemini(construirPrompt(producto, notaRetry));
-    let sec: Record<string, unknown>;
+// Pide SOLO las objeciones (compra + uso) en una llamada focalizada con JSON
+// estricto. Es el rescate cuando la investigación con grounding las trunca. Usa el
+// contexto de público ya investigado para que sean pertinentes.
+function promptObjeciones(p: Producto, contexto: string): string {
+  return `Eres estratega de marketing directo. Para este producto y su público, produce las OBJECIONES (no investigues en la web, sintetiza).
+
+PRODUCTO:
+- Nombre: ${p.nombre}
+- Promesa: ${p.identidad.promesa}
+- Dirigido a: ${p.identidad.dirigidoA}
+${contexto ? `\nPÚBLICO YA INVESTIGADO (úsalo):\n${contexto}\n` : ""}
+${PROMPT_OBJECIONES}
+
+Devuelve SOLO este JSON, sin texto adicional:
+{
+  "objeciones_compra": [ { "objecion": "...", "categoria": "precio", "respuesta_sugerida": "..." } ],
+  "objeciones_uso": [ { "objecion": "...", "categoria": "dificultad", "respuesta_sugerida": "..." } ]
+}`;
+}
+
+// Rescate fiable de objeciones: hasta 2 intentos con JSON estricto. Se queda con el
+// MEJOR resultado (por si un intento trae un bloque y no el otro). Nunca lanza.
+async function completarObjeciones(
+  p: Producto,
+  sec: Record<string, unknown>,
+): Promise<{ compra: ObjecionCompra[]; uso: ObjecionUso[] }> {
+  const contexto = [formatearVinetas(sec.compradores), formatearVinetas(sec.deseos)]
+    .filter(Boolean)
+    .join("\n")
+    .slice(0, 2000);
+  const mejor = { compra: [] as ObjecionCompra[], uso: [] as ObjecionUso[] };
+  for (let i = 0; i < 2; i++) {
     try {
-      sec = parsearJson(text);
-    } catch {
-      sec = { compradores: text };
+      const o = parsearJson(await generarJsonGemini(promptObjeciones(p, contexto)));
+      const compra = normObjeciones(o.objeciones_compra, CATEGORIAS_OBJECION_COMPRA) as ObjecionCompra[];
+      const uso = normObjeciones(o.objeciones_uso, CATEGORIAS_OBJECION_USO) as ObjecionUso[];
+      if (compra.length > mejor.compra.length) mejor.compra = compra;
+      if (uso.length > mejor.uso.length) mejor.uso = uso;
+      if (mejor.compra.length && mejor.uso.length) break;
+    } catch (e) {
+      console.error("[avatar] completarObjeciones intento", i + 1, e);
     }
-    return {
-      sec,
-      fuentes,
-      compra: normObjeciones(sec.objeciones_compra, CATEGORIAS_OBJECION_COMPRA),
-      uso: normObjeciones(sec.objeciones_uso, CATEGORIAS_OBJECION_USO),
-    };
+  }
+  return mejor;
+}
+
+// Investiga el avatar (Gemini + Google Search). Tarda ~40-90s; por eso corre en
+// segundo plano. Devuelve SIEMPRE el avatar (nunca tira la investigación por las
+// objeciones): las 6 secciones se conservan pase lo que pase.
+async function ejecutarInvestigacion(producto: Producto): Promise<Avatar> {
+  // 1) Investigación con grounding: las 6 secciones (+ intento de objeciones).
+  const { text, fuentes } = await investigarConGemini(construirPrompt(producto));
+  let sec: Record<string, unknown>;
+  try {
+    sec = parsearJson(text);
+  } catch {
+    sec = { compradores: text };
   }
 
-  let r = await intento();
-  const faltan: string[] = [];
-  if (r.compra.length === 0) faltan.push("objeciones_compra (BLOQUE A)");
-  if (r.uso.length === 0) faltan.push("objeciones_uso (BLOQUE B)");
-  if (faltan.length) {
-    // un único retry, nombrando el/los bloque(s) faltante(s)
-    r = await intento(`faltó ${faltan.join(" y ")}; devuélvelo(s) completo(s) con 5 a 8 objeciones cada uno.`);
-    const siguen: string[] = [];
-    if (r.compra.length === 0) siguen.push("objeciones_compra");
-    if (r.uso.length === 0) siguen.push("objeciones_uso");
-    if (siguen.length)
-      throw new Error(`La IA no devolvió: ${siguen.join(", ")} (tras 1 reintento). Intenta de nuevo.`);
+  let compra = normObjeciones(sec.objeciones_compra, CATEGORIAS_OBJECION_COMPRA) as ObjecionCompra[];
+  let uso = normObjeciones(sec.objeciones_uso, CATEGORIAS_OBJECION_USO) as ObjecionUso[];
+
+  // 2) Si el grounding truncó/omitió las objeciones (van al final del JSON, es lo que
+  //    más se pierde), las rescatamos con una llamada FOCALIZADA con JSON estricto
+  //    —fiable— en vez de rehacer toda la investigación (que es lo que fallaba).
+  if (compra.length === 0 || uso.length === 0) {
+    const extra = await completarObjeciones(producto, sec);
+    if (compra.length === 0) compra = extra.compra;
+    if (uso.length === 0) uso = extra.uso;
   }
 
-  const s = r.sec;
+  // 3) Aunque las objeciones fallen del todo, NO se tira la investigación: la UI ya
+  //    permite generarlas por bloque o añadirlas a mano, y el usuario conserva las
+  //    6 secciones (antes se perdían los 40-90s de research por esto).
   return {
-    compradores: formatearVinetas(s.compradores),
-    deseos: formatearVinetas(s.deseos),
-    demografia: formatearVinetas(s.demografia),
-    otras_soluciones: formatearVinetas(s.otras_soluciones),
-    curiosidad: formatearVinetas(s.curiosidad),
-    mecanismo_unico: formatearVinetas(s.mecanismo_unico),
-    objeciones_compra: r.compra as ObjecionCompra[],
-    objeciones_uso: r.uso as ObjecionUso[],
-    fuentes: r.fuentes,
+    compradores: formatearVinetas(sec.compradores),
+    deseos: formatearVinetas(sec.deseos),
+    demografia: formatearVinetas(sec.demografia),
+    otras_soluciones: formatearVinetas(sec.otras_soluciones),
+    curiosidad: formatearVinetas(sec.curiosidad),
+    mecanismo_unico: formatearVinetas(sec.mecanismo_unico),
+    objeciones_compra: compra,
+    objeciones_uso: uso,
+    fuentes,
   };
 }
 

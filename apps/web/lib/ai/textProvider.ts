@@ -139,6 +139,42 @@ export async function investigarConGemini(
   return { text, fuentes };
 }
 
+/**
+ * Genera JSON con Gemini SIN grounding pero forzando salida JSON estricta
+ * (responseMimeType) y con un tope de tokens holgado. Es MUCHO más fiable para
+ * estructuras que ``investigarConGemini``: el grounding (búsqueda web) prioriza la
+ * prosa de investigación y trunca el JSON largo — por eso las partes estructuradas
+ * que van al final (p.ej. las objeciones del avatar) se perdían. Usa grounding solo
+ * para investigar en texto; usa ESTO para las partes estructuradas.
+ */
+export async function generarJsonGemini(
+  prompt: string,
+  maxOutputTokens = 4096,
+): Promise<string> {
+  const cfg = await leerTextoConfig();
+  if (!cfg.geminiKey)
+    throw new Error(
+      "Falta la Gemini API Key (grupo «Generación con IA» en Configuración).",
+    );
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_TEXT_MODEL}:generateContent?key=${encodeURIComponent(cfg.geminiKey)}`;
+  const res = await geminiFetch(url, {
+    contents: [{ parts: [{ text: prompt }] }],
+    generationConfig: {
+      temperature: 0.6,
+      responseMimeType: "application/json",
+      maxOutputTokens,
+    },
+  });
+  if (!res.ok)
+    throw new Error(`Gemini respondió ${res.status}: ${await res.text()}`);
+  const data = await res.json();
+  const text = data?.candidates?.[0]?.content?.parts
+    ?.map((p: { text?: string }) => p.text ?? "")
+    .join("");
+  if (!text) throw new Error("Gemini no devolvió JSON.");
+  return text;
+}
+
 // Llama a OpenAI con timeout y reintentos, igual que geminiFetch. SIN timeout, una
 // llamada lenta de OpenAI (frecuente al generar un capítulo largo) quedaba colgada
 // hasta que el proxy (EasyPanel/Traefik) la mataba y devolvía su HTML de error 500
