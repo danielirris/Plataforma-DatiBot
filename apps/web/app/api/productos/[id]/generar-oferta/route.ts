@@ -77,6 +77,25 @@ Avatar:
 ${ang}`;
 }
 
+// Lo que el usuario YA tiene: la IA debe RESPETARLO (no reinventar el principal ni
+// los bonos que ya existen), y construir el resto de la oferta alrededor.
+function yaTengoBloque(p: Producto): string {
+  const items = p.oferta?.ya_tengo ?? [];
+  if (!items.length) return "";
+  const lines = items
+    .map((a) => `- [${a.tipo === "principal" ? "PRODUCTO PRINCIPAL" : "BONO"}] ${a.titulo}: ${a.descripcion}`)
+    .join("\n");
+  return `
+
+--- LO QUE EL CLIENTE YA TIENE (RESPÉTALO, no lo reinventes) ---
+${lines}
+
+Instrucciones sobre esto:
+- Si hay un ítem marcado PRODUCTO PRINCIPAL, ese ES el producto_principal: respeta su título e idea (puedes pulir el copy, NO cambiar el concepto).
+- Cada ítem marcado BONO debe aparecer entre los bonos, respetando su título e idea.
+- Construye el resto de la oferta (promesa, los bonos que falten hasta ${MIN_BONOS}-${MAX_BONOS}, framing y urgencia) alrededor de lo que ya existe.`;
+}
+
 function parsearJson(raw: string): Record<string, unknown> {
   let s = raw.trim();
   s = s.replace(/^```(?:json)?/i, "").replace(/```$/i, "").trim();
@@ -133,6 +152,7 @@ function validar(sec: Record<string, unknown>): { oferta?: Oferta; error?: strin
   const oferta: Oferta = {
     nombre_oferta: str(o.nombre_oferta),
     promesa_grande: str(o.promesa_grande),
+    ya_tengo: [], // lo rellena el POST con lo que el usuario ya tenía (no lo genera la IA)
     producto_principal: {
       titulo: str(pp.titulo),
       descripcion_corta: str(pp.descripcion_corta),
@@ -167,7 +187,7 @@ export async function POST(req: Request, { params }: Ctx) {
   const reglaVideo = incluyeVideo
     ? "REGLA DE VIDEO: se permite que UNO de los bonos sea un video corto simple (ej. una mini-clase). Los demás, ebook/PDF/checklist."
     : "REGLA DE VIDEO: NINGÚN bono en video. TODOS los bonos son ebook/PDF/checklist digitales simples.";
-  const promptBase = `${SYSTEM_PROMPT}\n\n${reglaVideo}\n\n${insumos(producto)}`;
+  const promptBase = `${SYSTEM_PROMPT}\n\n${reglaVideo}\n\n${insumos(producto)}${yaTengoBloque(producto)}`;
 
   async function intento(nota = ""): Promise<{ oferta?: Oferta; error?: string }> {
     let raw: string;
@@ -195,5 +215,8 @@ export async function POST(req: Request, { params }: Ctx) {
   }
 
   r.oferta.incluye_video = incluyeVideo;
+  // Conserva "lo que ya tengo" que el usuario metió (la IA no lo genera): así no se
+  // pierde al regenerar la oferta.
+  r.oferta.ya_tengo = producto.oferta?.ya_tengo ?? [];
   return NextResponse.json({ oferta: r.oferta });
 }

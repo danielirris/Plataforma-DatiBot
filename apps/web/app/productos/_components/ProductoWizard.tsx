@@ -17,6 +17,7 @@ import {
   MIN_BONOS,
   MAX_BONOS,
   ofertaVacia,
+  activoVacio,
   bonoVacio,
   ebookVacio,
   type VideoProducto,
@@ -25,6 +26,7 @@ import {
   type Avatar,
   type Oferta,
   type BonoOferta,
+  type ActivoExistente,
   type ObjecionCompra,
   type ObjecionUso,
   type Producto,
@@ -362,6 +364,31 @@ export function ProductoWizard({ producto }: { producto?: Producto }) {
   function removeBono(i: number) {
     updateOferta((o) =>
       o.bonos.length <= MIN_BONOS ? o : { ...o, bonos: o.bonos.filter((_, k) => k !== i) },
+    );
+  }
+
+  // ── Lo que ya tengo (activos existentes desde donde arranca la oferta) ──
+  // Editable aun sin oferta: al añadir el primero se inicializa una oferta vacía
+  // para que ``ya_tengo`` tenga dónde vivir; luego "Generar oferta" lo respeta.
+  function addActivo() {
+    setP((prev) => {
+      const of = prev.oferta ?? ofertaVacia();
+      return { ...prev, oferta: { ...of, ya_tengo: [...(of.ya_tengo ?? []), activoVacio()] } };
+    });
+  }
+  function setActivo(i: number, campo: keyof ActivoExistente, valor: string) {
+    setP((prev) => {
+      const of = prev.oferta ?? ofertaVacia();
+      const lista = [...(of.ya_tengo ?? [])];
+      lista[i] = { ...lista[i], [campo]: valor } as ActivoExistente;
+      return { ...prev, oferta: { ...of, ya_tengo: lista } };
+    });
+  }
+  function removeActivo(i: number) {
+    setP((prev) =>
+      prev.oferta
+        ? { ...prev, oferta: { ...prev.oferta, ya_tengo: (prev.oferta.ya_tengo ?? []).filter((_, k) => k !== i) } }
+        : prev,
     );
   }
 
@@ -1029,6 +1056,66 @@ export function ProductoWizard({ producto }: { producto?: Producto }) {
               ¿Se ofrece algo en video?
             </label>
             <span className="text-sm text-muted">{ofertaEstado}</span>
+          </div>
+
+          {/* Lo que ya tengo: arranca la oferta desde lo que el usuario ya posee. */}
+          <div className="space-y-3 rounded-xl border border-[var(--hairline)] glass p-5">
+            <div className="flex items-center justify-between gap-2">
+              <div>
+                <span className="text-sm font-medium">Lo que ya tengo</span>
+                <p className="text-xs text-muted">
+                  Lo que ya tienes para arrancar la oferta. Marca si es el producto
+                  principal o un bono. La IA lo respeta al generar (no lo reinventa).
+                </p>
+              </div>
+              <button
+                onClick={addActivo}
+                className="shrink-0 rounded border border-[var(--hairline)] px-2 py-1 text-xs text-muted hover:text-text"
+              >
+                + Añadir
+              </button>
+            </div>
+            {(p.oferta?.ya_tengo ?? []).length === 0 && (
+              <p className="text-xs text-muted">
+                Opcional. Si ya tienes algo (el producto o un bono), ponlo aquí y la
+                oferta partirá de ello.
+              </p>
+            )}
+            {(p.oferta?.ya_tengo ?? []).map((a, i) => (
+              <div key={i} className="space-y-2 rounded-lg border border-[var(--hairline)] bg-[var(--field)] p-3">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="text-xs font-medium text-muted">{i + 1}.</span>
+                  <input
+                    value={a.titulo}
+                    onChange={(e) => setActivo(i, "titulo", e.target.value)}
+                    placeholder="Título (qué es)"
+                    className="min-w-0 flex-1 rounded border border-[var(--hairline)] bg-[var(--field)] px-2 py-1 text-sm text-text outline-none focus:border-accent"
+                  />
+                  <select
+                    value={a.tipo}
+                    onChange={(e) => setActivo(i, "tipo", e.target.value)}
+                    className="rounded border border-[var(--hairline)] bg-[var(--field)] px-2 py-1 text-sm text-text outline-none focus:border-accent"
+                  >
+                    <option value="principal">Producto principal</option>
+                    <option value="bono">Bono</option>
+                  </select>
+                  <button
+                    onClick={() => removeActivo(i)}
+                    className="shrink-0 rounded px-2 py-1 text-xs text-muted hover:text-red-400"
+                    title="Quitar"
+                  >
+                    🗑️
+                  </button>
+                </div>
+                <AutoTextarea
+                  value={a.descripcion}
+                  onChange={(e) => setActivo(i, "descripcion", e.target.value)}
+                  rows={2}
+                  placeholder="Descripción (qué es, para qué sirve)"
+                  className="w-full rounded border border-[var(--hairline)] bg-[var(--field)] px-2 py-1 text-sm text-text outline-none focus:border-accent"
+                />
+              </div>
+            ))}
           </div>
 
           {!p.oferta ? (

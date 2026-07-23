@@ -278,9 +278,20 @@ export interface BonoOferta {
   objecion_que_desactiva: string;
   valor_percibido_texto: string;
 }
+/** Algo que el usuario YA tiene, para arrancar la oferta desde ahí en vez de que la
+ *  IA lo invente de cero. Se marca su rol dentro de la oferta. */
+export interface ActivoExistente {
+  titulo: string;
+  descripcion: string;
+  /** rol en la oferta: es el producto principal, o uno de los bonos */
+  tipo: "principal" | "bono";
+}
 export interface Oferta {
   nombre_oferta: string;
   promesa_grande: string;
+  /** lo que el usuario YA tiene (título + descripción + rol). La IA lo respeta como
+   *  punto de partida al generar la oferta: no reinventa lo que ya está aquí. */
+  ya_tengo: ActivoExistente[];
   producto_principal: ProductoPrincipalOferta;
   /** 3 o 4 bonos */
   bonos: BonoOferta[];
@@ -377,10 +388,14 @@ export function bonoVacio(): BonoOferta {
     valor_percibido_texto: "",
   };
 }
+export function activoVacio(): ActivoExistente {
+  return { titulo: "", descripcion: "", tipo: "principal" };
+}
 export function ofertaVacia(): Oferta {
   return {
     nombre_oferta: "",
     promesa_grande: "",
+    ya_tengo: [],
     producto_principal: {
       titulo: "",
       descripcion_corta: "",
