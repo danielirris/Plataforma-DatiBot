@@ -27,7 +27,7 @@ export async function POST(req: Request, { params }: Ctx) {
       { status: 400 },
     );
 
-  const n = Math.min(20, Math.max(4, Number(body.capitulos) || 10));
+  const n = Math.min(30, Math.max(4, Number(body.capitulos) || 10));
   try {
     const capitulos = await generarIndice(producto, idea, n);
     if (!capitulos.length) throw new Error("La IA no devolvió capítulos.");

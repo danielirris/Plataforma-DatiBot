@@ -269,6 +269,14 @@ export interface ProductoPrincipalOferta {
   que_incluye: string[];
   /** valor percibido en TEXTO comparativo, no en dinero */
   valor_percibido_texto: string;
+  /**
+   * Producto tipo "N elementos de X" (ej. 25 ejemplos de mascarillas). ``cantidad``
+   * es N y ``elemento`` es el texto (ej. "ejemplos de mascarillas"). Si se rellenan,
+   * el título del producto principal es "N elemento" y el EBOOK se redacta con
+   * EXACTAMENTE esa cantidad de elementos. 0/"" = no aplica (producto normal).
+   */
+  cantidad?: number;
+  elemento?: string;
 }
 export interface BonoOferta {
   titulo: string;
@@ -401,6 +409,8 @@ export function ofertaVacia(): Oferta {
       descripcion_corta: "",
       que_incluye: [""],
       valor_percibido_texto: "",
+      cantidad: 0,
+      elemento: "",
     },
     bonos: [bonoVacio(), bonoVacio(), bonoVacio()],
     framing_del_stack: "",

@@ -96,6 +96,22 @@ Instrucciones sobre esto:
 - Construye el resto de la oferta (promesa, los bonos que falten hasta ${MIN_BONOS}-${MAX_BONOS}, framing y urgencia) alrededor de lo que ya existe.`;
 }
 
+// Producto por CANTIDAD ("N ejemplos de X"): el título del principal debe reflejarlo
+// y todo el copy ser coherente con esa cantidad. La cantidad NO la genera la IA.
+function cantidadBloque(p: Producto): string {
+  const pp = p.oferta?.producto_principal;
+  const n = pp?.cantidad ?? 0;
+  const el = (pp?.elemento ?? "").trim();
+  if (!n || !el) return "";
+  return `
+
+--- FORMATO DEL PRODUCTO PRINCIPAL (OBLIGATORIO) ---
+El producto principal es del tipo "CANTIDAD + ELEMENTO": ${n} ${el}.
+- El "titulo" del producto_principal DEBE reflejar la cantidad y el elemento (ej. "${n} ${el}", vestido para el embudo).
+- "descripcion_corta" y "que_incluye" deben ser coherentes con que se entregan ${n} ${el}.
+- NO cambies la cantidad (${n}) ni el elemento ("${el}").`;
+}
+
 function parsearJson(raw: string): Record<string, unknown> {
   let s = raw.trim();
   s = s.replace(/^```(?:json)?/i, "").replace(/```$/i, "").trim();
@@ -187,7 +203,7 @@ export async function POST(req: Request, { params }: Ctx) {
   const reglaVideo = incluyeVideo
     ? "REGLA DE VIDEO: se permite que UNO de los bonos sea un video corto simple (ej. una mini-clase). Los demás, ebook/PDF/checklist."
     : "REGLA DE VIDEO: NINGÚN bono en video. TODOS los bonos son ebook/PDF/checklist digitales simples.";
-  const promptBase = `${SYSTEM_PROMPT}\n\n${reglaVideo}\n\n${insumos(producto)}${yaTengoBloque(producto)}`;
+  const promptBase = `${SYSTEM_PROMPT}\n\n${reglaVideo}\n\n${insumos(producto)}${yaTengoBloque(producto)}${cantidadBloque(producto)}`;
 
   async function intento(nota = ""): Promise<{ oferta?: Oferta; error?: string }> {
     let raw: string;
@@ -215,8 +231,10 @@ export async function POST(req: Request, { params }: Ctx) {
   }
 
   r.oferta.incluye_video = incluyeVideo;
-  // Conserva "lo que ya tengo" que el usuario metió (la IA no lo genera): así no se
-  // pierde al regenerar la oferta.
+  // Conserva "lo que ya tengo" y la cantidad/elemento que puso el usuario (la IA no
+  // los genera): así no se pierden al regenerar la oferta.
   r.oferta.ya_tengo = producto.oferta?.ya_tengo ?? [];
+  r.oferta.producto_principal.cantidad = producto.oferta?.producto_principal?.cantidad ?? 0;
+  r.oferta.producto_principal.elemento = producto.oferta?.producto_principal?.elemento ?? "";
   return NextResponse.json({ oferta: r.oferta });
 }

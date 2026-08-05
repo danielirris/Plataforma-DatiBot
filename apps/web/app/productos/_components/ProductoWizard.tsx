@@ -324,6 +324,9 @@ export function ProductoWizard({ producto }: { producto?: Producto }) {
   function setOfertaPP(campo: keyof Oferta["producto_principal"], valor: string) {
     updateOferta((o) => ({ ...o, producto_principal: { ...o.producto_principal, [campo]: valor } }));
   }
+  function setOfertaPPCantidad(n: number) {
+    updateOferta((o) => ({ ...o, producto_principal: { ...o.producto_principal, cantidad: n } }));
+  }
   function setQueIncluye(i: number, valor: string) {
     updateOferta((o) => {
       const q = [...o.producto_principal.que_incluye];
@@ -1150,6 +1153,41 @@ export function ProductoWizard({ producto }: { producto?: Producto }) {
               {/* Producto principal */}
               <div className="space-y-3 rounded-xl border border-accent/40 glass p-5">
                 <h3 className="text-sm font-medium text-accent-2">Producto principal</h3>
+                {/* Cantidad + Elemento: producto tipo "N ejemplos de X" (opcional). */}
+                <div className="rounded-lg border border-[var(--hairline)] bg-[var(--field)] p-3">
+                  <p className="mb-2 text-xs text-muted">
+                    ¿Es un producto por <b>cantidad</b> (ej. <i>25 ejemplos de mascarillas</i>)?
+                    Pon el número y el elemento; el <b>ebook se redactará con esa cantidad exacta</b>.
+                    Déjalo en 0 si no aplica.
+                  </p>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <input
+                      type="number"
+                      min={0}
+                      max={200}
+                      value={p.oferta!.producto_principal.cantidad ?? 0}
+                      onChange={(e) =>
+                        setOfertaPPCantidad(Math.max(0, Math.min(200, Math.round(Number(e.target.value) || 0))))
+                      }
+                      className="w-20 rounded border border-[var(--hairline)] bg-[var(--field)] px-2 py-1 text-sm text-text outline-none focus:border-accent"
+                    />
+                    <input
+                      value={p.oferta!.producto_principal.elemento ?? ""}
+                      onChange={(e) => setOfertaPP("elemento", e.target.value)}
+                      placeholder="elemento (ej. ejemplos de mascarillas, recetas, rutinas)"
+                      className="min-w-0 flex-1 rounded border border-[var(--hairline)] bg-[var(--field)] px-2 py-1 text-sm text-text outline-none focus:border-accent"
+                    />
+                  </div>
+                  {(p.oferta!.producto_principal.cantidad ?? 0) > 0 &&
+                    (p.oferta!.producto_principal.elemento ?? "").trim() && (
+                      <p className="mt-2 text-xs text-accent-2">
+                        → Producto:{" "}
+                        <b>
+                          {p.oferta!.producto_principal.cantidad} {p.oferta!.producto_principal.elemento}
+                        </b>
+                      </p>
+                    )}
+                </div>
                 <label className="flex flex-col gap-1 text-sm">
                   <span className="text-muted">Título (vestido para el embudo)</span>
                   <AutoTextarea

@@ -141,6 +141,17 @@ function contextoProducto(p: Producto): string {
           : "",
         ...o.producto_principal.que_incluye.filter(Boolean).map((x) => `  · ${x}`),
       );
+      // Producto por cantidad ("N ejemplos de X"): el libro DEBE entregar los N.
+      const pp = o.producto_principal;
+      if ((pp.cantidad ?? 0) > 0 && (pp.elemento ?? "").trim()) {
+        partes.push(
+          ``,
+          `⚠️ CANTIDAD OBLIGATORIA: el LIBRO entrega EXACTAMENTE ${pp.cantidad} ${pp.elemento} en total. ` +
+            `Deben desarrollarse los ${pp.cantidad} completos (ni uno menos), REPARTIDOS entre los ` +
+            `capítulos (no todos en uno). Numéralos para que el lector pueda contarlos. La estructura ` +
+            `(cuántos por capítulo, cómo agruparlos) la decides tú, pero el total DEBE ser ${pp.cantidad}.`,
+        );
+      }
       const otros = (o.bonos ?? []).map((b) => b.titulo).filter(Boolean);
       if (otros.length)
         partes.push(
