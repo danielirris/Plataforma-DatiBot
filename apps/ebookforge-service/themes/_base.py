@@ -155,7 +155,12 @@ def _image(t, b):
 # script/style/iframe: el PDF no los necesita y no vamos a confiar a ciegas.
 _HTML_OK = re.compile(
     r"</?(?:div|p|span|b|strong|i|em|u|br|hr|small|"
-    r"ul|ol|li|table|thead|tbody|tr|th|td|figure|figcaption|h3|h4)\b[^>]*>",
+    r"ul|ol|li|table|thead|tbody|tr|th|td|figure|figcaption|h3|h4|"
+    # SVG seguro: formas/iconos simples que dibuja la IA (WeasyPrint los rinde).
+    # Se EXCLUYEN a propósito use/image/a/foreignObject/script/animate (fetch
+    # externo, ejecución o features no soportadas).
+    r"svg|g|path|rect|circle|ellipse|line|polyline|polygon|text|tspan|"
+    r"defs|lineargradient|radialgradient|stop)\b[^>]*>",
     re.I,
 )
 _HTML_TAG = re.compile(r"</?[a-zA-Z][^>]*>")

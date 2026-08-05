@@ -41,9 +41,13 @@ Sobre el bloque "html" (úsalo 1-2 veces por capítulo cuando aporte de verdad):
 - Sirve para fichas y esquemas: receta (ingredientes + pasos), tabla comparativa,
   checklist, ficha técnica, línea de tiempo, dosis/medidas, antes/después.
 - Escribe HTML SIMPLE y SIN estilos propios (nada de style=, class= inventadas,
-  script ni imágenes): el diseño del libro lo pinta solo con su tema.
+  script ni <img>): el diseño del libro lo pinta solo con su tema.
 - Etiquetas permitidas: p, b, strong, i, em, br, ul, ol, li, table, thead, tbody,
   tr, th, td, div, span, h3, h4, small, hr.
+- También puedes dibujar un ICONO, MEDIDOR o DIAGRAMA simple con SVG EN LÍNEA (con su
+  propio viewBox): svg, g, path, rect, circle, ellipse, line, polyline, polygon, text.
+  Usa atributos de presentación (fill, stroke, stroke-width); NADA de style=, script,
+  <use> ni <image>. Mantenlo simple y autocontenido (se rinde en el PDF).
 - Puedes usar estas clases del tema para que quede bonito:
   · <div class="kv"><span>Tiempo</span><b>25 min</b></div>   (dato a la izquierda, valor a la derecha)
   · <span class="badge">Fácil</span>                          (etiqueta destacada)
@@ -255,6 +259,12 @@ export async function generarCapitulo(
   const indice = capitulos
     .map((c, i) => `${i + 1}. ${c.titulo}`)
     .join("\n");
+  // Producto por cantidad ("N ejemplos de X"): cada ítem lleva su propio gráfico.
+  const pp = p.oferta?.producto_principal;
+  const porItem =
+    !bonoObjetivo(p) && (pp?.cantidad ?? 0) > 0 && (pp?.elemento ?? "").trim()
+      ? `\n- GRÁFICO POR ÍTEM (obligatorio): este producto es «${pp!.cantidad} ${pp!.elemento}». Por CADA ítem que desarrolles en este capítulo, incluye JUSTO DESPUÉS un bloque "html" con su ficha visual PROPIA y específica (HTML/CSS del tema; opcionalmente un icono/medidor SVG simple). Un gráfico por ítem, no genérico. Esto MANDA sobre el "1-2 por capítulo".`
+      : "";
   const prompt = `${SCHEMA_BLOQUES}
 
 Libro: «${idea.titulo}» — ${idea.subtitulo}
@@ -268,7 +278,7 @@ Redacta SOLO el capítulo ${index + 1}: «${cap.titulo}» (${cap.resumen}).
 - Empieza con un bloque section (eyebrow='Capítulo ${pad2(index + 1)}', title='${cap.titulo.replace(/'/g, "’")}').
 - Extensión: unas 4-6 páginas (párrafos claros, listas prácticas y alguna caja destacada).
 - Contenido ACCIONABLE y específico (si son recetas: ingredientes y pasos reales), español neutral, sin relleno.
-- NO menciones precios ni links.
+- NO menciones precios ni links.${porItem}
 ${bloqueInstrucciones(p)}
 
 Devuelve SOLO la lista JSON de bloques.`;
