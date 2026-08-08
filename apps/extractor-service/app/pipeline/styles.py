@@ -131,17 +131,33 @@ STYLE_MOVES: dict[str, dict] = {
 #                Tipos: "cover" (color a pantalla completa, tapa el video),
 #                "lower" (rótulo abajo, el video se ve), "poster" (banda tipo
 #                cartel), "bigword" (palabra gigante con el video detrás).
+#   grade      — filtro CSS del video (contraste/saturación/brillo): la "piel" de
+#                color del estilo. Es lo que más diferencia un estilo de otro a golpe
+#                de vista (editorial desaturado vs. retro cálido vs. bestia punchy).
+#   vignette   — oscurecimiento de bordes (0-1): sobrio vs. cine.
+#   sub_case   — mayúsculas del subtítulo ("upper") o caja normal ("none").
+#   sub_weight — grosor del subtítulo (600 elegante … 900 bestia).
 STYLE_LOOK: dict[str, dict] = {
     "editorial_mono": {"font": "Oswald", "sub_bottom": 30, "sub_scale": 0.82,
-                       "cards": ["lower", "cover"]},
+                       "cards": ["lower", "cover"],
+                       "grade": "contrast(1.10) saturate(0.70) brightness(1.02)",
+                       "vignette": 0.30, "sub_case": "none", "sub_weight": 600},
     "premium_noir": {"font": "Montserrat", "sub_bottom": 12, "sub_scale": 0.90,
-                     "cards": ["cover", "lower"]},
+                     "cards": ["cover", "lower"],
+                     "grade": "contrast(1.20) saturate(0.50) brightness(0.95)",
+                     "vignette": 0.55, "sub_case": "upper", "sub_weight": 700},
     "afiche_retro": {"font": "BebasNeue", "sub_bottom": 16, "sub_scale": 1.08,
-                     "cards": ["poster", "bigword", "cover"]},
+                     "cards": ["poster", "bigword", "cover"],
+                     "grade": "contrast(1.12) saturate(1.40) brightness(1.05)",
+                     "vignette": 0.38, "sub_case": "upper", "sub_weight": 800},
     "modo_bestia": {"font": "Anton", "sub_bottom": 15, "sub_scale": 1.00,
-                    "cards": ["bigword", "poster", "lower"]},
+                    "cards": ["bigword", "poster", "lower"],
+                    "grade": "contrast(1.22) saturate(1.30) brightness(1.07)",
+                    "vignette": 0.50, "sub_case": "upper", "sub_weight": 900},
     "relato_doc": {"font": "Poppins", "sub_bottom": 22, "sub_scale": 0.85,
-                   "cards": ["lower", "cover"]},
+                   "cards": ["lower", "cover"],
+                   "grade": "contrast(1.04) saturate(1.05) brightness(1.02)",
+                   "vignette": 0.26, "sub_case": "none", "sub_weight": 600},
 }
 
 
@@ -289,6 +305,14 @@ def apply_style(plan: dict, style_id: str, seed: str) -> dict:
     look = STYLE_LOOK.get(style_id) or {}
     plan["subBottom"] = look.get("sub_bottom", 15)
     plan["subScale"] = look.get("sub_scale", 1.0)
+    # "Piel" visual del estilo que lee la TSX (grade del video, viñeta, tratamiento del
+    # subtítulo). Es lo que hace que dos estilos se vean DISTINTOS más allá de la fuente.
+    plan["look"] = {
+        "grade": look.get("grade", "contrast(1.13) saturate(1.24) brightness(1.03)"),
+        "vignette": look.get("vignette", 0.44),
+        "subCase": look.get("sub_case", "upper"),
+        "subWeight": look.get("sub_weight", 900),
+    }
     # Layout de cada tarjeta: se rota entre los del estilo para dar variedad
     # (una de rótulo, otra de cartel, otra gigante…), en vez de todas iguales.
     layouts = look.get("cards") or ["cover"]

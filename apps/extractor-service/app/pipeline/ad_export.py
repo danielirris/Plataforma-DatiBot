@@ -280,6 +280,7 @@ export const Ad: React.FC<{ v: any; cta: any; musica: any; sfx: any; intro?: any
   const { fps, durationInFrames } = useVideoConfig();
   const frame = useCurrentFrame();
   const plan = v.plan || {};
+  const look = plan.look || {};
   const accent = plan.accent || '#FFD400';
   const palette = (plan.palette && plan.palette.length) ? plan.palette : [accent];
   const pick = (i: number) => palette[((i % palette.length) + palette.length) % palette.length];
@@ -342,9 +343,11 @@ export const Ad: React.FC<{ v: any; cta: any; musica: any; sfx: any; intro?: any
     else if (m.kind === 'spotlight') mSpot = Math.max(mSpot, k);
   }
   const videoScale = kb * punchIn + mScale;
-  // Grade "de agencia" con MÁS punch: contraste/saturación arriba y un pelín de brillo
-  // para que el metraje crudo no se vea plano (antes 1.06/1.12 era casi invisible).
-  const videoFilter = `contrast(1.13) saturate(1.24) brightness(1.03)${mGray > 0 ? ` grayscale(${mGray.toFixed(2)})` : ''}`;
+  // Grade (piel de color) PROPIO del estilo: editorial desaturado, retro cálido,
+  // bestia punchy… Es lo que hace que dos estilos se vean distintos de un vistazo.
+  // Cae al grade "de agencia" si el estilo no lo trae.
+  const grade = look.grade || 'contrast(1.13) saturate(1.24) brightness(1.03)';
+  const videoFilter = `${grade}${mGray > 0 ? ` grayscale(${mGray.toFixed(2)})` : ''}`;
 
   return (
     <AbsoluteFill style={{ backgroundColor: 'black', overflow: 'hidden' }}>
@@ -353,7 +356,7 @@ export const Ad: React.FC<{ v: any; cta: any; musica: any; sfx: any; intro?: any
                style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
       </AbsoluteFill>
       {/* Viñeta sutil: oscurece los bordes para dar acabado premium y centrar la mirada. */}
-      <AbsoluteFill style={{ background: 'radial-gradient(120% 88% at 50% 44%, transparent 54%, rgba(0,0,0,0.44))' }} />
+      <AbsoluteFill style={{ background: `radial-gradient(120% 88% at 50% 44%, transparent 54%, rgba(0,0,0,${look.vignette != null ? look.vignette : 0.44}))` }} />
 
       {/* Movidas sobre el video: spotlight (dirige la mirada) y flash (destello). */}
       {mSpot > 0 ? (
@@ -495,6 +498,10 @@ export const Subtitles: React.FC<{ words: W[]; plan?: any }> = ({ words, plan })
   const intensidad = (plan?.intensidad ?? 70) / 100;
   const subBottom = plan?.subBottom ?? 15;
   const subScale = plan?.subScale ?? 1;
+  // Tratamiento del subtítulo por estilo: grosor y mayúsculas (elegante vs. bestia).
+  const look = plan?.look || {};
+  const subWeight = look.subWeight || 900;
+  const subCase = look.subCase === 'none' ? 'none' : 'uppercase';
   const emphasis = useMemo(() => new Set((plan?.emphasis || []).map((w: string) => clean(w))), [plan]);
 
   const line = lines.find((l) => t >= l[0].start && t <= l[l.length - 1].end);
@@ -523,8 +530,8 @@ export const Subtitles: React.FC<{ words: W[]; plan?: any }> = ({ words, plan })
         const scale = baseScale * (0.68 + 0.32 * pop);
         return (
           <span key={i} style={{
-            fontFamily, fontWeight: 900, fontSize,
-            textTransform: 'uppercase', lineHeight: 1.18, color,
+            fontFamily, fontWeight: subWeight, fontSize,
+            textTransform: subCase, lineHeight: 1.18, color,
             background: box ? accent : 'transparent',
             padding: box ? '0.02em 0.22em' : 0, borderRadius: box ? '0.18em' : 0,
             WebkitTextStroke: box ? '0' : `${Math.max(2, fontSize * 0.06)}px #000`,
