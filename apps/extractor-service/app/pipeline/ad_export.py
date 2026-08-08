@@ -385,11 +385,9 @@ export const Ad: React.FC<{ v: any; cta: any; musica: any; sfx: any; intro?: any
           <Audio src={staticFile(sfx.whoosh)} volume={0.5} />
         </Sequence>
       )) : null}
-      {sfx && sfx.pop ? (v.lineStarts || []).map((s: number, i: number) => (
-        <Sequence key={`pop${i}`} from={Math.round(s * fps)} durationInFrames={Math.round(0.18 * fps)}>
-          <Audio src={staticFile(sfx.pop)} volume={0.3} />
-        </Sequence>
-      )) : null}
+      {/* El "pop" (tono sinusoidal de 620 Hz) sonaba en CADA línea de subtítulo, y
+          como hay líneas cada 1-2s se percibía como un PITIDO constante de fondo.
+          Eliminado: el whoosh en los cambios de escena da suficiente textura. */}
       {sfx && sfx.ding ? (
         <Sequence from={ctaStart + Math.round(0.18 * fps)} durationInFrames={Math.round(0.7 * fps)}>
           <Audio src={staticFile(sfx.ding)} volume={0.5} />

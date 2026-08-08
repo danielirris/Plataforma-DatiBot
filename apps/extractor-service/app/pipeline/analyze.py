@@ -388,10 +388,10 @@ Reglas:
     necesariamente la primera frase. PROHIBIDO abrir con saludos ("hola", "bienvenidos",
     "hoy te cuento"): eso es un valle muerto y la gente se va.
   * Las demás: una al centro y, opcional, una antes del cierre.
-- lists: SOLO si la voz ENUMERA varios elementos (beneficios, pasos, razones,
-  ingredientes...). Conviértelo en una escena de lista a pantalla completa: el
-  "title" y cada "item" salen del guion. 1-2 listas máx, 2-6 items. Si la voz no
-  enumera nada, deja "lists" vacío.
+- lists: por DEFECTO deja "lists" VACÍO ([]). SOLO añade UNA lista (nunca 2) si la voz
+  ENUMERA de forma CLARA y SEGUIDA 3 o más elementos (pasos 1-2-3, ingredientes,
+  razones contadas una a una). Si tienes la más mínima duda, NO pongas lista. PROHIBIDO
+  inventar una lista para "rellenar": la mayoría de anuncios NO llevan lista.
 - guias: marca SOLO el segundo donde la voz OFRECE un recurso descargable: una
   "guía", "ebook", "PDF", "plantilla", "checklist", "material", "regalo", o dice
   "te la envío/mando", "descarga", "gratis al escribirnos". 0-3 momentos. Si la voz
