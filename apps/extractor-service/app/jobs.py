@@ -840,9 +840,33 @@ class JobManager:
             usar_estilo = bool(styles.STYLES.get(style_id))
             # Con estilo elegido: sus lineamientos guían a la IA. Sin estilo
             # (flujo viejo): el prompt genérico + paleta aleatoria, como antes.
-            prompt_text = styles.style_prompt(style_id) if usar_estilo else library.read_prompt()
             # Parámetros finos del editor (overrides sobre el estilo).
             params = self._params.get(job_id, {}) or {}
+            base_prompt = styles.style_prompt(style_id) if usar_estilo else library.read_prompt()
+            # HABILITADOR DEL AVATAR: si el web adjuntó el producto, su brief (promesa,
+            # deseos, mecanismo único, oferta, emociones, objeciones) ENCABEZA los
+            # lineamientos. Así la IA hace el gancho y el ángulo a la medida de ESTE
+            # público, en vez de sacarlo todo de la voz (que hacía todos los anuncios
+            # iguales). El brief nunca debe tumbar el job.
+            producto = params.get("producto") if isinstance(params.get("producto"), dict) else None
+            prompt_text = base_prompt
+            if producto:
+                try:
+                    from app.brolls.prompts import product_brief
+                    brief = product_brief(producto)
+                    av = producto.get("avatar") or {}
+                    objs = [str(o.get("objecion")) for grp in ("objeciones_compra", "objeciones_uso")
+                            for o in (av.get(grp) or [])[:3]
+                            if isinstance(o, dict) and str(o.get("objecion") or "").strip()]
+                    if objs:
+                        brief += "\nObjeciones a desarmar (úsalas en el gancho/cierre): " + " · ".join(objs[:5])
+                    if brief.strip():
+                        prompt_text = (
+                            "PRODUCTO Y PÚBLICO (usa esto para el GANCHO y el ÁNGULO, "
+                            f"no para inventar datos):\n{brief}\n\n{base_prompt}"
+                        )
+                except Exception:  # noqa: BLE001 - el brief es opcional, no crítico
+                    logger.exception("No se pudo construir el brief del producto (job %s)", job_id)
             sub_over = str(params.get("subtitle_style") or "").strip().lower()
             highlight = str(params.get("highlight") or "").strip()
             import re as _re

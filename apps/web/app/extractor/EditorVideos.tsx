@@ -388,6 +388,8 @@ export function EditorVideos({
           oferta_pill: ofertaPill,
           hook,
           voces: voces.map((v) => v.nombre),
+          // El server lee el avatar/oferta de este producto para el brief del cerebro.
+          producto_id: productoId,
         }),
       });
       const data = await res.json().catch(() => ({}));

@@ -3,6 +3,7 @@ import { stat } from "node:fs/promises";
 import { openAsBlob } from "node:fs";
 import path from "node:path";
 import os from "node:os";
+import { getProduct } from "@plataforma/products";
 import { leerVpsConfig } from "@/lib/vps/upload";
 import { extractorUrl, extractorPublicUrl } from "@/lib/editor/extractor";
 import { esSoloEditor } from "@/lib/modo";
@@ -39,6 +40,8 @@ export async function POST(req: Request) {
     hook?: { video_idx: number; start: number; dur: number } | null;
     /** nombres devueltos por /api/editor/voz: UNA locución por anuncio, en orden */
     voces?: string[] | null;
+    /** id del producto elegido: el server lee su avatar/oferta para el brief del cerebro */
+    producto_id?: string;
   };
   try {
     body = (await req.json()) as typeof body;
@@ -48,6 +51,30 @@ export async function POST(req: Request) {
   const urls = (body.video_urls ?? []).filter(Boolean);
   if (!urls.length)
     return NextResponse.json({ error: "Elige al menos un video del producto." }, { status: 400 });
+
+  // Habilitador del avatar: el cerebro del editor recibe un BRIEF del producto
+  // (promesa, deseos, objeciones, mecanismo único, oferta, emociones) para hacer el
+  // gancho y el ángulo a la medida del público. Se lee SERVER-SIDE por id (el avatar
+  // NO viaja por el navegador) y solo en la app completa (en solo-editor no hay
+  // productos). Es opcional: si falla, el anuncio se genera igual, sin brief.
+  let productoBrief: Record<string, unknown> | null = null;
+  if (body.producto_id && !esSoloEditor()) {
+    try {
+      const prod = await getProduct(body.producto_id);
+      if (prod)
+        productoBrief = {
+          id: prod.id,
+          nombre: prod.nombre,
+          identidad: prod.identidad,
+          avatar: prod.avatar,
+          oferta: prod.oferta,
+          angulos: prod.angulos,
+          ebook: { idea: prod.ebook?.idea ?? null },
+        };
+    } catch {
+      /* el brief es opcional */
+    }
+  }
 
   // Un audio por anuncio: si hay audios, deben ser exactamente num_clips (la UI
   // ya lo bloquea; esto es defensa). Sin audios: permitido (usa el del video).
@@ -114,6 +141,7 @@ export async function POST(req: Request) {
         // (style_font). Forzar Anton hacía que los 5 estilos se vieran iguales.
         font: body.font ?? "",
         hook: body.hook ?? null,
+        producto: productoBrief,
         mode: "full",
       }),
     });
@@ -141,6 +169,7 @@ export async function POST(req: Request) {
       form.append("highlight", body.highlight ?? "");
       // "" en vez de "Anton": clipgen usa la fuente propia del estilo (ver from-urls).
       form.append("font", body.font ?? "");
+      if (productoBrief) form.append("producto", JSON.stringify(productoBrief));
       if (body.hook) form.append("hook", JSON.stringify(body.hook));
       // Editor suelto (subdominio): quien lo usa no tiene la página de preview del
       // extractor, así que el anuncio debe renderizarse solo, sin esperar a nadie.

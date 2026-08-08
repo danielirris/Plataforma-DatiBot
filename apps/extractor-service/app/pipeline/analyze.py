@@ -370,10 +370,15 @@ de edición. Devuelve EXCLUSIVAMENTE JSON válido:
 "guias":[{{"at":<seg>}}]}}
 
 Reglas:
-- CÍÑETE AL AUDIO (CRÍTICO): usa SOLO lo que dice la voz, literal. NO inventes ni
-  agregues cifras, precios, datos, beneficios ni promesas que NO estén EXPLÍCITAMENTE
-  en la transcripción. Si la voz no dice un precio, no pongas precio. Cero invenciones.
-- TODO sale del guion: el texto de cada gráfico es lo que dice la voz en ese momento.
+- FIEL AL AUDIO, CON LA CABEZA DEL PRODUCTO: el CUERPO del anuncio (pills, listas y
+  tarjetas del medio) sale de lo que dice la voz. PERO el GANCHO (1ª tarjeta) y el
+  ÁNGULO general SÍ pueden apoyarse en los LINEAMIENTOS de abajo (deseos, objeciones y
+  emociones del público) para golpear más fuerte y hablar el idioma de ESTE cliente,
+  aunque no sean palabras literales de la voz.
+- NUNCA inventes cifras, precios, datos concretos ni promesas que no estén NI en la voz
+  NI en los lineamientos. Si la voz no dice un precio, no pongas precio. Cero datos
+  inventados (esto es innegociable, aunque el gancho sea creativo).
+- El resto del texto sale del guion: cada gráfico del cuerpo refleja lo que dice la voz.
 - "at"/"start"/"end" en segundos dentro de [0, {duration:.1f}], tomados de los timestamps.
 - fullscreen: 2-3 tarjetas a PANTALLA COMPLETA (cubren todo el cuadro). VARÍA los títulos:
   cada tarjeta con texto distinto, no repitas la misma palabra/estructura.

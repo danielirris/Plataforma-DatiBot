@@ -257,6 +257,8 @@ async def create_job_from_urls(payload: dict = Body(...)) -> JSONResponse:
         params["cta_boton"] = str(payload["cta_boton"]).strip()[:24]
     if str(payload.get("oferta_pill") or "").strip():
         params["oferta_pill"] = str(payload["oferta_pill"]).strip()[:60]
+    if isinstance(payload.get("producto"), dict):
+        params["producto"] = payload["producto"]
     hook = payload.get("hook")
     if isinstance(hook, dict) and "video_idx" in hook:
         params["hook"] = {
@@ -313,6 +315,7 @@ async def create_job_from_files(
     cta_boton: str = Form(""),     # etiqueta del botón (WhatsApp →, Pídelo ahora…)
     cta_wa: str = Form("1"),       # el botón es WhatsApp (verde) o genérico (acento)
     oferta_pill: str = Form(""),   # texto de la píldora de oferta a mitad (opcional)
+    producto: str = Form(""),      # JSON del producto (avatar/oferta) para el brief del cerebro
 ) -> JSONResponse:
     """Igual que /api/jobs/from-urls pero el web MANDA LOS VIDEOS como archivos.
 
@@ -361,6 +364,13 @@ async def create_job_from_files(
         params["cta_boton"] = cta_boton.strip()[:24]
     if oferta_pill.strip():
         params["oferta_pill"] = oferta_pill.strip()[:60]
+    if producto.strip():
+        try:
+            pj = json.loads(producto)
+            if isinstance(pj, dict):
+                params["producto"] = pj
+        except Exception:  # noqa: BLE001 - el brief es opcional
+            pass
     if hook:
         try:
             h = json.loads(hook)
