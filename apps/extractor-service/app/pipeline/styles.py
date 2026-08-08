@@ -172,32 +172,32 @@ STYLE_MOVES: dict[str, dict] = {
 STYLE_LOOK: dict[str, dict] = {
     "editorial_mono": {"font": "Oswald", "sub_bottom": 30, "sub_scale": 0.82,
                        "cards": ["lower", "cover"],
-                       "grade": "contrast(1.10) saturate(0.70) brightness(1.02)",
-                       "vignette": 0.30, "sub_case": "none", "sub_weight": 600},
+                       "grade": "contrast(1.18) saturate(0.80) brightness(1.03)",
+                       "vignette": 0.32, "sub_case": "none", "sub_weight": 600},
     "premium_noir": {"font": "Montserrat", "sub_bottom": 12, "sub_scale": 0.90,
                      "cards": ["cover", "lower"],
-                     "grade": "contrast(1.20) saturate(0.50) brightness(0.95)",
+                     "grade": "contrast(1.30) saturate(0.58) brightness(0.96)",
                      "vignette": 0.55, "sub_case": "upper", "sub_weight": 700},
     "afiche_retro": {"font": "BebasNeue", "sub_bottom": 16, "sub_scale": 1.08,
                      "cards": ["poster", "bigword", "cover"],
-                     "grade": "contrast(1.12) saturate(1.40) brightness(1.05)",
-                     "vignette": 0.38, "sub_case": "upper", "sub_weight": 800},
+                     "grade": "contrast(1.22) saturate(1.55) brightness(1.06)",
+                     "vignette": 0.40, "sub_case": "upper", "sub_weight": 800},
     "modo_bestia": {"font": "Anton", "sub_bottom": 15, "sub_scale": 1.00,
                     "cards": ["bigword", "poster", "lower"],
-                    "grade": "contrast(1.22) saturate(1.30) brightness(1.07)",
-                    "vignette": 0.50, "sub_case": "upper", "sub_weight": 900},
+                    "grade": "contrast(1.34) saturate(1.45) brightness(1.08)",
+                    "vignette": 0.52, "sub_case": "upper", "sub_weight": 900},
     "relato_doc": {"font": "Poppins", "sub_bottom": 22, "sub_scale": 0.85,
                    "cards": ["lower", "cover"],
-                   "grade": "contrast(1.04) saturate(1.05) brightness(1.02)",
-                   "vignette": 0.26, "sub_case": "none", "sub_weight": 600},
+                   "grade": "contrast(1.12) saturate(1.14) brightness(1.03)",
+                   "vignette": 0.28, "sub_case": "none", "sub_weight": 600},
     "elegante_fem": {"font": "Poppins", "sub_bottom": 20, "sub_scale": 0.92,
                      "cards": ["cover", "lower"],
-                     "grade": "contrast(1.04) saturate(1.12) brightness(1.05)",
-                     "vignette": 0.24, "sub_case": "none", "sub_weight": 600},
+                     "grade": "contrast(1.12) saturate(1.20) brightness(1.06)",
+                     "vignette": 0.26, "sub_case": "none", "sub_weight": 600},
     "impacto_masc": {"font": "ArchivoBlack", "sub_bottom": 15, "sub_scale": 1.05,
                      "cards": ["bigword", "cover", "poster"],
-                     "grade": "contrast(1.20) saturate(1.15) brightness(1.00)",
-                     "vignette": 0.50, "sub_case": "upper", "sub_weight": 900},
+                     "grade": "contrast(1.32) saturate(1.28) brightness(1.02)",
+                     "vignette": 0.52, "sub_case": "upper", "sub_weight": 900},
 }
 
 
@@ -360,10 +360,10 @@ def apply_style(plan: dict, style_id: str, seed: str) -> dict:
     for i, c in enumerate(cards):
         if isinstance(c, dict):
             c["layout"] = layouts[i % len(layouts)]
-    # Los primeros 5s son el VIDEO (el gancho VISUAL frena el scroll), sin tarjeta
-    # full-screen que lo tape. Reubicamos cualquier tarjeta que caiga antes de 5s a
-    # partir de 5s, espaciadas, para que el arranque sea puro metraje.
-    early = [c for c in cards if isinstance(c, dict) and float(c.get("at", 0.0)) < 5.0]
-    for k, c in enumerate(early):
-        c["at"] = round(5.0 + k * 2.0, 2)
+    # Los primeros 5s son el VIDEO (el gancho VISUAL frena el scroll): fuera cualquier
+    # tarjeta full-screen que caiga antes de 5s. Las que quedan MANTIENEN su "at" de la
+    # IA (sincronizado con la voz, en el segundo exacto en que se dice). NO se reubican
+    # a tiempos fijos: eso era lo que las desincronizaba del audio.
+    plan["fullscreen"] = [c for c in cards
+                          if not (isinstance(c, dict) and float(c.get("at", 0.0)) < 5.0)]
     return plan
