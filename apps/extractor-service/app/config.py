@@ -85,11 +85,11 @@ class Settings(BaseSettings):
     # Línea de refuerzo en el cierre. COD manda en LatAm: "pagas al recibir" quita
     # el miedo a pagar por adelantado y sube la conversión. Editable/vaciable.
     cta_sub: str = "🚚 Pago contra entrega · pagas al recibir"
-    musica_volumen: float = 0.32  # volumen base de la música (0-1), sin voz
+    musica_volumen: float = 0.50  # volumen base de la música (0-1), sin voz (subido)
     # Volumen de la música MIENTRAS habla la voz. Como la locución suele hablar
-    # casi todo el video, este es el nivel que de verdad se oye: 0.08 lo dejaba
-    # inaudible. 0.20 la hace presente sin tapar la voz (que va a 1.0).
-    musica_volumen_ducking: float = 0.20
+    # casi todo el video, este es el nivel que de verdad se oye. Subido a 0.30 para
+    # que la música se sienta más (sin tapar la voz, que va a 1.0).
+    musica_volumen_ducking: float = 0.30
     renderizar_anuncio: bool = True  # renderizar el mp4 final si hay Node + runtime
     preview_first: bool = True       # modo anuncio: previsualizar antes de renderizar
 

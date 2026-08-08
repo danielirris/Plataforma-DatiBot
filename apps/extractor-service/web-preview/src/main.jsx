@@ -63,15 +63,15 @@ function Subtitles({ words, plan }) {
   const intensidad = (plan?.intensidad ?? 70) / 100;
   const look = plan?.look || {};
   const subBottom = plan?.subBottom ?? 15;
-  const subScale = plan?.subScale ?? 1;
+  const subScale = Math.max(1, plan?.subScale ?? 1); // piso 1.0: subtitulos SIEMPRE grandes
   const subWeight = look.subWeight || 900;
-  const subCase = look.subCase === 'none' ? 'none' : 'uppercase';
+  const subCase = 'uppercase'; // SIEMPRE mayusculas (pedido del usuario)
   const subAnim = look.subAnim || 'pop';
   const emphasis = useMemo(() => new Set((plan?.emphasis || []).map((w) => clean(w))), [plan]);
   const line = lines.find((l) => t >= l[0].start && t <= l[l.length - 1].end);
   if (!line) return null;
   const activeIdx = line.findIndex((w) => t >= w.start && t < w.end);
-  const fontSize = Math.round(width * (0.07 + 0.012 * intensidad) * subScale);
+  const fontSize = Math.round(width * (0.078 + 0.012 * intensidad) * subScale);
   return (
     <div style={{ position: 'absolute', left: '8%', right: '8%', bottom: subBottom + '%', display: 'flex',
       flexWrap: 'wrap', gap: '0.28em 0.75em', justifyContent: 'center', alignItems: 'center', textAlign: 'center' }}>
@@ -254,7 +254,10 @@ function Ad({ v, cta, musica, sfx, assetBase }) {
       {v.voz ? <Audio src={src(v.voz)} /> : null}
       {v.music ? <Audio src={src(v.music)} loop volume={(f) => (isSpeaking(f) ? musica.ducking : musica.volumen)} /> : null}
       {sfx && sfx.whoosh ? cards.map((c, i) => (
-        <Sequence key={`wh${i}`} from={c.f} durationInFrames={Math.round(0.6 * fps)}><Audio src={src(sfx.whoosh)} volume={0.5} /></Sequence>
+        <Sequence key={`wh${i}`} from={c.f} durationInFrames={Math.round(0.6 * fps)}><Audio src={src(sfx.whoosh)} volume={0.7} /></Sequence>
+      )) : null}
+      {sfx && sfx.impact ? cards.map((c, i) => (
+        <Sequence key={`ci${i}`} from={c.f} durationInFrames={Math.round(0.4 * fps)}><Audio src={src(sfx.impact)} volume={0.5} /></Sequence>
       )) : null}
       {/* Rompe-scroll: golpe grave en el segundo 0. (El "pop" sinusoidal por linea se
           elimino: sonaba a pitido constante de fondo.) */}

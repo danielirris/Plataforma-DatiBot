@@ -382,7 +382,13 @@ export const Ad: React.FC<{ v: any; cta: any; musica: any; sfx: any; intro?: any
       {/* SFX */}
       {sfx && sfx.whoosh ? cards.map((c: any, i: number) => (
         <Sequence key={`wh${i}`} from={c.f} durationInFrames={Math.round(0.6 * fps)}>
-          <Audio src={staticFile(sfx.whoosh)} volume={0.5} />
+          <Audio src={staticFile(sfx.whoosh)} volume={0.7} />
+        </Sequence>
+      )) : null}
+      {/* Golpe al ENTRAR cada tarjeta (más animado, con cuerpo). */}
+      {sfx && sfx.impact ? cards.map((c: any, i: number) => (
+        <Sequence key={`ci${i}`} from={c.f} durationInFrames={Math.round(0.4 * fps)}>
+          <Audio src={staticFile(sfx.impact)} volume={0.5} />
         </Sequence>
       )) : null}
       {/* Rompe-scroll: golpe grave en el segundo 0 (arranque). (El antiguo "pop"
@@ -505,18 +511,20 @@ export const Subtitles: React.FC<{ words: W[]; plan?: any }> = ({ words, plan })
   const style = plan?.subtitle_style || 'pop';
   const intensidad = (plan?.intensidad ?? 70) / 100;
   const subBottom = plan?.subBottom ?? 15;
-  const subScale = plan?.subScale ?? 1;
-  // Tratamiento del subtítulo por estilo: grosor y mayúsculas (elegante vs. bestia).
+  // El usuario pide subtítulos SIEMPRE GRANDES: piso de escala 1.0 (algunos estilos la
+  // bajaban a 0.82 y se veían pequeños).
+  const subScale = Math.max(1, plan?.subScale ?? 1);
   const look = plan?.look || {};
   const subWeight = look.subWeight || 900;
-  const subCase = look.subCase === 'none' ? 'none' : 'uppercase';
+  // SIEMPRE MAYÚSCULAS (pedido del usuario), en todos los estilos.
+  const subCase = 'uppercase';
   const subAnim = look.subAnim || 'pop';
   const emphasis = useMemo(() => new Set((plan?.emphasis || []).map((w: string) => clean(w))), [plan]);
 
   const line = lines.find((l) => t >= l[0].start && t <= l[l.length - 1].end);
   if (!line) return null;
   const activeIdx = line.findIndex((w) => t >= w.start && t < w.end);
-  const fontSize = Math.round(width * (0.07 + 0.012 * intensidad) * subScale);
+  const fontSize = Math.round(width * (0.078 + 0.012 * intensidad) * subScale);
 
   return (
     <div style={{
@@ -597,6 +605,8 @@ export const Card: React.FC<{ top?: string; keyText: string; sub?: string; emoji
       <AbsoluteFill style={{ opacity: o, justifyContent: 'flex-end' }}>
         <AbsoluteFill style={{ top: '46%', background: 'linear-gradient(transparent, rgba(0,0,0,0.82) 62%)' }} />
         <div style={{ margin: '0 7% 12%', transform: `translateY(${up}px)` }}>
+          {emoji ? <div style={{ fontFamily: emojiFamily, fontSize: Math.round(width * 0.12), lineHeight: 1, marginBottom: 6,
+            transform: `scale(${0.4 + 0.6 * Math.min(1, enter)})`, transformOrigin: 'left', filter: 'drop-shadow(0 8px 14px rgba(0,0,0,0.45))' }}>{emoji}</div> : null}
           <div style={{ color: '#fff', fontFamily, fontWeight: 900, lineHeight: 1.0, fontSize: fit(Math.round(width * 0.115), 1.2),
             textTransform: 'uppercase', textShadow: '0 6px 20px rgba(0,0,0,0.6)' }}>{key}</div>
           {sub ? <div style={{ display: 'inline-block', marginTop: 16, background: accent, color: '#141414',
@@ -613,7 +623,10 @@ export const Card: React.FC<{ top?: string; keyText: string; sub?: string; emoji
     const sc = 0.72 + 0.28 * Math.min(1, enter);
     return (
       <AbsoluteFill style={{ opacity: o, justifyContent: 'center', overflow: 'hidden' }}>
-        {top ? <div style={{ position: 'absolute', top: '22%', left: 0, right: 0, textAlign: 'center',
+        {emoji ? <div style={{ position: 'absolute', top: '13%', left: 0, right: 0, textAlign: 'center',
+          fontFamily: emojiFamily, fontSize: Math.round(width * 0.14), transform: `scale(${0.4 + 0.6 * Math.min(1, enter)})`,
+          filter: 'drop-shadow(0 8px 14px rgba(0,0,0,0.45))' }}>{emoji}</div> : null}
+        {top ? <div style={{ position: 'absolute', top: '24%', left: 0, right: 0, textAlign: 'center',
           color: '#fff', fontFamily, fontWeight: 900, letterSpacing: 4, fontSize: Math.round(width * 0.045),
           textTransform: 'uppercase', opacity: enter, textShadow: '0 3px 12px rgba(0,0,0,0.6)' }}>{top}</div> : null}
         <div style={{ margin: '0 -8%', background: accent, padding: '4.5% 0',
@@ -632,6 +645,8 @@ export const Card: React.FC<{ top?: string; keyText: string; sub?: string; emoji
       <AbsoluteFill style={{ opacity: o }}>
         <AbsoluteFill style={{ top: '55%', background: 'linear-gradient(transparent, rgba(0,0,0,0.5))' }} />
         <div style={{ position: 'absolute', left: '5%', right: '5%', bottom: '18%', transformOrigin: 'left bottom', transform: `scale(${sc})` }}>
+          {emoji ? <div style={{ fontFamily: emojiFamily, fontSize: Math.round(width * 0.15), lineHeight: 1, marginBottom: 2,
+            filter: 'drop-shadow(0 8px 14px rgba(0,0,0,0.45))' }}>{emoji}</div> : null}
           <div style={{ color: '#fff', fontFamily, fontWeight: 900, lineHeight: 0.82, fontSize: fit(Math.round(width * 0.30), 2.7),
             textTransform: 'uppercase', textShadow: '0 8px 30px rgba(0,0,0,0.6)', wordBreak: 'break-word' }}>{key}</div>
           {sub ? <div style={{ color: accent, fontFamily, fontWeight: 900, fontSize: Math.round(width * 0.05),

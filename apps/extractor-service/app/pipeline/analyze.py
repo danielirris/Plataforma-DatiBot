@@ -380,10 +380,11 @@ Reglas:
   inventados (esto es innegociable, aunque el gancho sea creativo).
 - El resto del texto sale del guion: cada gráfico del cuerpo refleja lo que dice la voz.
 - "at"/"start"/"end" en segundos dentro de [0, {duration:.1f}], tomados de los timestamps.
-- fullscreen: 2-3 tarjetas a PANTALLA COMPLETA (cubren todo el cuadro). VARÍA los títulos:
-  cada tarjeta con texto distinto, no repitas la misma palabra/estructura. El "at" de
-  CADA tarjeta es el SEGUNDO EXACTO en que la voz dice ese texto (sincronía con el audio):
-  el texto de la tarjeta SIEMPRE sale de lo que se dice en ese momento.
+- fullscreen: SIEMPRE 2 o 3 tarjetas a PANTALLA COMPLETA (esta cantidad MANDA sobre los
+  lineamientos de abajo; nunca menos de 2). VARÍA los títulos: cada tarjeta con texto
+  distinto, no repitas la misma palabra/estructura. CADA tarjeta lleva un "emoji" grande y
+  acorde a su texto (obligatorio). El "at" de CADA tarjeta es el SEGUNDO EXACTO en que la
+  voz dice ese texto (sincronía con el audio): el texto SIEMPRE sale de lo que se dice ahí.
   * NINGUNA tarjeta en los primeros 5 segundos (at >= 5.0 SIEMPRE): ese arranque es PURO
     VIDEO — el gancho visual frena el scroll, sin texto que lo tape.
   * La PRIMERA tarjeta (a partir de 0:05) marca el momento MÁS FUERTE del guion tras el

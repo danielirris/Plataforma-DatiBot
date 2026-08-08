@@ -25,7 +25,7 @@ STYLES: dict[str, dict] = {
         "nombre": "Editorial Mono",
         "subtitle_style": "color",
         "intensidad": 25,
-        "max_fullscreen": 1, "max_pills": 2, "max_emojis": 1, "max_lists": 1,
+        "max_fullscreen": 3, "max_pills": 2, "max_emojis": 1, "max_lists": 1,
         "color": "mono",
         "prompt": (
             "ESTILO EDITORIAL MONO — minimalismo editorial/keynote. Silencio visual, "
@@ -41,7 +41,7 @@ STYLES: dict[str, dict] = {
         "nombre": "Premium Noir",
         "subtitle_style": "karaoke",
         "intensidad": 35,
-        "max_fullscreen": 2, "max_pills": 2, "max_emojis": 2, "max_lists": 1,
+        "max_fullscreen": 3, "max_pills": 2, "max_emojis": 2, "max_lists": 1,
         "color": "mono_oscuro",
         "prompt": (
             "ESTILO PREMIUM NOIR — lujo silencioso, oscuro, cinematográfico. Subtítulos 'karaoke': "
@@ -56,7 +56,7 @@ STYLES: dict[str, dict] = {
         "nombre": "Afiche Retro",
         "subtitle_style": "box",
         "intensidad": 65,
-        "max_fullscreen": 2, "max_pills": 4, "max_emojis": 3, "max_lists": 2,
+        "max_fullscreen": 3, "max_pills": 4, "max_emojis": 3, "max_lists": 2,
         "color": "contrastante",
         "prompt": (
             "ESTILO AFICHE RETRO — cartel bold, tipografía protagonista, póster vintage. "
@@ -86,7 +86,7 @@ STYLES: dict[str, dict] = {
         "nombre": "Relato Doc",
         "subtitle_style": "pop",
         "intensidad": 40,
-        "max_fullscreen": 2, "max_pills": 2, "max_emojis": 2, "max_lists": 1,
+        "max_fullscreen": 3, "max_pills": 2, "max_emojis": 2, "max_lists": 1,
         "color": "calido",
         "prompt": (
             "ESTILO RELATO DOC — storytelling documental, ritmo narrativo. Subtítulos 'pop' suave: "
@@ -101,7 +101,7 @@ STYLES: dict[str, dict] = {
         "nombre": "Elegante · Mujer",
         "subtitle_style": "karaoke",
         "intensidad": 48,
-        "max_fullscreen": 2, "max_pills": 3, "max_emojis": 3, "max_lists": 1,
+        "max_fullscreen": 3, "max_pills": 3, "max_emojis": 3, "max_lists": 1,
         "color": "calido",
         "prompt": (
             "ESTILO ELEGANTE (MUJER) — aspiracional, cálido, cuidado. Habla a una mujer: belleza, "
