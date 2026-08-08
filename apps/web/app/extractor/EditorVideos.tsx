@@ -147,13 +147,6 @@ export function EditorVideos({
   const [voces, setVoces] = useState<{ nombre: string; original: string }[]>([]);
   const [vozEstado, setVozEstado] = useState<string>("");
   const [subiendoVoz, setSubiendoVoz] = useState<boolean>(false);
-  // Gancho de texto (C) y título (D) por anuncio (opcionales, en orden).
-  const [ganchos, setGanchos] = useState<string[]>([]);
-  const [titulos, setTitulos] = useState<string[]>([]);
-  const setGancho = (i: number, val: string) =>
-    setGanchos((prev) => { const n = [...prev]; n[i] = val; return n; });
-  const setTitulo = (i: number, val: string) =>
-    setTitulos((prev) => { const n = [...prev]; n[i] = val; return n; });
 
   const [estado, setEstado] = useState<string>("");
   const [job, setJob] = useState<JobState | null>(null);
@@ -399,9 +392,6 @@ export function EditorVideos({
           voces: voces.map((v) => v.nombre),
           // El server lee el avatar/oferta de este producto para el brief del cerebro.
           producto_id: productoId,
-          // Gancho (C) y título (D) por anuncio, alineados a numClips.
-          ganchos: Array.from({ length: numClips }, (_, i) => ganchos[i] || ""),
-          titulos: Array.from({ length: numClips }, (_, i) => titulos[i] || ""),
         }),
       });
       const data = await res.json().catch(() => ({}));
@@ -758,38 +748,6 @@ export function EditorVideos({
             className="rounded-lg border border-[var(--hairline)] bg-[var(--field)] px-3 py-2 text-text outline-none focus:border-accent"
           />
         </label>
-      </div>
-
-      {/* Gancho (C) y título (D) por anuncio — opcionales. */}
-      <div className="mt-4 space-y-3 rounded-2xl border border-[var(--hairline)] glass p-5">
-        <div>
-          <p className="text-sm font-medium text-text">✍️ Gancho y título por anuncio (opcional)</p>
-          <p className="mt-1 text-xs text-muted">
-            Escribe el <b>gancho de apertura</b> (la frase que frena el scroll, 2-5 palabras) y/o un{" "}
-            <b>título</b> para cada anuncio. Si dejas el gancho vacío, la IA lo elige por ti.
-          </p>
-        </div>
-        <div className="space-y-2">
-          {Array.from({ length: numClips }, (_, i) => (
-            <div key={i} className="flex flex-wrap items-center gap-2">
-              <span className="w-16 shrink-0 text-xs text-muted">Anuncio {i + 1}</span>
-              <input
-                value={ganchos[i] ?? ""}
-                onChange={(e) => setGancho(i, e.target.value)}
-                placeholder="Gancho de apertura (opcional)"
-                maxLength={60}
-                className="min-w-0 flex-1 rounded border border-[var(--hairline)] bg-[var(--field)] px-2 py-1 text-sm text-text outline-none focus:border-accent"
-              />
-              <input
-                value={titulos[i] ?? ""}
-                onChange={(e) => setTitulo(i, e.target.value)}
-                placeholder="Título (opcional)"
-                maxLength={80}
-                className="min-w-0 flex-1 rounded border border-[var(--hairline)] bg-[var(--field)] px-2 py-1 text-sm text-text outline-none focus:border-accent"
-              />
-            </div>
-          ))}
-        </div>
       </div>
 
       {/* Locución: UNA por anuncio (obligatorio, tantas como numClips). */}
