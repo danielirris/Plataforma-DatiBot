@@ -97,6 +97,36 @@ STYLES: dict[str, dict] = {
             "monocromático cálido para que domine la imagen real. La historia manda; los gráficos apoyan."
         ),
     },
+    "elegante_fem": {
+        "nombre": "Elegante · Mujer",
+        "subtitle_style": "karaoke",
+        "intensidad": 48,
+        "max_fullscreen": 2, "max_pills": 3, "max_emojis": 3, "max_lists": 1,
+        "color": "calido",
+        "prompt": (
+            "ESTILO ELEGANTE (MUJER) — aspiracional, cálido, cuidado. Habla a una mujer: belleza, "
+            "bienestar, autocuidado, moda, hogar. Subtítulos 'karaoke' que siguen la voz con suavidad. "
+            "Intensidad 48: fluido y elegante, sin agresividad. 1-2 tarjetas full-screen con frases "
+            "emocionales/aspiracionales (el resultado deseado, cómo se sentirá) + emoji delicado. 2-3 "
+            "píldoras de beneficio sensorial/emocional. Emojis sutiles (✨🌸💖). El gancho apela al "
+            "DESEO y a la autoimagen. Color cálido y luminoso. Tono cercano, como una amiga que recomienda."
+        ),
+    },
+    "impacto_masc": {
+        "nombre": "Impacto · Hombre",
+        "subtitle_style": "punch",
+        "intensidad": 85,
+        "max_fullscreen": 3, "max_pills": 5, "max_emojis": 4, "max_lists": 2,
+        "color": "contrastante",
+        "prompt": (
+            "ESTILO IMPACTO (HOMBRE) — directo, potente, sin rodeos. Habla a un hombre: fitness, autos, "
+            "negocios, tecnología, retos, rendimiento. Subtítulos 'punch': la palabra clave golpea. "
+            "Intensidad 85: cortes rápidos y contundentes. 2-3 tarjetas full-screen con frases cortas, "
+            "afirmaciones y datos concretos (resultado, cifra si la dice la voz, reto) + emoji fuerte. 4-5 "
+            "píldoras rápidas tipo dato/beneficio. Emojis con carácter (🔥💪⚡🚀). El gancho va al GRANO: "
+            "promesa fuerte, problema-solución o un reto. Color de alto contraste. Tono seguro y retador."
+        ),
+    },
 }
 
 DEFAULT_STYLE = "modo_bestia"
@@ -117,6 +147,8 @@ STYLE_MOVES: dict[str, dict] = {
     "afiche_retro": {"flash": True, "reframe": True, "punch": "hard"},
     "modo_bestia": {"punch": "hard", "shake": True, "flash": True},
     "relato_doc": {"bw": "arc", "punch": "soft"},
+    "elegante_fem": {"punch": "soft", "spotlight": True},
+    "impacto_masc": {"punch": "hard", "shake": True, "flash": True},
 }
 
 # ── Personalidad visual por estilo (Parte B) ──
@@ -158,6 +190,14 @@ STYLE_LOOK: dict[str, dict] = {
                    "cards": ["lower", "cover"],
                    "grade": "contrast(1.04) saturate(1.05) brightness(1.02)",
                    "vignette": 0.26, "sub_case": "none", "sub_weight": 600},
+    "elegante_fem": {"font": "Poppins", "sub_bottom": 20, "sub_scale": 0.92,
+                     "cards": ["cover", "lower"],
+                     "grade": "contrast(1.04) saturate(1.12) brightness(1.05)",
+                     "vignette": 0.24, "sub_case": "none", "sub_weight": 600},
+    "impacto_masc": {"font": "ArchivoBlack", "sub_bottom": 15, "sub_scale": 1.05,
+                     "cards": ["bigword", "cover", "poster"],
+                     "grade": "contrast(1.20) saturate(1.15) brightness(1.00)",
+                     "vignette": 0.50, "sub_case": "upper", "sub_weight": 900},
 }
 
 

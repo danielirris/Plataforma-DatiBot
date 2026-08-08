@@ -876,7 +876,10 @@ class JobManager:
             font_user = str(params.get("font") or "").strip()
             font = font_user if font_user in ALLOWED_FONTS else (
                 styles.style_font(style_id) if usar_estilo else "Anton")
-            for v in videos:
+            # Gancho de texto (C) y título (D) elegidos por el usuario, UNO por anuncio.
+            ganchos = params.get("ganchos") or []
+            titulos = params.get("titulos") or []
+            for i, v in enumerate(videos):
                 v.plan = analyze.plan_ad(v.words, v.duration, prompt_text)
                 seed = f"{settings.seed}:{job_id}:{v.id}"
                 if usar_estilo:
@@ -891,6 +894,23 @@ class JobManager:
                     v.plan["subtitle_style"] = sub_over
                 if _re.fullmatch(r"#[0-9A-Fa-f]{6}", highlight):
                     v.plan["highlight"] = highlight.upper()
+                # C — GANCHO elegido: fuerza la 1ª tarjeta de apertura (at=0). Si no hay
+                # gancho pero sí título (D), el título abre. Manda sobre lo que inventó la IA.
+                g = str(ganchos[i]).strip() if i < len(ganchos) else ""
+                t = str(titulos[i]).strip() if i < len(titulos) else ""
+                apertura = g or t
+                if apertura:
+                    fs = v.plan.get("fullscreen") or []
+                    if fs and isinstance(fs[0], dict):
+                        fs[0]["key"] = apertura[:60]
+                        fs[0]["at"] = 0.0
+                        fs[0].pop("top", None)
+                        fs[0].pop("sub", None)
+                    else:
+                        v.plan["fullscreen"] = [{"at": 0.0, "key": apertura[:60]}]
+                # D — TÍTULO: nombra este anuncio (aparece en el ad.json / galería).
+                if t:
+                    v.name = t[:80]
 
             self._update(job_id, status=JobStatus.RENDERING,
                          message="Generando proyecto Remotion (anuncio)")

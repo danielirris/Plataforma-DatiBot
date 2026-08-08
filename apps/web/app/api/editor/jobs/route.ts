@@ -42,6 +42,10 @@ export async function POST(req: Request) {
     voces?: string[] | null;
     /** id del producto elegido: el server lee su avatar/oferta para el brief del cerebro */
     producto_id?: string;
+    /** gancho de texto por anuncio (opcional, en orden) */
+    ganchos?: string[] | null;
+    /** título por anuncio (opcional, en orden) */
+    titulos?: string[] | null;
   };
   try {
     body = (await req.json()) as typeof body;
@@ -142,6 +146,8 @@ export async function POST(req: Request) {
         font: body.font ?? "",
         hook: body.hook ?? null,
         producto: productoBrief,
+        ganchos: body.ganchos ?? [],
+        titulos: body.titulos ?? [],
         mode: "full",
       }),
     });
@@ -170,6 +176,8 @@ export async function POST(req: Request) {
       // "" en vez de "Anton": clipgen usa la fuente propia del estilo (ver from-urls).
       form.append("font", body.font ?? "");
       if (productoBrief) form.append("producto", JSON.stringify(productoBrief));
+      form.append("ganchos", JSON.stringify(body.ganchos ?? []));
+      form.append("titulos", JSON.stringify(body.titulos ?? []));
       if (body.hook) form.append("hook", JSON.stringify(body.hook));
       // Editor suelto (subdominio): quien lo usa no tiene la página de preview del
       // extractor, así que el anuncio debe renderizarse solo, sin esperar a nadie.

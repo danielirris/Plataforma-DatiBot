@@ -259,6 +259,10 @@ async def create_job_from_urls(payload: dict = Body(...)) -> JSONResponse:
         params["oferta_pill"] = str(payload["oferta_pill"]).strip()[:60]
     if isinstance(payload.get("producto"), dict):
         params["producto"] = payload["producto"]
+    for campo in ("ganchos", "titulos"):
+        arr = payload.get(campo)
+        if isinstance(arr, list):
+            params[campo] = [str(x or "") for x in arr]
     hook = payload.get("hook")
     if isinstance(hook, dict) and "video_idx" in hook:
         params["hook"] = {
@@ -316,6 +320,8 @@ async def create_job_from_files(
     cta_wa: str = Form("1"),       # el botón es WhatsApp (verde) o genérico (acento)
     oferta_pill: str = Form(""),   # texto de la píldora de oferta a mitad (opcional)
     producto: str = Form(""),      # JSON del producto (avatar/oferta) para el brief del cerebro
+    ganchos: str = Form(""),       # JSON array: gancho de texto por anuncio (opcional)
+    titulos: str = Form(""),       # JSON array: título por anuncio (opcional)
 ) -> JSONResponse:
     """Igual que /api/jobs/from-urls pero el web MANDA LOS VIDEOS como archivos.
 
@@ -371,6 +377,14 @@ async def create_job_from_files(
                 params["producto"] = pj
         except Exception:  # noqa: BLE001 - el brief es opcional
             pass
+    for campo, raw in (("ganchos", ganchos), ("titulos", titulos)):
+        if raw.strip():
+            try:
+                arr = json.loads(raw)
+                if isinstance(arr, list):
+                    params[campo] = [str(x or "") for x in arr]
+            except Exception:  # noqa: BLE001 - opcional
+                pass
     if hook:
         try:
             h = json.loads(hook)
