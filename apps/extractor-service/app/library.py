@@ -99,9 +99,17 @@ def delete_music(name: str) -> bool:
 # --------------------------------------------------------------------------- #
 _SFX_SPECS = {
     # nombre: (entrada lavfi, filtros de audio)
-    "pop": (
-        "sine=frequency=620:duration=0.12",
-        "afade=t=out:st=0.0:d=0.12,volume=0.5",
+    # "tick": click corto y BRILLANTE (ruido filtrado, NO un tono) para las palabras
+    # destacadas. El antiguo "pop" era un tono sinusoidal de 620 Hz que sonaba en cada
+    # línea -> pitido constante. Esto es un tick de UI, discreto.
+    "tick": (
+        "anoisesrc=d=0.07:c=white:a=0.5",
+        "highpass=f=1800,lowpass=f=7000,afade=t=out:st=0.01:d=0.06,volume=0.32",
+    ),
+    # "impact": golpe grave ROMPE-SCROLL para el segundo 0 (arranque del anuncio).
+    "impact": (
+        "anoisesrc=d=0.6:c=brown:a=0.8",
+        "lowpass=f=280,afade=t=in:d=0.03,afade=t=out:st=0.12:d=0.48,volume=0.7",
     ),
     "ding": (
         "sine=frequency=1180:duration=0.6",

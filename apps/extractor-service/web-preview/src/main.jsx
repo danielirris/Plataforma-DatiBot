@@ -242,8 +242,14 @@ function Ad({ v, cta, musica, sfx, assetBase }) {
       {sfx && sfx.whoosh ? cards.map((c, i) => (
         <Sequence key={`wh${i}`} from={c.f} durationInFrames={Math.round(0.6 * fps)}><Audio src={src(sfx.whoosh)} volume={0.5} /></Sequence>
       )) : null}
-      {sfx && sfx.pop ? (v.lineStarts || []).map((s, i) => (
-        <Sequence key={`pop${i}`} from={Math.round(s * fps)} durationInFrames={Math.round(0.18 * fps)}><Audio src={src(sfx.pop)} volume={0.3} /></Sequence>
+      {/* Rompe-scroll: golpe grave en el segundo 0. (El "pop" sinusoidal por linea se
+          elimino: sonaba a pitido constante de fondo.) */}
+      {sfx && sfx.impact ? (
+        <Sequence from={0} durationInFrames={Math.round(0.6 * fps)}><Audio src={src(sfx.impact)} volume={0.7} /></Sequence>
+      ) : null}
+      {/* Tick discreto en cada pildora (palabra destacada). */}
+      {sfx && sfx.tick ? (plan.pills || []).map((p, i) => (
+        <Sequence key={`tk${i}`} from={Math.round((p.start || 0) * fps)} durationInFrames={Math.round(0.12 * fps)}><Audio src={src(sfx.tick)} volume={0.32} /></Sequence>
       )) : null}
       {sfx && sfx.ding ? <Sequence from={ctaStart + Math.round(0.18 * fps)} durationInFrames={Math.round(0.7 * fps)}><Audio src={src(sfx.ding)} volume={0.5} /></Sequence> : null}
       {!onFull && frame < ctaStart ? <Subtitles words={v.words} plan={plan} /> : null}

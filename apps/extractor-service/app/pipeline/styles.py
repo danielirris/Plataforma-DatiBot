@@ -360,8 +360,10 @@ def apply_style(plan: dict, style_id: str, seed: str) -> dict:
     for i, c in enumerate(cards):
         if isinstance(c, dict):
             c["layout"] = layouts[i % len(layouts)]
-    # GANCHO: la 1ª tarjeta abre el anuncio en el segundo 0 (frena el scroll). Si
-    # la IA la puso más tarde, se adelanta a 0.
-    if cards and isinstance(cards[0], dict):
-        cards[0]["at"] = 0.0
+    # Los primeros 5s son el VIDEO (el gancho VISUAL frena el scroll), sin tarjeta
+    # full-screen que lo tape. Reubicamos cualquier tarjeta que caiga antes de 5s a
+    # partir de 5s, espaciadas, para que el arranque sea puro metraje.
+    early = [c for c in cards if isinstance(c, dict) and float(c.get("at", 0.0)) < 5.0]
+    for k, c in enumerate(early):
+        c["at"] = round(5.0 + k * 2.0, 2)
     return plan
