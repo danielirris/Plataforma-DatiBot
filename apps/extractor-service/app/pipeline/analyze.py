@@ -381,13 +381,16 @@ Reglas:
 - El resto del texto sale del guion: cada gráfico del cuerpo refleja lo que dice la voz.
 - "at"/"start"/"end" en segundos dentro de [0, {duration:.1f}], tomados de los timestamps.
 - fullscreen: 2-3 tarjetas a PANTALLA COMPLETA (cubren todo el cuadro). VARÍA los títulos:
-  cada tarjeta con texto distinto, no repitas la misma palabra/estructura.
-  * La PRIMERA tarjeta es el GANCHO y va en "at":0: la frase MÁS FUERTE del guion para
-    FRENAR EL SCROLL — la promesa, el resultado o una pregunta que pique (2-5 palabras,
-    en MAYÚS). Sácala de lo que dice la voz, pero elige el momento más impactante, no
-    necesariamente la primera frase. PROHIBIDO abrir con saludos ("hola", "bienvenidos",
-    "hoy te cuento"): eso es un valle muerto y la gente se va.
-  * Las demás: una al centro y, opcional, una antes del cierre.
+  cada tarjeta con texto distinto, no repitas la misma palabra/estructura. El "at" de
+  CADA tarjeta es el SEGUNDO EXACTO en que la voz dice ese texto (sincronía con el audio):
+  el texto de la tarjeta SIEMPRE sale de lo que se dice en ese momento.
+  * NINGUNA tarjeta en los primeros 5 segundos (at >= 5.0 SIEMPRE): ese arranque es PURO
+    VIDEO — el gancho visual frena el scroll, sin texto que lo tape.
+  * La PRIMERA tarjeta (a partir de 0:05) marca el momento MÁS FUERTE del guion tras el
+    arranque: la promesa, el resultado o el dato que pega (2-5 palabras, MAYÚS), tomado
+    de lo que dice la voz en ESE segundo.
+  * Las demás: repartidas donde la voz diga algo clave (una al centro, otra antes del cierre).
+  * PROHIBIDO usar como tarjeta un saludo ("hola", "bienvenidos", "hoy te cuento").
 - lists: por DEFECTO deja "lists" VACÍO ([]). SOLO añade UNA lista (nunca 2) si la voz
   ENUMERA de forma CLARA y SEGUIDA 3 o más elementos (pasos 1-2-3, ingredientes,
   razones contadas una a una). Si tienes la más mínima duda, NO pongas lista. PROHIBIDO
