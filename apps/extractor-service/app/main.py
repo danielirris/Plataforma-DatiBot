@@ -239,11 +239,24 @@ async def create_job_from_urls(payload: dict = Body(...)) -> JSONResponse:
     use_music = bool(payload.get("use_music", False))
     use_intro = bool(payload.get("use_intro", False))
     style = str(payload.get("style") or "")
-    params = {
+    params: dict = {
         "subtitle_style": str(payload.get("subtitle_style") or ""),
         "highlight": str(payload.get("highlight") or ""),
-        "font": str(payload.get("font") or "Anton"),
+        # "" (no "Anton"): jobs.py usa la fuente PROPIA del estilo (style_font).
+        # Forzar Anton hacía que los 5 estilos se vieran iguales.
+        "font": str(payload.get("font") or ""),
     }
+    # Paridad con from-files: CTA / oferta / trim (antes se perdían por este camino).
+    if payload.get("trim_silence"):
+        params["trim_silence"] = True
+    params["use_cta"] = bool(payload.get("use_cta", True))
+    params["cta_wa"] = bool(payload.get("cta_wa", True))
+    if str(payload.get("cta_texto") or "").strip():
+        params["cta_texto"] = str(payload["cta_texto"]).strip()[:80]
+    if str(payload.get("cta_boton") or "").strip():
+        params["cta_boton"] = str(payload["cta_boton"]).strip()[:24]
+    if str(payload.get("oferta_pill") or "").strip():
+        params["oferta_pill"] = str(payload["oferta_pill"]).strip()[:60]
     hook = payload.get("hook")
     if isinstance(hook, dict) and "video_idx" in hook:
         params["hook"] = {
@@ -291,7 +304,7 @@ async def create_job_from_files(
     style: str = Form(""),
     subtitle_style: str = Form(""),
     highlight: str = Form(""),
-    font: str = Form("Anton"),
+    font: str = Form(""),
     hook: str = Form(""),
     auto_render: str = Form(""),
     trim_silence: str = Form(""),  # recortar silencios de la locución
@@ -329,7 +342,8 @@ async def create_job_from_files(
     params: dict = {
         "subtitle_style": subtitle_style or "",
         "highlight": highlight or "",
-        "font": font or "Anton",
+        # "" (no "Anton"): jobs.py usa la fuente propia del estilo (ver from-urls).
+        "font": font or "",
     }
     # Render automático para ESTE trabajo, sin depender del preview_first global.
     # Lo pide el editor suelto (subdominio): quien lo usa no tiene acceso a la

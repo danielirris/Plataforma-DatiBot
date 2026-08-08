@@ -99,10 +99,20 @@ export async function POST(req: Request) {
         num_clips: body.num_clips ?? 0,
         use_music: !!body.use_music,
         use_intro: !!body.use_intro,
+        // Paridad con from-files: sin esto, un job que cae por URLs perdía CTA,
+        // oferta y trim (salía más plano y sin avisar).
+        trim_silence: !!body.trim_silence,
+        use_cta: body.use_cta !== false,
+        cta_wa: body.cta_wa !== false,
+        cta_texto: body.cta_texto ?? "",
+        cta_boton: body.cta_boton ?? "",
+        oferta_pill: body.oferta_pill ?? "",
         style: body.style ?? "",
         subtitle_style: body.subtitle_style ?? "",
         highlight: body.highlight ?? "",
-        font: body.font ?? "Anton",
+        // "" (no "Anton"): deja que clipgen use la fuente PROPIA del estilo
+        // (style_font). Forzar Anton hacía que los 5 estilos se vieran iguales.
+        font: body.font ?? "",
         hook: body.hook ?? null,
         mode: "full",
       }),
@@ -129,7 +139,8 @@ export async function POST(req: Request) {
       form.append("style", body.style ?? "");
       form.append("subtitle_style", body.subtitle_style ?? "");
       form.append("highlight", body.highlight ?? "");
-      form.append("font", body.font ?? "Anton");
+      // "" en vez de "Anton": clipgen usa la fuente propia del estilo (ver from-urls).
+      form.append("font", body.font ?? "");
       if (body.hook) form.append("hook", JSON.stringify(body.hook));
       // Editor suelto (subdominio): quien lo usa no tiene la página de preview del
       // extractor, así que el anuncio debe renderizarse solo, sin esperar a nadie.

@@ -832,6 +832,11 @@ class JobManager:
                          message="Diseñando la edición (IA)")
             from app.pipeline import styles
             style_id = self._style.get(job_id, "")
+            # Red de seguridad: si el estilo llega vacío o con una clave inválida, NO
+            # caer al flujo viejo (paleta aleatoria + Anton + sin layouts = plano y
+            # siempre igual). Usar el estilo por defecto, que sí trae personalidad.
+            if style_id not in styles.STYLES:
+                style_id = styles.DEFAULT_STYLE
             usar_estilo = bool(styles.STYLES.get(style_id))
             # Con estilo elegido: sus lineamientos guían a la IA. Sin estilo
             # (flujo viejo): el prompt genérico + paleta aleatoria, como antes.
