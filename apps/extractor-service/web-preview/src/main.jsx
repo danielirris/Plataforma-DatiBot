@@ -61,13 +61,19 @@ function Subtitles({ words, plan }) {
   const accent = plan?.highlight || plan?.accent || '#FFD400';
   const style = plan?.subtitle_style || 'pop';
   const intensidad = (plan?.intensidad ?? 70) / 100;
+  const look = plan?.look || {};
+  const subBottom = plan?.subBottom ?? 15;
+  const subScale = plan?.subScale ?? 1;
+  const subWeight = look.subWeight || 900;
+  const subCase = look.subCase === 'none' ? 'none' : 'uppercase';
+  const subAnim = look.subAnim || 'pop';
   const emphasis = useMemo(() => new Set((plan?.emphasis || []).map((w) => clean(w))), [plan]);
   const line = lines.find((l) => t >= l[0].start && t <= l[l.length - 1].end);
   if (!line) return null;
   const activeIdx = line.findIndex((w) => t >= w.start && t < w.end);
-  const fontSize = Math.round(width * (0.07 + 0.012 * intensidad));
+  const fontSize = Math.round(width * (0.07 + 0.012 * intensidad) * subScale);
   return (
-    <div style={{ position: 'absolute', left: '8%', right: '8%', bottom: '15%', display: 'flex',
+    <div style={{ position: 'absolute', left: '8%', right: '8%', bottom: subBottom + '%', display: 'flex',
       flexWrap: 'wrap', gap: '0.28em 0.75em', justifyContent: 'center', alignItems: 'center', textAlign: 'center' }}>
       {line.map((w, i) => {
         const active = i === activeIdx;
@@ -79,14 +85,22 @@ function Subtitles({ words, plan }) {
         if (box) color = '#0b0b0b';
         else if (active && (style === 'karaoke' || style === 'pop' || style === 'punch')) color = accent;
         else if (isKey && (style === 'color' || style === 'karaoke')) color = accent;
-        const scale = (isKey ? 1.06 : 1) * (active ? 1.05 : 1) * (punch ? 1.22 : 1) * (0.84 + 0.16 * pop);
+        const baseScale = (isKey ? 1.12 : 1) * (active ? 1.10 : 1) * (punch ? 1.30 : 1);
+        let tf, op = pop;
+        if (subAnim === 'fade') { tf = `scale(${baseScale})`; }
+        else if (subAnim === 'rise') { tf = `translateY(${(1 - pop) * 46}px) scale(${baseScale})`; }
+        else if (subAnim === 'stamp') { tf = `scale(${baseScale * (1.6 - 0.6 * Math.min(1, pop))})`; op = Math.min(1, pop * 2); }
+        else if (subAnim === 'slam') { tf = `translateX(${Math.sin(frame * 1.4) * (1 - pop) * 7}px) scale(${baseScale * (1.4 - 0.4 * pop)})`; }
+        else if (subAnim === 'type') { tf = `scale(${baseScale})`; op = pop > 0.4 ? 1 : 0; }
+        else if (subAnim === 'soft') { tf = `translateY(${(1 - pop) * 16}px) scale(${baseScale * (0.94 + 0.06 * pop)})`; }
+        else { tf = `translateY(${(1 - pop) * 24}px) scale(${baseScale * (0.7 + 0.3 * pop)})`; }
         return (
-          <span key={i} style={{ fontFamily, fontWeight: 900, fontSize, textTransform: 'uppercase',
+          <span key={i} style={{ fontFamily, fontWeight: subWeight, fontSize, textTransform: subCase,
             lineHeight: 1.18, color, background: box ? accent : 'transparent',
             padding: box ? '0.02em 0.22em' : 0, borderRadius: box ? '0.18em' : 0,
             WebkitTextStroke: box ? '0' : `${Math.max(2, fontSize * 0.06)}px #000`, paintOrder: 'stroke fill',
             textShadow: box ? '0 6px 16px rgba(0,0,0,0.45)' : '0 6px 18px rgba(0,0,0,0.6)',
-            transform: `translateY(${(1 - pop) * 16}px) scale(${scale})`, opacity: pop, display: 'inline-block' }}>{w.word}</span>
+            transform: tf, opacity: op, display: 'inline-block' }}>{w.word}</span>
         );
       })}
     </div>

@@ -510,6 +510,7 @@ export const Subtitles: React.FC<{ words: W[]; plan?: any }> = ({ words, plan })
   const look = plan?.look || {};
   const subWeight = look.subWeight || 900;
   const subCase = look.subCase === 'none' ? 'none' : 'uppercase';
+  const subAnim = look.subAnim || 'pop';
   const emphasis = useMemo(() => new Set((plan?.emphasis || []).map((w: string) => clean(w))), [plan]);
 
   const line = lines.find((l) => t >= l[0].start && t <= l[l.length - 1].end);
@@ -535,7 +536,16 @@ export const Subtitles: React.FC<{ words: W[]; plan?: any }> = ({ words, plan })
         else if (active && (style === 'karaoke' || style === 'pop' || style === 'punch')) color = accent;
         else if (isKey && (style === 'color' || style === 'karaoke')) color = accent;
         const baseScale = (isKey ? 1.12 : 1) * (active ? 1.10 : 1) * (punch ? 1.30 : 1);
-        const scale = baseScale * (0.68 + 0.32 * pop);
+        // Animación de entrada de la palabra, PROPIA del estilo (lo que faltaba para
+        // que se vieran distintos): fade/rise/pop/stamp/type/soft/slam.
+        let tf, op = pop;
+        if (subAnim === 'fade') { tf = `scale(${baseScale})`; }
+        else if (subAnim === 'rise') { tf = `translateY(${(1 - pop) * 46}px) scale(${baseScale})`; }
+        else if (subAnim === 'stamp') { tf = `scale(${baseScale * (1.6 - 0.6 * Math.min(1, pop))})`; op = Math.min(1, pop * 2); }
+        else if (subAnim === 'slam') { tf = `translateX(${Math.sin(frame * 1.4) * (1 - pop) * 7}px) scale(${baseScale * (1.4 - 0.4 * pop)})`; }
+        else if (subAnim === 'type') { tf = `scale(${baseScale})`; op = pop > 0.4 ? 1 : 0; }
+        else if (subAnim === 'soft') { tf = `translateY(${(1 - pop) * 16}px) scale(${baseScale * (0.94 + 0.06 * pop)})`; }
+        else { tf = `translateY(${(1 - pop) * 24}px) scale(${baseScale * (0.7 + 0.3 * pop)})`; }
         return (
           <span key={i} style={{
             fontFamily, fontWeight: subWeight, fontSize,
@@ -545,8 +555,8 @@ export const Subtitles: React.FC<{ words: W[]; plan?: any }> = ({ words, plan })
             WebkitTextStroke: box ? '0' : `${Math.max(2, fontSize * 0.06)}px #000`,
             paintOrder: 'stroke fill',
             textShadow: box ? '0 6px 16px rgba(0,0,0,0.45)' : '0 6px 18px rgba(0,0,0,0.6)',
-            transform: `translateY(${(1 - pop) * 26}px) scale(${scale})`,
-            opacity: pop, display: 'inline-block',
+            transform: tf,
+            opacity: op, display: 'inline-block',
           }}>{w.word}</span>
         );
       })}

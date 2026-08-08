@@ -151,6 +151,22 @@ STYLE_MOVES: dict[str, dict] = {
     "impacto_masc": {"punch": "hard", "shake": True, "flash": True},
 }
 
+# Animación del SUBTÍTULO por estilo. Es lo que estaba igual en todos (misma entrada
+# de palabra) y los hacía sentir parecidos. Ahora cada estilo tiene su MOVIMIENTO de
+# texto propio (la TSX lo interpreta en Subtitles): fade (aparición limpia), rise
+# (sube elegante), pop (rebote con golpe), stamp (entra grande y se asienta, tipo
+# sello), type (revela palabra a palabra, seco), soft (sube suave), slam (golpe con
+# temblor). Junto con la fuente, el color y las movidas, hacen estilos DISTINTOS.
+SUB_ANIM: dict[str, str] = {
+    "editorial_mono": "fade",
+    "premium_noir": "rise",
+    "afiche_retro": "stamp",
+    "modo_bestia": "pop",
+    "relato_doc": "type",
+    "elegante_fem": "soft",
+    "impacto_masc": "slam",
+}
+
 # ── Personalidad visual por estilo (Parte B) ──
 # Hasta ahora los 5 estilos usaban la MISMA fuente y el subtítulo SIEMPRE abajo
 # al 15%, así que se veían casi iguales. Cada estilo trae ahora:
@@ -352,6 +368,7 @@ def apply_style(plan: dict, style_id: str, seed: str) -> dict:
         "vignette": look.get("vignette", 0.44),
         "subCase": look.get("sub_case", "upper"),
         "subWeight": look.get("sub_weight", 900),
+        "subAnim": SUB_ANIM.get(style_id, "pop"),
     }
     # Layout de cada tarjeta: se rota entre los del estilo para dar variedad
     # (una de rótulo, otra de cartel, otra gigante…), en vez de todas iguales.
