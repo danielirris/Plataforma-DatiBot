@@ -347,7 +347,16 @@ export const Ad: React.FC<{ v: any; cta: any; musica: any; sfx: any; intro?: any
   // bestia punchy… Es lo que hace que dos estilos se vean distintos de un vistazo.
   // Cae al grade "de agencia" si el estilo no lo trae.
   const grade = look.grade || 'contrast(1.13) saturate(1.24) brightness(1.03)';
-  const videoFilter = `${grade}${mGray > 0 ? ` grayscale(${mGray.toFixed(2)})` : ''}`;
+  // ── FILTROS (aplicados EN SUS MOMENTOS) ──
+  // GLOW: brillo+saturación extra mientras hay una píldora (palabra destacada).
+  const onPill = (plan.pills || []).some((p: any) => frame >= Math.round((p.start || 0) * fps) && frame < Math.round((p.end || 0) * fps));
+  const videoFilter = `${grade}${onPill ? ' brightness(1.12) saturate(1.18)' : ''}${mGray > 0 ? ` grayscale(${mGray.toFixed(2)})` : ''}`;
+  // GRANO de película: textura sutil que se mueve (look cinematográfico), constante.
+  const grainPos = `${(frame * 7) % 140}px ${(frame * 11) % 140}px`;
+  // LIGHT LEAK: destello cálido al ENTRAR una tarjeta (pico a ±0.5s del cambio).
+  const leak = cards.reduce((m: number, c: any) => Math.max(m, 1 - Math.min(1, Math.abs(frame - c.f) / (0.5 * fps))), 0);
+  // FLASH de arranque: destello breve en el segundo 0 (rompe-scroll visual, con el impact).
+  const flash0 = frame < 5 ? (1 - frame / 5) * 0.55 : 0;
 
   return (
     <AbsoluteFill style={{ backgroundColor: 'black', overflow: 'hidden' }}>
@@ -357,6 +366,18 @@ export const Ad: React.FC<{ v: any; cta: any; musica: any; sfx: any; intro?: any
       </AbsoluteFill>
       {/* Viñeta sutil: oscurece los bordes para dar acabado premium y centrar la mirada. */}
       <AbsoluteFill style={{ background: `radial-gradient(120% 88% at 50% 44%, transparent 54%, rgba(0,0,0,${look.vignette != null ? look.vignette : 0.44}))` }} />
+      {/* GRANO de película (constante, sutil): textura que da acabado cinematográfico. */}
+      <AbsoluteFill style={{ opacity: 0.07, mixBlendMode: 'overlay', pointerEvents: 'none',
+        backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")`,
+        backgroundSize: '140px 140px', backgroundPosition: grainPos }} />
+      {/* LIGHT LEAK cálido al entrar cada tarjeta. */}
+      {leak > 0.02 ? (
+        <AbsoluteFill style={{ background: `radial-gradient(60% 46% at 82% 14%, rgba(255,186,120,${(0.4 * leak).toFixed(2)}), transparent 60%)`, mixBlendMode: 'screen', pointerEvents: 'none' }} />
+      ) : null}
+      {/* FLASH de arranque (segundo 0). */}
+      {flash0 > 0 ? (
+        <AbsoluteFill style={{ backgroundColor: '#fff', opacity: flash0, mixBlendMode: 'screen', pointerEvents: 'none' }} />
+      ) : null}
 
       {/* Movidas sobre el video: spotlight (dirige la mirada) y flash (destello). */}
       {mSpot > 0 ? (

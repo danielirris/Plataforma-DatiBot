@@ -249,11 +249,20 @@ function Ad({ v, cta, musica, sfx, assetBase }) {
   const onFull = cards.some((c) => frame >= c.f && frame < c.f + CARD_S * fps) || lists.some((l) => frame >= l.f && frame < l.f + l.df) || guias.some((g) => frame >= g.f && frame < g.f + g.df);
   const isSpeaking = (f) => v.words.some((w) => f / fps >= w.start && f / fps < w.end);
   const kb = interpolate(frame, [0, durationInFrames], [1.03, 1.1], { extrapolateRight: 'clamp' });
+  // Filtros (mismos que el render): grano constante, light-leak en tarjetas, flash de arranque.
+  const grainPos = `${(frame * 7) % 140}px ${(frame * 11) % 140}px`;
+  const leak = cards.reduce((m, c) => Math.max(m, 1 - Math.min(1, Math.abs(frame - c.f) / (0.5 * fps))), 0);
+  const flash0 = frame < 5 ? (1 - frame / 5) * 0.55 : 0;
   return (
     <AbsoluteFill style={{ backgroundColor: 'black', overflow: 'hidden' }}>
       <AbsoluteFill style={{ transform: `scale(${kb})` }}>
         <Video src={src(v.video)} muted={!!v.voz} loop={!!v.voz} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
       </AbsoluteFill>
+      <AbsoluteFill style={{ opacity: 0.07, mixBlendMode: 'overlay', pointerEvents: 'none',
+        backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")`,
+        backgroundSize: '140px 140px', backgroundPosition: grainPos }} />
+      {leak > 0.02 ? <AbsoluteFill style={{ background: `radial-gradient(60% 46% at 82% 14%, rgba(255,186,120,${(0.4 * leak).toFixed(2)}), transparent 60%)`, mixBlendMode: 'screen', pointerEvents: 'none' }} /> : null}
+      {flash0 > 0 ? <AbsoluteFill style={{ backgroundColor: '#fff', opacity: flash0, mixBlendMode: 'screen', pointerEvents: 'none' }} /> : null}
       {v.voz ? <Audio src={src(v.voz)} /> : null}
       {v.music ? <Audio src={src(v.music)} loop volume={(f) => (isSpeaking(f) ? musica.ducking : musica.volumen)} /> : null}
       {sfx && sfx.whoosh ? cards.map((c, i) => (
