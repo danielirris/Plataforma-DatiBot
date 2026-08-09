@@ -46,6 +46,11 @@ def build_hook_beats(
             dur = min(beat_min, v.duration)
             hooks.append(Beat(v.id, v.path, 0.0, round(dur, 3)))
         logger.info("Sin ganchos de IA; usando el inicio de los primeros videos.")
+    # BARAJAR: sin esto, los ganchos salían en orden de impacto y el clip 0 tomaba
+    # SIEMPRE el mismo (el "mejor") -> el gancho no cambiaba nunca entre ediciones. Con
+    # la semilla del trabajo (única por edición), cada vez abre con un gancho distinto
+    # (todos son momentos impactantes, así que sigue siendo bueno).
+    rng.shuffle(hooks)
     return hooks
 
 

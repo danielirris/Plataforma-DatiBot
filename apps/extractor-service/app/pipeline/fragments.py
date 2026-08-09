@@ -101,5 +101,10 @@ def build_pool(
         if not added:
             break
         idx += 1
-    logger.info("Pool de fragmentos: %d beats de %d videos", len(pool), len(videos))
+    # BARAJAR con la semilla del trabajo (única por edición): sin esto, el orden era
+    # fijo (round-robin) y _fill_clip caminaba desde el inicio -> SIEMPRE la misma
+    # secuencia y solo los primeros fragmentos de los primeros videos. Barajado, cada
+    # edición saca un orden distinto y usa material de TODOS los videos.
+    rng.shuffle(pool)
+    logger.info("Pool de fragmentos: %d beats de %d videos (barajado)", len(pool), len(videos))
     return pool
