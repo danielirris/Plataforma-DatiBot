@@ -402,7 +402,8 @@ Reglas:
   NO ofrece nada descargable, deja "guias" vacío. (Encima se mostrará un video real
   de la guía para dar confianza; tú solo marcas el segundo.)
 - pills: 2-5 en las frases más relevantes; "end" cuando la voz termina la frase.
-- emojis: 3-6, contextuales (🥛 leche, 🌱 natural, 💪 salud, 💰 dinero, ✨ beneficio...).
+- emojis: 6-10, contextuales (🥛 leche, 🌱 natural, 💪 salud, 💰 dinero, ✨ beneficio...),
+  REGADOS a lo largo del video (aparecen y desaparecen), para darle vida alrededor del metraje.
 - "palette": 4-6 colores vibrantes de alto contraste, **VARIADOS entre sí** (no todos el
   mismo tono), cohesivos con el tema. Cada tarjeta y píldora usará un color DISTINTO de la
   paleta para que la presentación NO sea monótona. Evita amarillo si el fondo es claro.

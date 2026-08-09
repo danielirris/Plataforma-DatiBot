@@ -830,12 +830,18 @@ export const EmojiPop: React.FC<{ emoji: string; idx: number }> = ({ emoji, idx 
   const out = interpolate(f, [durationInFrames - 6, durationInFrames], [1, 0], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' });
   const o = Math.min(1, enter) * out;
   const float = Math.sin(f / fps * 4) * 8;
-  const left = idx % 2 === 0 ? '16%' : '70%';
-  const top = idx % 3 === 0 ? '24%' : '32%';
+  // Esparcidos ALREDEDOR del video (bordes y esquinas), evitando el centro y la zona
+  // baja-central donde van los subtítulos. Cada emoji cae en un punto distinto, con
+  // tamaño y rotación variados para que se sientan "regados" por el cuadro.
+  const POS = [['7%','13%'],['77%','16%'],['9%','38%'],['80%','42%'],['21%','21%'],
+               ['64%','28%'],['5%','54%'],['82%','56%'],['40%','10%'],['58%','47%']];
+  const p = POS[idx % POS.length];
+  const rot = (idx % 2 === 0 ? -1 : 1) * (5 + (idx % 3) * 4);
+  const size = Math.round(width * (0.10 + (idx % 3) * 0.02));
   return (
     <div style={{
-      position: 'absolute', left, top, fontSize: Math.round(width * 0.13),
-      opacity: o, transform: `translateY(${float}px) scale(${0.4 + 0.6 * Math.min(1, enter)})`,
+      position: 'absolute', left: p[0], top: p[1], fontSize: size,
+      opacity: o, transform: `translateY(${float}px) rotate(${rot}deg) scale(${0.4 + 0.6 * Math.min(1, enter)})`,
       filter: 'drop-shadow(0 8px 14px rgba(0,0,0,0.4))',
     }}>{emoji}</div>
   );
