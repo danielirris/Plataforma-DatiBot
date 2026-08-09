@@ -669,7 +669,11 @@ class JobManager:
         moments = analyze.analyze_hooks([v.segments for v in videos])
 
         # Construir pool y componer N clips (cortes de duración variable).
-        rng = random.Random(f"{settings.seed}:{job_id}")
+        # Aleatoriedad REAL (entropía del sistema), NO derivada de settings.seed/job_id:
+        # así CADA generación baraja el pool y los ganchos distinto de verdad -> secuencia
+        # y gancho de apertura diferentes cada vez que le das "generar", aunque pongas todo
+        # igual. (Antes dependía de job_id y salía repetitivo.)
+        rng = random.Random()
         pool = build_pool(videos, rng, settings.beat_min_s, settings.beat_max_s)
         # Un audio por anuncio: si hay locuciones, mandan ELLAS el nº de anuncios.
         voces = self._voz.get(job_id) or []
@@ -881,7 +885,11 @@ class JobManager:
             titulos = params.get("titulos") or []
             for i, v in enumerate(videos):
                 v.plan = analyze.plan_ad(v.words, v.duration, prompt_text)
-                seed = f"{settings.seed}:{job_id}:{v.id}"
+                # Semilla de paleta REALMENTE aleatoria por generación: así los COLORES
+                # cambian cada vez (antes dependía de job_id y salían siempre iguales para
+                # el mismo audio). El estilo sigue fijando la INTENCIÓN de color; esto solo
+                # varía la paleta dentro de esa intención.
+                seed = f"{random.getrandbits(48)}:{v.id}"
                 if usar_estilo:
                     # El estilo FUERZA subtítulo, intensidad, topes y paleta.
                     styles.apply_style(v.plan, style_id, seed)

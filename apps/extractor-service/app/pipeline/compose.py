@@ -110,6 +110,13 @@ def compose_clips(
 
     hook_pool = build_hook_beats(moments, videos, rng, beat_min, beat_max)
     hook_n = max(0, hook_beats)
+    # Garantizar VARIEDAD de gancho: si la IA detectó pocos momentos impactantes, el
+    # gancho se repetiría siempre. Complementamos con fragmentos aleatorios de CUALQUIER
+    # video del pool (que ya viene barajado), para que la apertura cambie cada vez.
+    if pool and len(hook_pool) < max(6, num_clips + hook_n + 2):
+        extra = rng.sample(pool, min(len(pool), 8))
+        hook_pool = hook_pool + extra
+    rng.shuffle(hook_pool)
 
     clips: list[list[Beat]] = []
     for k in range(num_clips):
