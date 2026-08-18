@@ -64,6 +64,16 @@ interface HookCandidato {
   thumb: string | null;
 }
 
+/** Gancho elegido y GUARDADO (sobrevive a nuevas búsquedas). Uno por anuncio. */
+interface HookElegido {
+  key: string; // estable entre búsquedas: `${video_idx}:${start*100}`
+  video_idx: number;
+  start: number;
+  dur: number;
+  razon: string;
+  thumb: string | null; // URL ya resuelta, para seguir mostrándola tras re-buscar
+}
+
 interface ColaItem {
   id: string;
   estado: string;
@@ -137,9 +147,19 @@ export function EditorVideos({
   // Fase 4 — Hook visual: candidatos (marco de referencia) y el elegido.
   const [hookCands, setHookCands] = useState<HookCandidato[]>([]);
   const [hookBase, setHookBase] = useState<string>("");
-  const [hookSel, setHookSel] = useState<number | null>(null);
+  // Ganchos GUARDADOS (uno por anuncio). Persisten al pulsar "Buscar más ganchos".
+  const [hookElegidos, setHookElegidos] = useState<HookElegido[]>([]);
   const [buscandoHook, setBuscandoHook] = useState<boolean>(false);
   const [hookMsg, setHookMsg] = useState<string>("");
+  // Ronda de búsqueda de ganchos: sube en cada "Volver a buscar" para pedir variedad.
+  const [hookRonda, setHookRonda] = useState<number>(0);
+  // Gancho SUBIDO por anuncio (opcional): video propio (por índice de anuncio) +
+  // cuántos segundos usar. Si un anuncio tiene video subido, ese manda sobre el
+  // fragmento elegido / automático. Se sube por su propio endpoint (como la voz).
+  const [hookVids, setHookVids] = useState<Record<number, { nombre: string; original: string }>>({});
+  const [hookSecs, setHookSecs] = useState<Record<number, number>>({});
+  const [subiendoHookAd, setSubiendoHookAd] = useState<number | null>(null);
+  const [hookUpMsg, setHookUpMsg] = useState<string>("");
 
   // Locución: UNA por anuncio (en orden). Manda sobre la duración de su anuncio y
   // de ella salen los subtítulos (el motor la transcribe). Deben ser tantas como
@@ -158,11 +178,12 @@ export function EditorVideos({
   const [cola, setCola] = useState<ColaInfo | null>(null);
   const [colaMsg, setColaMsg] = useState<string>("");
 
-  // Los candidatos de gancho van atados al orden/selección de videos; si cambia
-  // la selección, hay que descartarlos (el video_idx ya no coincidiría).
+  // Los candidatos Y los ganchos guardados van atados al orden/selección de videos;
+  // si cambia la selección, hay que descartarlos (el video_idx ya no coincidiría).
   function limpiarGanchos() {
     setHookCands([]);
-    setHookSel(null);
+    setHookElegidos([]);
+    setHookRonda(0);
     setHookMsg("");
   }
 
@@ -313,21 +334,69 @@ export function EditorVideos({
     setVozEstado("");
   }
 
+  // Sube el VIDEO-GANCHO de UN anuncio (cuerpo crudo, como la voz). Opcional.
+  async function subirGanchoVideo(ad: number, file: File | null) {
+    if (!file) return;
+    setSubiendoHookAd(ad);
+    setHookUpMsg(`Subiendo gancho del anuncio ${ad + 1}: ${file.name}…`);
+    try {
+      const res = await fetch(`/api/editor/hook-video?name=${encodeURIComponent(file.name)}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/octet-stream" },
+        body: file,
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setHookUpMsg("⚠️ " + (data.error ?? `Error ${res.status}`));
+        setSubiendoHookAd(null);
+        return;
+      }
+      setHookVids((prev) => ({
+        ...prev,
+        [ad]: { nombre: data.hook as string, original: data.original as string },
+      }));
+      setHookSecs((prev) => (prev[ad] ? prev : { ...prev, [ad]: 2 }));
+      setHookUpMsg(`✓ Gancho del anuncio ${ad + 1} subido.`);
+    } catch (e) {
+      setHookUpMsg("⚠️ Fallo de red: " + (e instanceof Error ? e.message : "?"));
+    }
+    setSubiendoHookAd(null);
+  }
+  function quitarGanchoVideo(ad: number) {
+    setHookVids((prev) => {
+      const next = { ...prev };
+      delete next[ad];
+      return next;
+    });
+    setHookUpMsg("");
+  }
+  function cambiarHookSecs(ad: number, valor: string) {
+    const n = Math.min(6, Math.max(0.6, Number(valor) || 2));
+    setHookSecs((prev) => ({ ...prev, [ad]: n }));
+  }
+
   async function buscarGanchos() {
     const urls = urlsSeleccionadas();
     if (!urls.length) {
       setHookMsg("⚠️ Marca al menos un video del producto.");
       return;
     }
+    // Ronda actual: hookRonda arranca en 0 (1ª búsqueda) y SOLO avanza cuando una
+    // búsqueda trae candidatos (más abajo). Así un fallo/vacío no reinicia la variedad.
+    const ronda = hookRonda;
     setBuscandoHook(true);
-    setHookMsg("Analizando los videos para proponer ganchos…");
+    setHookMsg(
+      ronda
+        ? "Buscando MÁS ganchos con ángulos distintos…"
+        : "Analizando los videos para proponer ganchos…",
+    );
+    // NO tocamos hookElegidos: los ganchos ya guardados persisten entre búsquedas.
     setHookCands([]);
-    setHookSel(null);
     try {
       const res = await fetch("/api/editor/hooks", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ video_urls: urls }),
+        body: JSON.stringify({ video_urls: urls, variant: ronda }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
@@ -337,15 +406,64 @@ export function EditorVideos({
       }
       setHookBase(data.publicBase ?? "");
       setHookCands((data.candidates ?? []) as HookCandidato[]);
+      const n = (data.candidates ?? []).length as number;
+      // Solo avanzamos de ronda si HUBO resultados (así el próximo clic pide variedad
+      // nueva; un vacío/fallo no consume la ronda).
+      if (n) setHookRonda(ronda + 1);
       setHookMsg(
-        (data.candidates ?? []).length
-          ? "Elige el fragmento que abrirá tus anuncios (o deja Automático)."
+        n
+          ? `${n} opciones. Elige ${numClips} gancho(s) (uno por anuncio); los ya elegidos se guardan aunque vuelvas a buscar.`
           : "No se encontraron ganchos claros.",
       );
     } catch (e) {
       setHookMsg("⚠️ Fallo de red: " + (e instanceof Error ? e.message : "?"));
     }
     setBuscandoHook(false);
+  }
+
+  // Clave estable de un gancho (igual en cualquier ronda): mismo video + mismo inicio.
+  const hookKey = (c: { video_idx: number; start: number }) =>
+    `${c.video_idx}:${Math.round(c.start * 100)}`;
+  const indiceElegido = (c: HookCandidato) =>
+    hookElegidos.findIndex((h) => h.key === hookKey(c));
+
+  // Marca/desmarca un candidato. Se guarda como objeto propio (sobrevive a re-buscar).
+  function toggleGancho(c: HookCandidato) {
+    const k = hookKey(c);
+    if (hookElegidos.some((h) => h.key === k)) {
+      setHookElegidos((prev) => prev.filter((h) => h.key !== k)); // ya estaba: quitar
+      return;
+    }
+    if (hookElegidos.length >= numClips) {
+      setHookMsg(`Ya elegiste ${numClips} gancho(s) (uno por anuncio). Quita uno para cambiarlo.`);
+      return; // lleno: no añadir más de numClips
+    }
+    const nuevo: HookElegido = {
+      key: k,
+      video_idx: c.video_idx,
+      start: c.start,
+      dur: c.dur,
+      razon: c.razon,
+      thumb: c.thumb ? thumbSrc(c.thumb) : null,
+    };
+    setHookElegidos((prev) => (prev.some((h) => h.key === k) ? prev : [...prev, nuevo]));
+  }
+  function quitarGancho(k: string) {
+    setHookElegidos((prev) => prev.filter((h) => h.key !== k));
+  }
+  // Nº de anuncios: SIEMPRE 1..20 (vaciar el campo daba 0 -> estado inválido). Al
+  // reducirlo, recorta los ganchos guardados que ya no tienen anuncio.
+  function cambiarNumClips(valor: string) {
+    const n = Math.min(20, Math.max(1, Math.trunc(Number(valor) || 1)));
+    setNumClips(n);
+    setHookElegidos((prev) => (prev.length > n ? prev.slice(0, n) : prev));
+    // Los ganchos subidos van por índice de anuncio: descarta los de anuncios que
+    // ya no existen (ad >= n).
+    setHookVids((prev) => {
+      const next: Record<number, { nombre: string; original: string }> = {};
+      for (const [ad, v] of Object.entries(prev)) if (Number(ad) < n) next[Number(ad)] = v;
+      return next;
+    });
   }
 
   async function generar() {
@@ -364,8 +482,16 @@ export function EditorVideos({
       );
       return;
     }
-    const cand = hookSel != null ? hookCands.find((c) => c.i === hookSel) : null;
-    const hook = cand ? { video_idx: cand.video_idx, start: cand.start, dur: cand.dur } : null;
+    // Un gancho por anuncio, EN ORDEN (recortado a numClips). Los anuncios sin
+    // gancho elegido abren en automático. Lista vacía = todo automático.
+    const hooks = hookElegidos
+      .slice(0, numClips)
+      .map((h) => ({ video_idx: h.video_idx, start: h.start, dur: h.dur }));
+    // Ganchos SUBIDOS por anuncio (video propio + segundos). Solo los de anuncios
+    // válidos; en el backend mandan sobre el fragmento elegido de ese anuncio.
+    const hook_uploads = Object.entries(hookVids)
+      .map(([ad, v]) => ({ ad: Number(ad), nombre: v.nombre, secs: hookSecs[Number(ad)] ?? 2 }))
+      .filter((h) => h.ad >= 0 && h.ad < numClips);
     setTrabajando(true);
     setJob(null);
     setEstado("Enviando al editor…");
@@ -388,7 +514,8 @@ export function EditorVideos({
           cta_wa: ctaTipo === "whatsapp",
           cta_boton: ctaTipo === "whatsapp" ? "WhatsApp →" : ctaBoton,
           oferta_pill: ofertaPill,
-          hook,
+          hooks,
+          hook_uploads,
           voces: voces.map((v) => v.nombre),
           // El server lee el avatar/oferta de este producto para el brief del cerebro.
           producto_id: productoId,
@@ -663,7 +790,7 @@ export function EditorVideos({
             min={1}
             max={20}
             value={numClips}
-            onChange={(e) => setNumClips(Number(e.target.value))}
+            onChange={(e) => cambiarNumClips(e.target.value)}
             className="w-20 rounded-lg border border-[var(--hairline)] bg-[var(--field)] px-2 py-1 text-text outline-none focus:border-accent"
           />
         </label>
@@ -822,10 +949,11 @@ export function EditorVideos({
       <div className="mt-4 space-y-3 rounded-2xl border border-[var(--hairline)] glass p-5">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <p className="text-sm font-medium text-text">🎯 Hook visual (marco de referencia)</p>
+            <p className="text-sm font-medium text-text">🎯 Hook visual (uno por anuncio)</p>
             <p className="text-xs text-muted">
-              Elige, antes de renderizar, qué fragmento abre tus anuncios. Si no
-              eliges, el editor decide automáticamente.
+              Elige el fragmento que abre CADA anuncio: hasta {numClips} ganchos (uno
+              por anuncio). Puedes pulsar «Buscar más ganchos» varias veces; los que
+              ya elegiste se guardan. Los anuncios sin gancho abren en automático.
             </p>
           </div>
           <button
@@ -833,41 +961,93 @@ export function EditorVideos({
             disabled={buscandoHook || seleccion.size === 0}
             className="rounded-lg border border-accent/50 bg-accent/10 px-3 py-1.5 text-sm font-medium text-accent-2 disabled:opacity-50"
           >
-            {buscandoHook ? "Analizando…" : hookCands.length ? "🔄 Volver a buscar" : "🔎 Buscar ganchos"}
+            {buscandoHook ? "Analizando…" : hookCands.length ? "🔄 Buscar más ganchos" : "🔎 Buscar ganchos"}
           </button>
         </div>
 
         {hookMsg && <p className="text-xs text-muted">{hookMsg}</p>}
 
-        {hookCands.length > 0 && (
-          <>
-            <div className="flex gap-3 overflow-x-auto pb-2">
-              {/* Opción automática */}
+        {/* Contador + ganchos GUARDADOS (persisten al re-buscar). Uno por anuncio. */}
+        {(hookElegidos.length > 0 || hookCands.length > 0) && (
+          <div className="flex items-center justify-between gap-3">
+            <p className="text-xs font-medium text-text">
+              Ganchos elegidos: {Math.min(hookElegidos.length, numClips)}/{numClips}
+              {hookElegidos.length > numClips && (
+                <span className="text-amber-400">
+                  {" "}
+                  (sobran {hookElegidos.length - numClips}, se usarán los primeros {numClips})
+                </span>
+              )}
+            </p>
+            {hookElegidos.length > 0 && (
               <button
-                onClick={() => setHookSel(null)}
+                onClick={() => setHookElegidos([])}
+                className="text-xs text-muted underline hover:text-text"
+              >
+                Limpiar
+              </button>
+            )}
+          </div>
+        )}
+
+        {hookElegidos.length > 0 && (
+          <div className="flex gap-3 overflow-x-auto pb-1">
+            {hookElegidos.map((h, k) => (
+              <div
+                key={h.key}
                 className={
-                  "flex h-[132px] w-[92px] shrink-0 flex-col items-center justify-center gap-1 rounded-xl border text-center transition-all " +
-                  (hookSel == null
-                    ? "border-accent bg-accent/10 ring-1 ring-accent/40"
-                    : "border-[var(--hairline)] bg-[var(--field)] hover:border-accent/40")
+                  "relative w-[92px] shrink-0 overflow-hidden rounded-xl border " +
+                  (k < numClips ? "border-accent ring-2 ring-accent/50" : "border-amber-400/60")
                 }
               >
-                <span className="text-2xl">🎲</span>
-                <span className="px-1 text-[11px] leading-tight text-muted">Automático</span>
-              </button>
+                {h.thumb ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={h.thumb} alt={`Anuncio ${k + 1}`} className="h-[132px] w-[92px] object-cover" />
+                ) : (
+                  <div className="flex h-[132px] w-[92px] items-center justify-center bg-[var(--field)] text-2xl">
+                    🎬
+                  </div>
+                )}
+                <span className="absolute left-1 top-1 rounded bg-accent px-1 text-[10px] font-semibold text-white">
+                  Anuncio {k + 1}
+                </span>
+                <button
+                  onClick={() => quitarGancho(h.key)}
+                  title="Quitar"
+                  className="absolute right-1 top-1 flex h-5 w-5 items-center justify-center rounded-full bg-black/70 text-[11px] text-white hover:bg-black"
+                >
+                  ×
+                </button>
+                <span className="absolute bottom-0 inset-x-0 truncate bg-black/60 px-1 py-0.5 text-[9px] text-white">
+                  {mmss(h.start)} · V{h.video_idx + 1}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
 
+        {hookCands.length > 0 && (
+          <>
+            <p className="text-[11px] text-muted">
+              Toca para {hookElegidos.length >= numClips ? "cambiar (primero quita uno)" : "elegir"}:
+            </p>
+            <div className="flex gap-3 overflow-x-auto pb-2">
               {hookCands.map((c) => {
-                const activo = hookSel === c.i;
+                const pos = indiceElegido(c);
+                const activo = pos >= 0;
+                const lleno = hookElegidos.length >= numClips && !activo;
                 return (
                   <button
                     key={c.i}
-                    onClick={() => setHookSel(c.i)}
+                    onClick={() => toggleGancho(c)}
                     title={c.razon}
                     className={
                       "relative w-[92px] shrink-0 overflow-hidden rounded-xl border text-left transition-all " +
                       (activo
                         ? "border-accent ring-2 ring-accent/50"
-                        : "border-[var(--hairline)] hover:border-accent/40")
+                        : lleno
+                          ? "border-[var(--hairline)] opacity-40"
+                          : "border-[var(--hairline)] hover:border-accent/40")
                     }
                   >
                     {c.thumb ? (
@@ -890,23 +1070,86 @@ export function EditorVideos({
                     </span>
                     {activo && (
                       <span className="absolute inset-x-0 bottom-0 bg-accent/90 py-0.5 text-center text-[10px] font-semibold text-white">
-                        Elegido
+                        Anuncio {pos + 1}
                       </span>
                     )}
                   </button>
                 );
               })}
             </div>
-            {hookSel != null && (
-              <p className="rounded-lg bg-[var(--field)] px-3 py-2 text-xs text-muted">
-                Abrirá con:{" "}
-                <span className="text-text">
-                  «{hookCands.find((c) => c.i === hookSel)?.razon || "fragmento elegido"}»
-                </span>
-              </p>
-            )}
           </>
         )}
+      </div>
+
+      {/* Gancho SUBIDO por anuncio (opcional) — video propio + segundos */}
+      <div className="mt-4 space-y-3 rounded-2xl border border-[var(--hairline)] glass p-5">
+        <div>
+          <p className="text-sm font-medium text-text">🎬 Sube tu propio gancho por anuncio (opcional)</p>
+          <p className="mt-1 text-xs text-muted">
+            Para cada anuncio puedes subir <b>tu propio video de apertura</b> y decir{" "}
+            <b>cuántos segundos</b> usar. Va <b>sin sonido</b> (manda el audio del anuncio) y{" "}
+            <b>manda sobre</b> el fragmento elegido arriba. Si no subes nada, se usa lo de arriba
+            (o automático).
+          </p>
+        </div>
+
+        <div className="space-y-2">
+          {Array.from({ length: numClips }).map((_, i) => {
+            const sub = hookVids[i];
+            return (
+              <div
+                key={i}
+                className="flex flex-wrap items-center gap-3 rounded-lg border border-[var(--hairline)] bg-[var(--field)] p-2.5 text-sm"
+              >
+                <span className="shrink-0 text-muted">Anuncio {i + 1}</span>
+                {sub ? (
+                  <>
+                    <span className="min-w-0 flex-1 truncate text-text">🎬 {sub.original}</span>
+                    <label className="flex shrink-0 items-center gap-1 text-xs text-muted">
+                      <input
+                        type="number"
+                        min={0.6}
+                        max={6}
+                        step={0.5}
+                        value={hookSecs[i] ?? 2}
+                        onChange={(e) => cambiarHookSecs(i, e.target.value)}
+                        className="w-16 rounded border border-[var(--hairline)] bg-[var(--bg)] px-1.5 py-1 text-text outline-none focus:border-accent"
+                      />
+                      seg
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => quitarGanchoVideo(i)}
+                      title="Quitar este gancho"
+                      className="shrink-0 rounded px-1.5 text-xs text-muted hover:text-red-400"
+                    >
+                      ✕
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <span className="flex-1 text-xs text-muted">— sin gancho propio (usa lo de arriba) —</span>
+                    <label className="shrink-0 cursor-pointer rounded-lg border border-accent/50 bg-accent/10 px-3 py-1 text-xs font-medium text-accent-2">
+                      {subiendoHookAd === i ? "Subiendo…" : "⬆️ Subir gancho"}
+                      <input
+                        type="file"
+                        accept="video/*,.mp4,.mov,.mkv"
+                        disabled={subiendoHookAd !== null}
+                        onChange={(e) => {
+                          subirGanchoVideo(i, e.target.files?.[0] ?? null);
+                          e.target.value = "";
+                        }}
+                        className="hidden"
+                      />
+                    </label>
+                  </>
+                )}
+              </div>
+            );
+          })}
+        </div>
+        {hookUpMsg && <p className="text-xs text-muted">{hookUpMsg}</p>}
+        <p className="text-[11px] text-muted">Formatos: mp4, mov, mkv · máx 120 MB por gancho.</p>
       </div>
 
       {/* Acción + estado */}

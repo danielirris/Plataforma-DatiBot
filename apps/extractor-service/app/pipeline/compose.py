@@ -91,12 +91,17 @@ def compose_clips(
     hook_beats: int,
     beat_min: float,
     beat_max: float,
-    forced_hook: Beat | None = None,
+    forced_hooks: list[Beat | None] | None = None,
 ) -> list[list[Beat]]:
     """Compone ``num_clips`` listas de beats (una por clip).
 
     ``duraciones_s`` da la duración objetivo de CADA clip (una por anuncio, la
     de su locución). Debe tener ``num_clips`` elementos.
+
+    ``forced_hooks`` es el gancho VISUAL elegido POR anuncio: el clip ``k`` abre
+    con ``forced_hooks[k]`` si existe y no es ``None``; si no, abre con ganchos
+    automáticos del pool. Así el usuario puede fijar un gancho distinto por
+    anuncio (o dejar algunos en automático).
 
     Returns:
         Lista de clips; cada clip es una lista de ``Beat`` cuya suma de
@@ -124,8 +129,9 @@ def compose_clips(
         objetivo_k = duraciones_s[k] if k < len(duraciones_s) else duraciones_s[-1]
         # Tamaño aproximado de la ventana de cuerpo por clip (para desplazar).
         aprox_beats = max(1, int(objetivo_k / max(beat_min, 0.5)))
-        # Gancho VISUAL elegido por el usuario: abre TODOS los clips.
-        forzados = [forced_hook] if forced_hook is not None else []
+        # Gancho VISUAL elegido por el usuario para ESTE anuncio (si lo hay).
+        fh = forced_hooks[k] if (forced_hooks and k < len(forced_hooks)) else None
+        forzados = [fh] if fh is not None else []
         restantes = max(0, hook_n - len(forzados))
         hooks = forzados + ([hook_pool[(k * max(1, restantes) + j) % len(hook_pool)]
                              for j in range(restantes)] if restantes and hook_pool else [])

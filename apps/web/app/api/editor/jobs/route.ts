@@ -9,6 +9,7 @@ import { extractorUrl, extractorPublicUrl } from "@/lib/editor/extractor";
 import { esSoloEditor } from "@/lib/modo";
 
 const DIR_VOZ = path.join(os.tmpdir(), "datibot-voz");
+const DIR_HOOK = path.join(os.tmpdir(), "datibot-hooks");
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -38,6 +39,10 @@ export async function POST(req: Request) {
     highlight?: string;
     font?: string;
     hook?: { video_idx: number; start: number; dur: number } | null;
+    /** gancho VISUAL por anuncio, EN ORDEN (el índice = nº de anuncio) */
+    hooks?: { video_idx: number; start: number; dur: number }[] | null;
+    /** gancho SUBIDO por anuncio: video propio (por nombre) + segundos. Opcional. */
+    hook_uploads?: { ad: number; nombre: string; secs: number }[] | null;
     /** nombres devueltos por /api/editor/voz: UNA locución por anuncio, en orden */
     voces?: string[] | null;
     /** id del producto elegido: el server lee su avatar/oferta para el brief del cerebro */
@@ -120,6 +125,20 @@ export async function POST(req: Request) {
       { status: 400 },
     );
 
+  // Ganchos SUBIDOS por anuncio (video propio + segundos): también viajan solo por
+  // el camino de archivos (multipart). Filtramos a anuncios válidos.
+  const hooksUp = (body.hook_uploads ?? []).filter(
+    (h) => h && h.nombre && Number.isFinite(h.ad) && h.ad >= 0 && h.ad < nAnuncios,
+  );
+  if (hooksUp.length && !porArchivos)
+    return NextResponse.json(
+      {
+        error:
+          "Para subir tu propio gancho, los videos del producto deben estar en el servidor: vuelve a subirlos en Productos → paso Videos.",
+      },
+      { status: 400 },
+    );
+
   const enviarPorUrls = () =>
     fetch(`${extractorUrl()}/api/jobs/from-urls`, {
       method: "POST",
@@ -145,6 +164,7 @@ export async function POST(req: Request) {
         // (style_font). Forzar Anton hacía que los 5 estilos se vieran iguales.
         font: body.font ?? "",
         hook: body.hook ?? null,
+        hooks: body.hooks ?? [],
         producto: productoBrief,
         ganchos: body.ganchos ?? [],
         titulos: body.titulos ?? [],
@@ -179,6 +199,7 @@ export async function POST(req: Request) {
       form.append("ganchos", JSON.stringify(body.ganchos ?? []));
       form.append("titulos", JSON.stringify(body.titulos ?? []));
       if (body.hook) form.append("hook", JSON.stringify(body.hook));
+      if (body.hooks?.length) form.append("hooks", JSON.stringify(body.hooks));
       // Editor suelto (subdominio): quien lo usa no tiene la página de preview del
       // extractor, así que el anuncio debe renderizarse solo, sin esperar a nadie.
       if (esSoloEditor()) form.append("auto_render", "1");
@@ -197,14 +218,43 @@ export async function POST(req: Request) {
           );
         }
       }
+      // Ganchos SUBIDOS: cada video va con la clave "hook_video" repetida, y
+      // "hook_meta" es un JSON [{ad, secs}] EN EL MISMO ORDEN que los archivos.
+      const hookMeta: { ad: number; secs: number }[] = [];
+      for (const h of hooksUp) {
+        const rutaHook = path.join(DIR_HOOK, path.basename(h.nombre));
+        try {
+          await stat(rutaHook);
+          form.append("hook_video", await openAsBlob(rutaHook), path.basename(h.nombre));
+          hookMeta.push({ ad: h.ad, secs: Math.min(6, Math.max(0.6, Number(h.secs) || 2)) });
+        } catch {
+          return NextResponse.json(
+            { error: "Uno de los videos de gancho ya no está disponible. Vuelve a subirlo." },
+            { status: 400 },
+          );
+        }
+      }
+      if (hookMeta.length) form.append("hook_meta", JSON.stringify(hookMeta));
       res = await fetch(`${extractorUrl()}/api/jobs/from-files`, {
         method: "POST",
         body: form,
         signal: AbortSignal.timeout(EXTRACTOR_TIMEOUT_MS),
       });
-      // 404 = el extractor aún no tiene el endpoint nuevo (no se ha redesplegado):
-      // se intenta por el camino antiguo antes de rendirse.
-      if (res.status === 404) res = await enviarPorUrls();
+      // 404 = el extractor aún no tiene el endpoint nuevo (no se ha redesplegado).
+      // El camino por URLs NO puede llevar la locución (voz va solo por multipart);
+      // si hay voces, caer ahí las perdería EN SILENCIO -> mejor error claro. Sin
+      // voces, el fallback por URLs es equivalente.
+      if (res.status === 404) {
+        if (voces.length || hooksUp.length)
+          return NextResponse.json(
+            {
+              error:
+                "El servicio de video está desactualizado y no puede recibir tu audio o tu gancho: redespliega el servicio «extractor» en EasyPanel y vuelve a intentar.",
+            },
+            { status: 503 },
+          );
+        res = await enviarPorUrls();
+      }
     } else {
       res = await enviarPorUrls();
     }

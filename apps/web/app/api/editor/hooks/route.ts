@@ -8,7 +8,7 @@ export const maxDuration = 120;
 // Devuelve los candidatos de gancho (con miniatura) de los videos elegidos,
 // para que el usuario arme el "marco de referencia" del Hook visual (Fase 4).
 export async function POST(req: Request) {
-  let body: { video_urls?: string[] };
+  let body: { video_urls?: string[]; variant?: number };
   try {
     body = (await req.json()) as typeof body;
   } catch {
@@ -17,13 +17,15 @@ export async function POST(req: Request) {
   const urls = (body.video_urls ?? []).filter(Boolean);
   if (!urls.length)
     return NextResponse.json({ error: "Elige al menos un video del producto." }, { status: 400 });
+  // Ronda de búsqueda: 0 = primera; >0 al pulsar "Volver a buscar" (más variedad).
+  const variant = Number.isFinite(body.variant) ? Math.max(0, Math.trunc(body.variant as number)) : 0;
 
   let res: Response;
   try {
     res = await fetch(`${extractorUrl()}/api/hooks`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ video_urls: urls }),
+      body: JSON.stringify({ video_urls: urls, variant }),
     });
   } catch {
     return NextResponse.json(

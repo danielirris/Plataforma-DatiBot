@@ -57,6 +57,17 @@ _STRICT_SUFFIX = (
     "terminando por '}', sin ningún otro texto."
 )
 
+# Empujón de VARIEDAD para el botón "Volver a buscar": en cada ronda pedimos
+# ángulos distintos y exploramos TODO el material, para que no salgan siempre los
+# mismos ganchos. Junto con una temperatura más alta, cada clic da opciones nuevas.
+_VARIETY_SUFFIX = (
+    "\n\nESTA ES LA RONDA #{n} de análisis: el usuario ya vio ganchos antes y pidió "
+    "MÁS opciones. Propón momentos DISTINTOS a los más obvios, recorriendo TODO el "
+    "material (varios videos, distintos segundos) y variando el ángulo: preguntas, "
+    "datos sorprendentes, emoción, humor, contraste, promesas. Sé generoso y devuelve "
+    "el MÁXIMO de ganchos buenos (hasta 20)."
+)
+
 
 def format_multi_transcript(videos_segments: list[list[Segment]]) -> str:
     """Formatea los segmentos de todos los videos como líneas etiquetadas.
@@ -70,9 +81,16 @@ def format_multi_transcript(videos_segments: list[list[Segment]]) -> str:
     return "\n".join(lines)
 
 
-def build_prompt(videos_segments: list[list[Segment]], *, strict: bool = False) -> str:
-    """Construye el prompt para el modelo a partir de los segmentos de todos los videos."""
+def build_prompt(
+    videos_segments: list[list[Segment]], *, strict: bool = False, variant: int = 0
+) -> str:
+    """Construye el prompt para el modelo a partir de los segmentos de todos los videos.
+
+    ``variant`` > 0 añade un empujón de variedad (para el botón "Volver a buscar").
+    """
     prompt = _PROMPT_TEMPLATE.format(transcript=format_multi_transcript(videos_segments))
+    if variant > 0:
+        prompt += _VARIETY_SUFFIX.format(n=variant + 1)
     if strict:
         prompt += _STRICT_SUFFIX
     return prompt
@@ -144,7 +162,9 @@ def parse_moments_json(text: str, num_videos: int | None = None) -> list[Moment]
     return moments
 
 
-def analyze_hooks(videos_segments: list[list[Segment]]) -> list[Moment]:
+def analyze_hooks(
+    videos_segments: list[list[Segment]], *, variant: int = 0
+) -> list[Moment]:
     """Pide a OpenAI los mejores ganchos; reintenta una vez si el JSON es inválido.
 
     Si no hay transcripción utilizable (videos solo con música), devuelve una
@@ -153,6 +173,9 @@ def analyze_hooks(videos_segments: list[list[Segment]]) -> list[Moment]:
 
     Args:
         videos_segments: lista por video de sus segmentos de transcripción.
+        variant: número de ronda. 0 = primera búsqueda (determinista, mejores
+            ganchos). >0 = el usuario pulsó "Volver a buscar": subimos la
+            temperatura y pedimos ángulos distintos para dar opciones NUEVAS.
 
     Returns:
         Lista de ``Moment`` ordenada por score (posiblemente vacía).
@@ -170,22 +193,29 @@ def analyze_hooks(videos_segments: list[list[Segment]]) -> list[Moment]:
     client = OpenAI(api_key=settings.openai_api_key)
     num_videos = len(videos_segments)
 
+    # Rondas siguientes ("Volver a buscar"): más temperatura -> ganchos distintos.
+    temperature = 0.4 if variant <= 0 else min(1.1, 0.7 + 0.15 * variant)
+
     def _generate(strict: bool) -> str:
         resp = with_retries(
             lambda: client.chat.completions.create(
                 model=settings.openai_analyze_model,
                 messages=[
                     {"role": "system", "content": SYSTEM_INSTRUCTION},
-                    {"role": "user", "content": build_prompt(videos_segments, strict=strict)},
+                    {"role": "user", "content": build_prompt(
+                        videos_segments, strict=strict, variant=variant)},
                 ],
                 response_format={"type": "json_object"},
-                temperature=0.4,
+                temperature=temperature,
             ),
             what="análisis OpenAI",
         )
         return resp.choices[0].message.content or ""
 
-    logger.info("Analizando ganchos con OpenAI (%s)", settings.openai_analyze_model)
+    logger.info(
+        "Analizando ganchos con OpenAI (%s, ronda=%d, temp=%.2f)",
+        settings.openai_analyze_model, variant, temperature,
+    )
     text = _generate(strict=False)
     try:
         moments = parse_moments_json(text, num_videos)

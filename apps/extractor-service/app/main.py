@@ -222,6 +222,34 @@ async def _download_url(url: str, max_bytes: int, allowed: set[str] = ALLOWED_EX
     return tmp, name
 
 
+def _clean_hook_list(raw: object) -> list[dict | None]:
+    """Normaliza la lista de ganchos elegidos (uno por anuncio, EN ORDEN).
+
+    El índice = nº de anuncio, así que la POSICIÓN se conserva: una entrada válida
+    -> {"video_idx", "start", "dur"}; una inválida -> ``None`` (ese anuncio queda en
+    automático) SIN correr los demás. Se recortan los ``None`` finales (anuncios sin
+    gancho al final = automático por defecto). Si no queda nada, devuelve ``[]``.
+    """
+    if not isinstance(raw, list):
+        return []
+    out: list[dict | None] = []
+    for h in raw[:20]:
+        if not (isinstance(h, dict) and "video_idx" in h):
+            out.append(None)
+            continue
+        try:
+            out.append({
+                "video_idx": int(h.get("video_idx", 0)),
+                "start": float(h.get("start", 0.0)),
+                "dur": float(h.get("dur", 2.0)),
+            })
+        except (TypeError, ValueError):
+            out.append(None)
+    while out and out[-1] is None:
+        out.pop()
+    return out
+
+
 @app.post("/api/jobs/from-urls")
 async def create_job_from_urls(payload: dict = Body(...)) -> JSONResponse:
     """Crea un job a partir de URLs de video (los adjuntos al producto).
@@ -265,11 +293,17 @@ async def create_job_from_urls(payload: dict = Body(...)) -> JSONResponse:
             params[campo] = [str(x or "") for x in arr]
     hook = payload.get("hook")
     if isinstance(hook, dict) and "video_idx" in hook:
-        params["hook"] = {
-            "video_idx": int(hook.get("video_idx", 0)),
-            "start": float(hook.get("start", 0.0)),
-            "dur": float(hook.get("dur", 2.0)),
-        }
+        try:
+            params["hook"] = {
+                "video_idx": int(hook.get("video_idx", 0)),
+                "start": float(hook.get("start", 0.0)),
+                "dur": float(hook.get("dur", 2.0)),
+            }
+        except (TypeError, ValueError):
+            pass  # gancho único malformado: se ignora (no rompe el job)
+    hooks_clean = _clean_hook_list(payload.get("hooks"))
+    if hooks_clean:
+        params["hooks"] = hooks_clean
 
     settings.ensure_dirs()
     max_bytes = settings.max_upload_mb * 1024 * 1024
@@ -303,6 +337,7 @@ async def create_job_from_urls(payload: dict = Body(...)) -> JSONResponse:
 async def create_job_from_files(
     videos: list[UploadFile] = File(default=[]),
     voz: list[UploadFile] = File(default=[]),  # una locución por anuncio, en orden
+    hook_videos: list[UploadFile] = File(default=[]),  # gancho SUBIDO por anuncio
     mode: str = Form("full"),
     num_clips: int = Form(0),
     use_music: str = Form("0"),
@@ -312,6 +347,7 @@ async def create_job_from_files(
     highlight: str = Form(""),
     font: str = Form(""),
     hook: str = Form(""),
+    hooks: str = Form(""),         # JSON array: gancho VISUAL por anuncio (opcional)
     auto_render: str = Form(""),
     trim_silence: str = Form(""),  # recortar silencios de la locución
     use_cta: str = Form("1"),      # poner o no la llamada a la acción final
@@ -322,6 +358,7 @@ async def create_job_from_files(
     producto: str = Form(""),      # JSON del producto (avatar/oferta) para el brief del cerebro
     ganchos: str = Form(""),       # JSON array: gancho de texto por anuncio (opcional)
     titulos: str = Form(""),       # JSON array: título por anuncio (opcional)
+    hook_meta: str = Form(""),     # JSON array [{ad, secs}] alineado a hook_videos
 ) -> JSONResponse:
     """Igual que /api/jobs/from-urls pero el web MANDA LOS VIDEOS como archivos.
 
@@ -396,6 +433,13 @@ async def create_job_from_files(
                 }
         except Exception:  # noqa: BLE001
             pass
+    if hooks:
+        try:
+            hooks_clean = _clean_hook_list(json.loads(hooks))
+            if hooks_clean:
+                params["hooks"] = hooks_clean
+        except Exception:  # noqa: BLE001 — la lista de ganchos es opcional
+            pass
 
     intro_saved: tuple[Path, str] | None = None
     if use_intro in ("1", "true", "True"):
@@ -441,9 +485,54 @@ async def create_job_from_files(
             detail=f"Sube exactamente {n} audio(s), uno por anuncio (enviaste {len(voces_saved)}).",
         )
 
+    # Gancho SUBIDO por anuncio (opcional): un video por anuncio + sus segundos.
+    # hook_meta es un JSON [{ad, secs}] alineado a hook_videos (mismo orden).
+    hook_tmps: list[tuple[int, float, Path, str]] = []
+
+    def _cleanup_all() -> None:
+        for p, _ in saved:
+            p.unlink(missing_ok=True)
+        for vp, _ in voces_saved:
+            vp.unlink(missing_ok=True)
+        for _ad, _secs, hp, _hn in hook_tmps:
+            hp.unlink(missing_ok=True)
+
+    meta_list: list = []
+    if hook_meta.strip():
+        try:
+            parsed = json.loads(hook_meta)
+            if isinstance(parsed, list):
+                meta_list = parsed
+        except Exception:  # noqa: BLE001 — meta opcional/malformada -> sin ganchos
+            meta_list = []
+    reales = [up for up in hook_videos if up.filename]
+    for i, up in enumerate(reales):
+        hext = Path(up.filename).suffix.lower()
+        if hext not in ALLOWED_EXT:
+            _cleanup_all()
+            raise HTTPException(
+                status_code=400,
+                detail=f"Gancho no soportado ({hext or 'sin extensión'}). "
+                       f"Usa: {', '.join(sorted(ALLOWED_EXT))}.",
+            )
+        m = meta_list[i] if i < len(meta_list) and isinstance(meta_list[i], dict) else {}
+        try:
+            ad = int(m.get("ad", i))
+            secs = float(m.get("secs", 2.0))
+        except (TypeError, ValueError):
+            ad, secs = i, 2.0
+        if not (0 <= ad < max(1, n)):
+            continue  # gancho para un anuncio que no existe: se ignora
+        htmp = Path(tempfile.mkstemp(suffix=hext, dir=str(settings.storage_dir))[1])
+        with htmp.open("wb") as f:
+            while chunk := await up.read(1 << 20):
+                f.write(chunk)
+        hook_tmps.append((ad, secs, htmp, up.filename))
+
     job_id = manager.submit(saved, [], mode, voces_saved, n, [],
                             use_music=use_music in ("1", "true", "True"),
-                            intro_tmp=intro_saved, style=style or "", params=params)
+                            intro_tmp=intro_saved, style=style or "", params=params,
+                            hook_tmps=hook_tmps)
     return JSONResponse({"job_id": job_id, "n_videos": len(saved), "mode": mode},
                         status_code=201)
 
@@ -454,6 +543,71 @@ async def list_styles() -> JSONResponse:
     from app.pipeline import styles
     items = [{"id": k, "nombre": v["nombre"]} for k, v in styles.STYLES.items()]
     return JSONResponse({"styles": items, "default": styles.DEFAULT_STYLE})
+
+
+def _sample_hook_moments(
+    paths: list[Path], segs_by_video: list[list], rng, target: int
+) -> list:
+    """Momentos de gancho MUESTREADOS por todo el material (sin IA).
+
+    Da más opciones y cubre videos sin voz. Con transcripción, muestrea inicios de
+    frases habladas (mejores ganchos); sin ella, reparte tiempos a lo largo del
+    video. ``rng`` con entropía del sistema -> distinto en cada llamada, de modo
+    que el botón "Volver a buscar" muestra candidatos nuevos cada vez.
+    """
+    from app.pipeline import audio as _audio
+    from app.pipeline.analyze import Moment
+
+    n = len(paths)
+    if n == 0:
+        return []
+    por_video = max(1, target // n + 1)
+    out: list = []
+    for vid, src in enumerate(paths):
+        segs = segs_by_video[vid] if vid < len(segs_by_video) else []
+        if segs:
+            elegidos = rng.sample(list(segs), min(len(segs), por_video))
+            for s in elegidos:
+                start = max(0.0, float(getattr(s, "start", 0.0)))
+                fin = float(getattr(s, "end", start + 1.8))
+                dur = min(2.4, max(1.2, fin - start))
+                txt = (getattr(s, "text", "") or "").strip()
+                razon = (txt[:70] + ("…" if len(txt) > 70 else "")) if txt \
+                    else f"Momento del video {vid + 1}"
+                out.append(Moment(vid, round(start, 2), round(start + dur, 2), 45.0, razon))
+        else:
+            try:
+                dur_v = float(_audio.probe_video_duration(src) or 0.0)
+            except Exception:  # noqa: BLE001 — sin duración, saltamos este video
+                dur_v = 0.0
+            if dur_v < 1.2:
+                continue
+            ranuras = max(1, por_video)
+            for k in range(ranuras):
+                base = dur_v * (k + 0.5) / ranuras
+                jitter = rng.uniform(-0.35, 0.35) * (dur_v / ranuras)
+                start = min(max(0.0, base + jitter), max(0.0, dur_v - 1.6))
+                out.append(Moment(vid, round(start, 2), round(start + 1.8, 2), 35.0,
+                                  f"Momento del video {vid + 1}"))
+    rng.shuffle(out)
+    return out
+
+
+def _merge_hook_moments(ai_moments: list, sampled: list, *, cap: int) -> list:
+    """Une ganchos de IA (primero: traen 'razón') y muestreados, sin duplicar
+    ventanas cercanas (mismo video y ~2 s) y con un tope de candidatos."""
+    fusion: list = []
+    vistos: set = set()
+    for m in list(ai_moments) + list(sampled):
+        clave = (int(getattr(m, "video_id", -1)),
+                 int(float(getattr(m, "start", 0.0)) // 2))
+        if clave in vistos:
+            continue
+        vistos.add(clave)
+        fusion.append(m)
+        if len(fusion) >= cap:
+            break
+    return fusion
 
 
 @app.post("/api/hooks")
@@ -505,9 +659,29 @@ async def hook_candidates(payload: dict = Body(...)) -> JSONResponse:
             else:
                 segs_by_video.append([])
 
-        moments = _an.analyze_hooks(segs_by_video)
+        import random as _random
+
+        try:
+            variant = max(0, int(payload.get("variant") or payload.get("ronda") or 0))
+        except (TypeError, ValueError):
+            variant = 0
+
+        # 1) Ganchos de la IA (en rondas siguientes pide ángulos DISTINTOS).
+        try:
+            ai_moments = _an.analyze_hooks(segs_by_video, variant=variant)
+        except Exception as exc:  # noqa: BLE001 — sin IA seguimos con muestreo
+            logger.warning("analyze_hooks falló (%s); uso solo muestreo.", exc)
+            ai_moments = []
+
+        # 2) Muestreo por TODO el material (entropía del sistema -> nuevo cada clic).
+        rng = _random.Random()
+        sampled = _sample_hook_moments(paths, segs_by_video, rng, target=10)
+
+        # 3) Mezcla: IA primero, luego muestreados; sin duplicar; tope de candidatos.
+        moments = _merge_hook_moments(ai_moments, sampled, cap=14)
+
         cands: list[dict] = []
-        for idx, m in enumerate(moments[:8]):
+        for idx, m in enumerate(moments):
             if not (0 <= m.video_id < len(paths)):
                 continue
             thumb_ok = False

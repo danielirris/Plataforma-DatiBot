@@ -107,6 +107,9 @@ class JobManager:
         self._music: dict[str, list[Path]] = {}
         self._guias: dict[str, list[Path]] = {}  # videos de guía por job (PiP)
         self._voz: dict[str, list[Path]] = {}  # una locución por anuncio
+        # Gancho SUBIDO por anuncio: {ad: (ruta_video, segundos)}. Abre ese anuncio
+        # como footage mudo; tiene prioridad sobre el gancho visual (params["hooks"]).
+        self._hooks: dict[str, dict[int, tuple[Path, float]]] = {}
         self._req_clips: dict[str, int] = {}  # nº de clips pedido (0 = por defecto)
         self._use_music: dict[str, bool] = {}  # música de fondo opcional por job
         self._intro: dict[str, Path] = {}  # sonido de inicio opcional por job
@@ -198,6 +201,21 @@ class JobManager:
                         self._style[job.id] = style
                     if params:
                         self._params[job.id] = params
+                        # Reconstruir los ganchos subidos: los archivos siguen en
+                        # sources/ (mismo dir que los videos); leemos ruta + segundos.
+                        hf = params.get("_hook_files") if isinstance(params, dict) else None
+                        if isinstance(hf, dict) and sources:
+                            src_dir = sources[0].parent
+                            hooks_map: dict[int, tuple[Path, float]] = {}
+                            for ad_str, info in hf.items():
+                                try:
+                                    hp = src_dir / str(info["file"])
+                                    if hp.exists():
+                                        hooks_map[int(ad_str)] = (hp, float(info.get("secs", 2.0)))
+                                except (KeyError, TypeError, ValueError):
+                                    continue
+                            if hooks_map:
+                                self._hooks[job.id] = hooks_map
                 self._store.update(row["id"], {"status": "queued", "progress": 0,
                                                "message": "Reanudado tras reinicio",
                                                "recover_attempts": int(intentos) + 1})
@@ -219,6 +237,7 @@ class JobManager:
         intro_tmp: tuple[Path, str] | None = None,
         style: str = "",
         params: dict | None = None,
+        hook_tmps: list[tuple[int, float, Path, str]] | None = None,
     ) -> str:
         """Registra un nuevo job, mueve los uploads a su carpeta y lo encola.
 
@@ -273,6 +292,22 @@ class JobManager:
             intro_path = sources_dir / f"intro{iext}"
             shutil.move(str(itmp), str(intro_path))
 
+        # Gancho SUBIDO por anuncio: se guarda hook_{ad:03d} y se registra {ad: (ruta,
+        # segundos)}. La metadata (archivo + segundos) va también en params para poder
+        # reconstruirlo tras un reinicio (los archivos ya viven bajo sources/).
+        hooks_map: dict[int, tuple[Path, float]] = {}
+        hook_files_meta: dict[str, dict] = {}
+        for ad, secs, htmp, hname in (hook_tmps or []):
+            hext = Path(hname).suffix.lower() or ".mp4"
+            hdest = sources_dir / f"hook_{int(ad):03d}{hext}"
+            shutil.move(str(htmp), str(hdest))
+            secs_f = max(0.6, min(6.0, float(secs)))
+            hooks_map[int(ad)] = (hdest, secs_f)
+            hook_files_meta[str(int(ad))] = {"file": hdest.name, "secs": secs_f}
+        if hook_files_meta:
+            params = dict(params or {})
+            params["_hook_files"] = hook_files_meta
+
         job = Job(id=job_id, filenames=filenames, mode=mode)
         with self._lock:
             self._jobs[job_id] = job
@@ -283,6 +318,8 @@ class JobManager:
                 self._guias[job_id] = guia_paths
             if voz_paths:
                 self._voz[job_id] = voz_paths
+            if hooks_map:
+                self._hooks[job_id] = hooks_map
             if num_clips:
                 self._req_clips[job_id] = int(num_clips)
             self._use_music[job_id] = bool(use_music)
@@ -614,8 +651,8 @@ class JobManager:
         """Libera el estado en memoria asociado a un job ya procesado."""
         with self._lock:
             for d in (self._sources, self._music, self._guias, self._voz,
-                      self._req_clips, self._use_music, self._intro, self._style,
-                      self._params):
+                      self._hooks, self._req_clips, self._use_music, self._intro,
+                      self._style, self._params):
                 d.pop(job_id, None)
 
     def _montage_stage(
@@ -684,15 +721,41 @@ class JobManager:
         if settings.transiciones:
             avg_trans = (settings.trans_min + settings.trans_max) / 2
             buffer_s = avg_trans * settings.trans_dur_s
-        # Gancho VISUAL elegido por el usuario (Fase 4): abre todos los clips.
-        forced_hook = None
-        hook = (self._params.get(job_id, {}) or {}).get("hook")
-        if isinstance(hook, dict):
-            vi = int(hook.get("video_idx", -1))
-            if 0 <= vi < len(sources):
-                start = max(0.0, float(hook.get("start", 0.0)))
-                dur = max(0.6, min(5.0, float(hook.get("dur", 2.0))))
-                forced_hook = Beat(vi, sources[vi], round(start, 3), round(dur, 3))
+        # Gancho VISUAL elegido por el usuario (Fase 4): UNO POR anuncio. El clip k
+        # abre con forced_hooks[k]; los que falten van en automático.
+        params_job = self._params.get(job_id, {}) or {}
+
+        def _hook_to_beat(h: object) -> Beat | None:
+            if not isinstance(h, dict):
+                return None
+            vi = int(h.get("video_idx", -1))
+            if not (0 <= vi < len(sources)):
+                return None
+            start = max(0.0, float(h.get("start", 0.0)))
+            dur = max(0.6, min(5.0, float(h.get("dur", 2.0))))
+            return Beat(vi, sources[vi], round(start, 3), round(dur, 3))
+
+        forced_hooks: list[Beat | None] = []
+        hooks_param = params_job.get("hooks")
+        if isinstance(hooks_param, list) and hooks_param:
+            forced_hooks = [_hook_to_beat(h) for h in hooks_param]
+        else:
+            # Compatibilidad: gancho único antiguo -> abre TODOS los clips igual.
+            single = _hook_to_beat(params_job.get("hook"))
+            if single is not None:
+                forced_hooks = [single] * n_clips
+
+        # Gancho SUBIDO por anuncio: tiene PRIORIDAD sobre el visual. Entra como beat
+        # con video_id sintético (1000+ad) que no existe en videos/segments -> footage
+        # MUDO y sin subtítulos de montaje (la voz + subtítulos del anuncio van encima
+        # en la edición Remotion). Nunca toca el pool del cuerpo.
+        for ad, (hook_path, hook_secs) in (self._hooks.get(job_id) or {}).items():
+            if ad < 0 or not hook_path.exists():
+                continue
+            while len(forced_hooks) <= ad:
+                forced_hooks.append(None)
+            dur = max(0.6, min(6.0, float(hook_secs)))
+            forced_hooks[ad] = Beat(1000 + ad, hook_path, 0.0, round(dur, 3))
 
         # LA LOCUCIÓN MANDA: cada anuncio dura lo que su propio audio. Sin audio,
         # el clip cae a la duración fija por defecto (~48s) como antes.
@@ -715,7 +778,7 @@ class JobManager:
             hook_beats=settings.hook_beats,
             beat_min=settings.beat_min_s,
             beat_max=settings.beat_max_s,
-            forced_hook=forced_hook,
+            forced_hooks=forced_hooks,
         )
 
         # 4) Render de los N clips (beats cacheados, transiciones, música).
