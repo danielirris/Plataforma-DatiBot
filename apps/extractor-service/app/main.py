@@ -338,6 +338,7 @@ async def create_job_from_files(
     videos: list[UploadFile] = File(default=[]),
     voz: list[UploadFile] = File(default=[]),  # una locución por anuncio, en orden
     hook_videos: list[UploadFile] = File(default=[]),  # gancho SUBIDO por anuncio
+    guias: list[UploadFile] = File(default=[]),  # video-GUÍA sobrepuesto (PiP), opcional
     mode: str = Form("full"),
     num_clips: int = Form(0),
     use_music: str = Form("0"),
@@ -488,6 +489,7 @@ async def create_job_from_files(
     # Gancho SUBIDO por anuncio (opcional): un video por anuncio + sus segundos.
     # hook_meta es un JSON [{ad, secs}] alineado a hook_videos (mismo orden).
     hook_tmps: list[tuple[int, float, Path, str]] = []
+    guias_saved: list[tuple[Path, str]] = []  # video-GUÍA sobrepuesto (PiP), opcional
 
     def _cleanup_all() -> None:
         for p, _ in saved:
@@ -496,6 +498,8 @@ async def create_job_from_files(
             vp.unlink(missing_ok=True)
         for _ad, _secs, hp, _hn in hook_tmps:
             hp.unlink(missing_ok=True)
+        for gp, _gn in guias_saved:
+            gp.unlink(missing_ok=True)
 
     meta_list: list = []
     if hook_meta.strip():
@@ -529,7 +533,24 @@ async def create_job_from_files(
                 f.write(chunk)
         hook_tmps.append((ad, secs, htmp, up.filename))
 
-    job_id = manager.submit(saved, [], mode, voces_saved, n, [],
+    # Video-GUÍA sobrepuesto (PiP), opcional. Se sobrepone al anuncio (si subes una,
+    # se usa en todos los anuncios; el render la asigna por posición con módulo).
+    for up in (g for g in guias if g.filename):
+        gext = Path(up.filename).suffix.lower()
+        if gext not in ALLOWED_GUIDE_EXT:
+            _cleanup_all()
+            raise HTTPException(
+                status_code=400,
+                detail=f"Guía no soportada ({gext or 'sin extensión'}). "
+                       f"Usa: {', '.join(sorted(ALLOWED_GUIDE_EXT))}.",
+            )
+        gtmp = Path(tempfile.mkstemp(suffix=gext, dir=str(settings.storage_dir))[1])
+        with gtmp.open("wb") as f:
+            while chunk := await up.read(1 << 20):
+                f.write(chunk)
+        guias_saved.append((gtmp, up.filename))
+
+    job_id = manager.submit(saved, [], mode, voces_saved, n, guias_saved,
                             use_music=use_music in ("1", "true", "True"),
                             intro_tmp=intro_saved, style=style or "", params=params,
                             hook_tmps=hook_tmps)

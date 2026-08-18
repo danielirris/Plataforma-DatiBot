@@ -10,6 +10,7 @@ import { esSoloEditor } from "@/lib/modo";
 
 const DIR_VOZ = path.join(os.tmpdir(), "datibot-voz");
 const DIR_HOOK = path.join(os.tmpdir(), "datibot-hooks");
+const DIR_GUIA = path.join(os.tmpdir(), "datibot-guias");
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -43,6 +44,8 @@ export async function POST(req: Request) {
     hooks?: { video_idx: number; start: number; dur: number }[] | null;
     /** gancho SUBIDO por anuncio: video propio (por nombre) + segundos. Opcional. */
     hook_uploads?: { ad: number; nombre: string; secs: number }[] | null;
+    /** video-GUÍA sobrepuesto (PiP), por nombre. Opcional; se usa en todos los anuncios. */
+    guia?: string | null;
     /** nombres devueltos por /api/editor/voz: UNA locución por anuncio, en orden */
     voces?: string[] | null;
     /** id del producto elegido: el server lee su avatar/oferta para el brief del cerebro */
@@ -135,6 +138,17 @@ export async function POST(req: Request) {
       {
         error:
           "Para subir tu propio gancho, los videos del producto deben estar en el servidor: vuelve a subirlos en Productos → paso Videos.",
+      },
+      { status: 400 },
+    );
+
+  // Video-GUÍA sobrepuesto (PiP): también viaja solo por el camino de archivos.
+  const guia = (body.guia ?? "").trim();
+  if (guia && !porArchivos)
+    return NextResponse.json(
+      {
+        error:
+          "Para sobreponer tu guía, los videos del producto deben estar en el servidor: vuelve a subirlos en Productos → paso Videos.",
       },
       { status: 400 },
     );
@@ -235,6 +249,19 @@ export async function POST(req: Request) {
         }
       }
       if (hookMeta.length) form.append("hook_meta", JSON.stringify(hookMeta));
+      // Video-GUÍA sobrepuesto (PiP): clave "guias" (la que espera el extractor).
+      if (guia) {
+        const rutaGuia = path.join(DIR_GUIA, path.basename(guia));
+        try {
+          await stat(rutaGuia);
+          form.append("guias", await openAsBlob(rutaGuia), path.basename(guia));
+        } catch {
+          return NextResponse.json(
+            { error: "El video de guía ya no está disponible. Vuelve a subirlo." },
+            { status: 400 },
+          );
+        }
+      }
       res = await fetch(`${extractorUrl()}/api/jobs/from-files`, {
         method: "POST",
         body: form,
@@ -245,11 +272,11 @@ export async function POST(req: Request) {
       // si hay voces, caer ahí las perdería EN SILENCIO -> mejor error claro. Sin
       // voces, el fallback por URLs es equivalente.
       if (res.status === 404) {
-        if (voces.length || hooksUp.length)
+        if (voces.length || hooksUp.length || guia)
           return NextResponse.json(
             {
               error:
-                "El servicio de video está desactualizado y no puede recibir tu audio o tu gancho: redespliega el servicio «extractor» en EasyPanel y vuelve a intentar.",
+                "El servicio de video está desactualizado y no puede recibir tu audio, gancho o guía: redespliega el servicio «extractor» en EasyPanel y vuelve a intentar.",
             },
             { status: 503 },
           );

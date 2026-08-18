@@ -106,9 +106,19 @@ class Settings(BaseSettings):
     # --- Servidor ---
     port: int = 8000
 
-    # --- Rutas de almacenamiento (derivadas) ---
+    # --- Rutas de almacenamiento ---
+    # STORAGE_ROOT: raíz de TODO lo que debe PERSISTIR entre despliegues (biblioteca
+    # de música subida, SFX, jobs, outputs/galería, prompt de edición). Apúntala al
+    # VOLUMEN PERSISTENTE de EasyPanel — recomendado STORAGE_ROOT=/data con el volumen
+    # montado en /data (una ruta de nivel superior, NO dentro de /app). Si se deja
+    # vacío, se usa apps/extractor-service/storage DENTRO de la imagen, que se RECREA
+    # vacío en cada redeploy (por eso la música "desaparecía"). Ver DEPLOY.md.
+    storage_root: str = ""
+
     @property
     def storage_dir(self) -> Path:
+        if self.storage_root.strip():
+            return Path(self.storage_root.strip())
         return BASE_DIR / "storage"
 
     @property

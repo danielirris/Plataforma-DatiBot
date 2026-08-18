@@ -55,7 +55,12 @@ Para cada uno: **Create → App → Source: GitHub** (este repo, rama `main`).
 - **Build:** Dockerfile · context `apps/extractor-service` · Dockerfile `Dockerfile`.
 - **Puerto:** 8000.
 - **Dominio:** `extractor.tudominio.com` · **Basic Auth** activado.
-- **Volumen persistente:** monta uno en `/app/storage` (videos/jobs/outputs).
+- **Volumen persistente (CRÍTICO):** monta un volumen en **`/data`** y añade la env
+  **`STORAGE_ROOT=/data`**. Ahí viven la **biblioteca de música subida**, los SFX,
+  `jobs.db`, los outputs/galería y el prompt de edición. Sin esto (o montando dentro
+  de `/app/storage`, que se recrea con cada imagen), **todo eso se borra en cada
+  redeploy** — la música deja de sonar. Usa una ruta de nivel superior (`/data`), no
+  una dentro de `/app`. Tras montarlo, sube la música UNA vez y ya persiste siempre.
 - **Recursos:** este es el pesado (Chromium de Remotion). **Dale 4–5 GB de RAM**
   (Memory Limit). Con menos, un anuncio pesado revienta el límite → OOM → el
   contenedor se reinicia a mitad de render → **500 intermitente** en el editor.

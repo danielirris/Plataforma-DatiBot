@@ -155,6 +155,12 @@ def build_ad_project(
             gfile, gdur = copied_guides[gp.name]
             for gm in (plan.get("guias") or []):
                 guia_out.append({"at": gm.get("at", 0.0), "file": gfile, "dur": gdur})
+            # Respaldo: si el usuario SUBIÓ una guía pero la IA no marcó ningún
+            # momento (p. ej. la locución no ofrece un recurso), la mostramos igual
+            # una vez (~35% del anuncio), para que "subir guía" SIEMPRE se vea.
+            if not guia_out:
+                at = round(max(1.0, v.duration * 0.35), 2)
+                guia_out.append({"at": at, "file": gfile, "dur": gdur})
         plan["guias"] = guia_out
 
         # Movidas sobre el video (Fase 5): punch-in, B&N, shake, flash, etc.

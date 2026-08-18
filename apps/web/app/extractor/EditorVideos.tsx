@@ -160,6 +160,10 @@ export function EditorVideos({
   const [hookSecs, setHookSecs] = useState<Record<number, number>>({});
   const [subiendoHookAd, setSubiendoHookAd] = useState<number | null>(null);
   const [hookUpMsg, setHookUpMsg] = useState<string>("");
+  // Video-GUÍA (opcional): se SOBREPONE (PiP) al anuncio. Una sola, se usa en todos.
+  const [guiaVid, setGuiaVid] = useState<{ nombre: string; original: string } | null>(null);
+  const [subiendoGuia, setSubiendoGuia] = useState<boolean>(false);
+  const [guiaMsg, setGuiaMsg] = useState<string>("");
 
   // Locución: UNA por anuncio (en orden). Manda sobre la duración de su anuncio y
   // de ella salen los subtítulos (el motor la transcribe). Deben ser tantas como
@@ -375,6 +379,35 @@ export function EditorVideos({
     setHookSecs((prev) => ({ ...prev, [ad]: n }));
   }
 
+  // Sube el VIDEO-GUÍA (cuerpo crudo, como la voz). Se sobrepone (PiP) al anuncio.
+  async function subirGuia(file: File | null) {
+    if (!file) return;
+    setSubiendoGuia(true);
+    setGuiaMsg(`Subiendo guía: ${file.name}…`);
+    try {
+      const res = await fetch(`/api/editor/guia?name=${encodeURIComponent(file.name)}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/octet-stream" },
+        body: file,
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setGuiaMsg("⚠️ " + (data.error ?? `Error ${res.status}`));
+        setSubiendoGuia(false);
+        return;
+      }
+      setGuiaVid({ nombre: data.guia as string, original: data.original as string });
+      setGuiaMsg("✓ Guía subida; se sobrepondrá al anuncio.");
+    } catch (e) {
+      setGuiaMsg("⚠️ Fallo de red: " + (e instanceof Error ? e.message : "?"));
+    }
+    setSubiendoGuia(false);
+  }
+  function quitarGuia() {
+    setGuiaVid(null);
+    setGuiaMsg("");
+  }
+
   async function buscarGanchos() {
     const urls = urlsSeleccionadas();
     if (!urls.length) {
@@ -516,6 +549,7 @@ export function EditorVideos({
           oferta_pill: ofertaPill,
           hooks,
           hook_uploads,
+          guia: guiaVid?.nombre ?? "",
           voces: voces.map((v) => v.nombre),
           // El server lee el avatar/oferta de este producto para el brief del cerebro.
           producto_id: productoId,
@@ -1150,6 +1184,53 @@ export function EditorVideos({
         </div>
         {hookUpMsg && <p className="text-xs text-muted">{hookUpMsg}</p>}
         <p className="text-[11px] text-muted">Formatos: mp4, mov, mkv · máx 120 MB por gancho.</p>
+      </div>
+
+      {/* Video-GUÍA sobrepuesta (PiP) — opcional */}
+      <div className="mt-4 space-y-3 rounded-2xl border border-[var(--hairline)] glass p-5">
+        <div>
+          <p className="text-sm font-medium text-text">📘 Guía sobrepuesta (opcional)</p>
+          <p className="mt-1 text-xs text-muted">
+            Sube un <b>video-guía</b> y saldrá <b>sobrepuesto</b> (encima) del anuncio, como
+            una tarjeta de video. Se usa en <b>todos</b> los anuncios. Si tu locución ofrece un
+            recurso descargable, aparece en ese momento; si no, se muestra igual una vez.
+          </p>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-3 rounded-lg border border-[var(--hairline)] bg-[var(--field)] p-2.5 text-sm">
+          {guiaVid ? (
+            <>
+              <span className="min-w-0 flex-1 truncate text-text">📘 {guiaVid.original}</span>
+              <button
+                type="button"
+                onClick={quitarGuia}
+                title="Quitar la guía"
+                className="shrink-0 rounded px-1.5 text-xs text-muted hover:text-red-400"
+              >
+                ✕
+              </button>
+            </>
+          ) : (
+            <>
+              <span className="flex-1 text-xs text-muted">— sin guía sobrepuesta —</span>
+              <label className="shrink-0 cursor-pointer rounded-lg border border-accent/50 bg-accent/10 px-3 py-1 text-xs font-medium text-accent-2">
+                {subiendoGuia ? "Subiendo…" : "⬆️ Subir guía"}
+                <input
+                  type="file"
+                  accept="video/*,.mp4,.mov,.webm,.m4v,.mkv"
+                  disabled={subiendoGuia}
+                  onChange={(e) => {
+                    subirGuia(e.target.files?.[0] ?? null);
+                    e.target.value = "";
+                  }}
+                  className="hidden"
+                />
+              </label>
+            </>
+          )}
+        </div>
+        {guiaMsg && <p className="text-xs text-muted">{guiaMsg}</p>}
+        <p className="text-[11px] text-muted">Formatos: mp4, mov, webm, m4v, mkv · máx 120 MB.</p>
       </div>
 
       {/* Acción + estado */}
