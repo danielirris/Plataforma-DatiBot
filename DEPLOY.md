@@ -148,11 +148,15 @@ Crea una **segunda App** en EasyPanel:
   ```
 
 Con `SOLO_EDITOR=1`, `middleware.ts` deja pasar **solo** el editor y sus APIs
-(`/extractor`, `/api/editor/jobs|hooks|voz|videos`, `GET /api/editor/cola`,
+(`/extractor`, `/api/editor/jobs|hooks|voz|hook-video|guia|videos|descargar`,
 `/api/img`). Todo lo demás —incluida `/api/config`, que devuelve las API keys—
 responde 404 aunque se entre por URL directa. Quedan fuera a propósito
-`/api/editor/galeria` (los anuncios del extractor son de todos los que lo usan)
-y el `POST /api/editor/cola` (vaciar la cola cancelaría **tus** renders).
+`/api/editor/galeria` y `/api/editor/cola` (ambas listarían/servirían trabajos y
+anuncios del DUEÑO, porque el extractor es compartido).
+
+> La **música** que suena en los anuncios sale de la biblioteca del **extractor**
+> (no del web), así que el editor suelto usa **la misma música ya guardada** con solo
+> apuntar a `EXTRACTOR_INTERNAL_URL=http://extractor:8000`. No necesita el volumen.
 
 **Ten en cuenta:**
 

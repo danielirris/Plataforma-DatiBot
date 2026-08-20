@@ -27,6 +27,8 @@ const RUTAS_EDITOR = [
   "/api/editor/jobs",
   "/api/editor/hooks",
   "/api/editor/voz",
+  "/api/editor/hook-video", // sube el gancho propio por anuncio (temporal del invitado)
+  "/api/editor/guia", // sube el video-guía sobrepuesto (PiP) (temporal del invitado)
   "/api/editor/videos",
   "/api/editor/descargar", // proxy acotado de salidas del extractor (render, .zip, miniaturas)
   "/api/img",
