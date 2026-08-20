@@ -42,6 +42,8 @@ def build_extract_audio_cmd(source: Path, dest: Path) -> list[str]:
     return [
         "ffmpeg",
         "-y",                 # sobrescribir sin preguntar
+        "-threads", "1",      # extraer audio no necesita todos los núcleos; deja CPU
+                              # libre para el render/healthcheck (evita 502 por saturar)
         "-i", str(source),
         "-vn",                # sin video
         "-ac", "1",           # mono

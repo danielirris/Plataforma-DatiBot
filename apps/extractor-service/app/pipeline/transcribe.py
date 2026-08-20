@@ -111,7 +111,10 @@ def transcribe_audio(audio_path: Path) -> list[Segment]:
     if not settings.openai_api_key:
         raise RuntimeError("OPENAI_API_KEY no está configurada.")
 
-    client = OpenAI(api_key=settings.openai_api_key)
+    # max_retries=0: ya reintentamos nosotros con with_retries; sin esto, los
+    # reintentos internos del SDK (2) se multiplican con los nuestros (3) y una API
+    # lenta podía tardar ~9x el timeout, saltándose el tope del proxy (240s) -> 502.
+    client = OpenAI(api_key=settings.openai_api_key, timeout=120.0, max_retries=0)
     logger.info("Transcribiendo con OpenAI (%s): %s",
                 settings.openai_transcribe_model, audio_path.name)
 
@@ -142,7 +145,10 @@ def transcribe_words(audio_path: Path) -> list[Word]:
     if not settings.openai_api_key:
         raise RuntimeError("OPENAI_API_KEY no está configurada.")
 
-    client = OpenAI(api_key=settings.openai_api_key)
+    # max_retries=0: ya reintentamos nosotros con with_retries; sin esto, los
+    # reintentos internos del SDK (2) se multiplican con los nuestros (3) y una API
+    # lenta podía tardar ~9x el timeout, saltándose el tope del proxy (240s) -> 502.
+    client = OpenAI(api_key=settings.openai_api_key, timeout=120.0, max_retries=0)
     logger.info("Transcribiendo (palabras) con OpenAI: %s", audio_path.name)
 
     def _call() -> Any:

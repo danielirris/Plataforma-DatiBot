@@ -190,7 +190,7 @@ def analyze_hooks(
     if not settings.openai_api_key:
         raise RuntimeError("OPENAI_API_KEY no está configurada.")
 
-    client = OpenAI(api_key=settings.openai_api_key)
+    client = OpenAI(api_key=settings.openai_api_key, timeout=60.0, max_retries=0)
     num_videos = len(videos_segments)
 
     # Rondas siguientes ("Volver a buscar"): más temperatura -> ganchos distintos.
@@ -260,7 +260,7 @@ def analyze_ad_style(transcript: str, prompt_text: str = "") -> dict:
     if not settings.openai_api_key:
         return dict(_DEFAULT_STYLE)
 
-    client = OpenAI(api_key=settings.openai_api_key)
+    client = OpenAI(api_key=settings.openai_api_key, timeout=60.0, max_retries=0)
     sys = (
         "Eres director de arte de video para anuncios verticales (Reels/TikTok). "
         "Defines la TIPOLOGÍA de subtítulos según el TEMA del contenido."
@@ -553,7 +553,7 @@ TRANSCRIPCIÓN (timestamp en segundos):
 def client_chat(settings, system: str, user: str) -> str:
     """Llamada de chat JSON reutilizable (devuelve el texto del mensaje)."""
     from openai import OpenAI
-    client = OpenAI(api_key=settings.openai_api_key)
+    client = OpenAI(api_key=settings.openai_api_key, timeout=60.0, max_retries=0)
     resp = client.chat.completions.create(
         model=settings.openai_analyze_model,
         messages=[{"role": "system", "content": system},

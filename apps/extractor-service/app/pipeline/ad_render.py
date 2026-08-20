@@ -65,8 +65,15 @@ def render_ad_project(
     # proc.kill() mata solo a node y los Chromium quedan huérfanos comiendo RAM;
     # se acumulan render tras render y adelantan el OOM del siguiente job (el
     # clásico "a veces sí, a veces no" que empeora cuanto más se usa).
+    # nice: baja la prioridad de CPU del render (node + Chromium + ffmpeg). Así, si
+    # el render satura los núcleos, el sistema sigue dando tiempo de CPU a uvicorn
+    # para responder /healthz y no reiniciar el contenedor (evita 502 por CPU).
+    cmd = ["node", str(script), str(project_dir), str(out_dir)]
+    nice_bin = shutil.which("nice")
+    if nice_bin:
+        cmd = [nice_bin, "-n", "10", *cmd]
     proc = subprocess.Popen(
-        ["node", str(script), str(project_dir), str(out_dir)],
+        cmd,
         stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True,
         cwd=str(RUNTIME), env=env, start_new_session=True,
     )

@@ -708,14 +708,18 @@ async def hook_candidates(payload: dict = Body(...)) -> JSONResponse:
             thumb_ok = False
             thumb = sess_dir / f"t{idx}.jpg"
             try:
+                # -threads 1: una miniatura es 1 frame; SIN límite ffmpeg usaba TODOS
+                # los núcleos y, si había un render en curso, robaba el núcleo que se
+                # deja libre para el healthcheck -> el contenedor se reiniciaba (502).
+                # timeout: un ffmpeg atascado no puede colgar toda la petición.
                 subprocess.run(
-                    ["ffmpeg", "-y", "-ss", f"{max(0.0, m.start):.2f}",
+                    ["ffmpeg", "-y", "-threads", "1", "-ss", f"{max(0.0, m.start):.2f}",
                      "-i", str(paths[m.video_id]), "-frames:v", "1",
                      "-vf", "scale=270:-2", str(thumb)],
-                    capture_output=True, check=True,
+                    capture_output=True, check=True, timeout=30,
                 )
                 thumb_ok = thumb.is_file()
-            except Exception:  # noqa: BLE001 — sin miniatura, seguimos con texto
+            except Exception:  # noqa: BLE001 — sin miniatura (o timeout), seguimos con texto
                 thumb_ok = False
             cands.append({
                 "i": idx,

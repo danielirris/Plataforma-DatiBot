@@ -72,10 +72,17 @@ Para cada uno: **Create → App → Source: GitHub** (este repo, rama `main`).
   OPENAI_API_KEY=...        (obligatorio: transcripción + análisis)
   ELEVENLABS_API_KEY=...    (opcional, solo voz)
   WHATSAPP_LINK=...         (CTA)
-  REMOTION_CONCURRENCY=2    (IMPORTANTE: pestañas Chromium en paralelo al render.
-                             Acota el pico de RAM. Pon 1 si el VPS es pequeño. Sin
-                             esto, Remotion abre 1 por núcleo y se dispara el OOM.)
+  STORAGE_ROOT=/data        (persistencia; ver arriba)
+  REMOTION_CONCURRENCY=1    (pestañas Chromium en paralelo al render. Por defecto 1
+                             = lo más estable/menos RAM. Sube a 2 SOLO con RAM de
+                             sobra. NO uses "auto"/0-alto: dispara el OOM -> 502.)
+  REMOTION_VIDEO_CACHE_MB=300 (tope del caché de fotogramas de video, en RAM. Si aún
+                             hay OOM en anuncios con mucho video, bájalo a 150.)
   ```
+  > **Si te da 502 al renderizar** casi siempre es OOM o CPU saturada: sube la RAM a
+  > 4–5 GB, deja `REMOTION_CONCURRENCY=1`, y si persiste baja `REMOTION_VIDEO_CACHE_MB`.
+  > El código ya renderiza de a un clip, capa el caché de video y corre el render con
+  > `nice` (prioridad baja) para que el healthcheck siga respondiendo.
 
 ### ebooks
 - **Build:** Dockerfile · **context `/` (raíz del repo)** · Dockerfile `apps/ebookforge-service/Dockerfile`.

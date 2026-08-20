@@ -75,9 +75,9 @@ class Settings(BaseSettings):
     # decodifica el video y consume cientos de MB → el pico de RAM revienta el
     # límite del contenedor (OOM) → el contenedor se reinicia a mitad de render →
     # 500 al front. Un tope fijo (2) acota la memoria pase lo que pase. Se puede
-    # sobrescribir con la env var REMOTION_CONCURRENCY en EasyPanel (1 si el VPS
-    # es pequeño). Ver DEPLOY.md.
-    remotion_concurrency: int = 2
+    # sobrescribir con la env var REMOTION_CONCURRENCY en EasyPanel (súbelo a 2 solo
+    # si el contenedor tiene RAM de sobra). Ver DEPLOY.md.
+    remotion_concurrency: int = 1
 
     # --- Modo anuncio (proyecto Remotion por video) ---
     whatsapp_link: str = "https://wa.me/0000000000"  # CTA (placeholder editable)

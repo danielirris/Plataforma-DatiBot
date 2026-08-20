@@ -11,9 +11,18 @@ export async function GET(_req: Request, { params }: Ctx) {
   const { id } = await params;
   let res: Response;
   try {
-    res = await fetch(`${extractorUrl()}/api/jobs/${id}`, { cache: "no-store" });
+    // Timeout corto: durante un render pesado el extractor puede tardar en
+    // contestar; sin tope, los polls se acumulan. La UI tolera un fallo puntual
+    // (reintenta al siguiente tick), así que devolvemos 503 "transitorio".
+    res = await fetch(`${extractorUrl()}/api/jobs/${id}`, {
+      cache: "no-store",
+      signal: AbortSignal.timeout(15_000),
+    });
   } catch {
-    return NextResponse.json({ error: "Editor de video no disponible." }, { status: 502 });
+    return NextResponse.json(
+      { error: "Editor de video ocupado; reintentando…", transient: true },
+      { status: 503 },
+    );
   }
   const data = await res.json().catch(() => ({}));
   return NextResponse.json(data, { status: res.status });
