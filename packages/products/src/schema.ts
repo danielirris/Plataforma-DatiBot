@@ -216,29 +216,6 @@ export function embudoVacio(): EmbudoWhatsApp {
   };
 }
 
-// ── PRECIOS por producto y país ────────────────────────────────
-export interface PreciosPais {
-  base: string;
-  tachado: string;
-  adicional_ob: string;
-  /** precio "normal" del orderbump (si se vende suelto) */
-  normal_ob: string;
-  rmk_15m: string;
-  rmk_60m: string;
-  rmk_180m: string;
-}
-
-/** Los campos de PreciosPais con su etiqueta, en el orden en que se piden. */
-export const CAMPOS_PRECIO: { key: keyof PreciosPais; label: string; ayuda?: string }[] = [
-  { key: "base", label: "Precio base", ayuda: "El precio principal del producto." },
-  { key: "tachado", label: "Precio tachado", ayuda: "El precio “antes” que se muestra tachado." },
-  { key: "adicional_ob", label: "Adicional Orderbump", ayuda: "Lo que suma el orderbump al combo." },
-  { key: "normal_ob", label: "Normal Orderbump", ayuda: "Precio del orderbump si se vende suelto." },
-  { key: "rmk_15m", label: "Remarketing 15 min" },
-  { key: "rmk_60m", label: "Remarketing 60 min" },
-  { key: "rmk_180m", label: "Remarketing 180 min", ayuda: "También fija el piso del validador." },
-];
-
 export function bonoVacio(): BonoOferta {
   return {
     titulo: "",
@@ -289,8 +266,6 @@ export interface Producto {
   videos: VideoProducto[];
   /** embudo de WhatsApp (COD): vendedor, orderbumps y los 10 mensajes por país. Se llena en la sección Mensajes. */
   embudo: EmbudoWhatsApp | null;
-  /** precios por país: { PE: {...}, CL: {...}, EC: {...} } */
-  precios: Record<string, PreciosPais>;
   creadoEn: string;
   actualizadoEn: string;
 }
@@ -308,7 +283,6 @@ export function crearProductoBorrador(parcial: Partial<Producto> = {}): Producto
     ebook: ebookVacio(),
     videos: [],
     embudo: null,
-    precios: {},
     creadoEn: "",
     actualizadoEn: "",
     ...parcial,

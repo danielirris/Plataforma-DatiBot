@@ -5,8 +5,6 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
   crearProductoBorrador,
-  PAISES,
-  CAMPOS_PRECIO as CAMPOS_PRECIO_SCHEMA,
   MIN_BONOS,
   MAX_BONOS,
   ofertaVacia,
@@ -31,24 +29,12 @@ const PASOS = [
   { key: "identidad", label: "1 · Identidad" },
   { key: "anuncios", label: "2 · Anuncios ganadores" },
   { key: "oferta", label: "3 · Oferta" },
-  { key: "precios", label: "4 · Precios" },
-  { key: "video", label: "5 · Video de embudo" },
-  { key: "videos", label: "6 · Videos" },
+  { key: "video", label: "4 · Video de embudo" },
+  { key: "videos", label: "5 · Videos" },
 ] as const;
 
 // Pasos ya implementados.
-const DISPONIBLES = new Set([
-  "identidad",
-  "anuncios",
-  "oferta",
-  "precios",
-  "video",
-  "videos",
-]);
-
-// Los campos de precio (y sus etiquetas) viven en el esquema: el dossier .md
-// pinta la misma tabla y así no se desincronizan.
-const CAMPOS_PRECIO = CAMPOS_PRECIO_SCHEMA.map((c) => ({ k: c.key, l: c.label, ayuda: c.ayuda }));
+const DISPONIBLES = new Set(["identidad", "anuncios", "oferta", "video", "videos"]);
 
 export function ProductoWizard({ producto }: { producto?: Producto }) {
   const router = useRouter();
@@ -97,16 +83,6 @@ export function ProductoWizard({ producto }: { producto?: Producto }) {
     URL.revokeObjectURL(a.href);
   }
 
-  // Precios por país: alimentan el motor de flujos como [PRECIO_*].
-  function setPrecio(pais: string, campo: string, valor: string) {
-    setP((prev) => {
-      const actual = prev.precios?.[pais] ?? {
-        base: "", tachado: "", adicional_ob: "", normal_ob: "", rmk_15m: "", rmk_60m: "", rmk_180m: "",
-      };
-      return { ...prev, precios: { ...prev.precios, [pais]: { ...actual, [campo]: valor } } };
-    });
-    setEstado("idle");
-  }
   function setIdentidad(campo: keyof Producto["identidad"], valor: string) {
     setP((prev) => ({ ...prev, identidad: { ...prev.identidad, [campo]: valor } }));
     setEstado("idle");
@@ -506,6 +482,20 @@ export function ProductoWizard({ producto }: { producto?: Producto }) {
             + Agregar anuncio ganador
           </button>
 
+          {/* Dossier del producto (identidad + anuncios + oferta) para pasárselo a una IA. */}
+          <div className="flex flex-wrap items-center gap-3 rounded-xl border border-[var(--hairline)] glass p-4">
+            <button
+              onClick={descargarMarkdown}
+              className="rounded-lg border border-accent/50 bg-accent/10 px-4 py-2 text-sm font-medium text-accent-2"
+            >
+              ⬇️ Descargar dossier (.md)
+            </button>
+            <span className="text-xs text-muted">
+              Baja <b>identidad + anuncios ganadores + oferta</b> en un <code>.md</code> para
+              pasárselo a una IA y que te redacte los guiones de los anuncios.
+            </span>
+          </div>
+
           <div className="flex flex-wrap items-center gap-3 rounded-xl border border-[var(--hairline)] glass p-4">
             <button
               onClick={guardar}
@@ -613,9 +603,8 @@ export function ProductoWizard({ producto }: { producto?: Producto }) {
 
           {!p.oferta ? (
             <div className="rounded-xl border border-dashed border-[var(--hairline)] p-8 text-center text-muted">
-              Aún no hay oferta. Genérala con IA (usa avatar, objeciones y ángulos)
-              o empieza en blanco. Los precios NO van aquí: se rellenan por país al
-              emitir; usa tokens como <code>[PRECIO_BASE]</code> si el copy los necesita.
+              Aún no hay oferta. Genérala con IA (usa tus anuncios ganadores de
+              referencia y la identidad) o empieza en blanco.
             </div>
           ) : (
             <>
@@ -972,102 +961,6 @@ export function ProductoWizard({ producto }: { producto?: Producto }) {
         </section>
       )}
 
-      {paso === "precios" && (
-        <section className="space-y-5">
-          <p className="text-xs text-muted">
-            Los precios de <b>todos los países</b>, de una sola vez. De aquí salen los
-            tokens del flujo de n8n (<code>[PRECIO_BASE]</code>, <code>[PRECIO_COMBO]</code>,
-            regateos, pisos…). El combo, los regateos y los pisos se calculan solos a
-            partir de estos. Deja en blanco el país que no uses.
-          </p>
-
-          <ul className="grid grid-cols-1 gap-x-6 gap-y-1 rounded-xl border border-[var(--hairline)] bg-[var(--field)]/40 p-4 text-xs text-muted sm:grid-cols-2">
-            {CAMPOS_PRECIO.filter((c) => c.ayuda).map((c) => (
-              <li key={c.k}>
-                <b className="text-text">{c.l}:</b> {c.ayuda}
-              </li>
-            ))}
-          </ul>
-
-          {PAISES.map((pa) => {
-            const llenos = CAMPOS_PRECIO.filter((c) =>
-              String(p.precios?.[pa.codigo]?.[c.k] ?? "").trim(),
-            ).length;
-            return (
-              <div
-                key={pa.codigo}
-                className="space-y-3 rounded-xl border border-[var(--hairline)] glass p-5"
-              >
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="text-sm font-medium text-text">{pa.nombre}</span>
-                  <span className="rounded bg-[var(--field)] px-1.5 py-0.5 text-xs text-muted">
-                    {pa.codigo}
-                  </span>
-                  <span
-                    className={cn(
-                      "rounded px-2 py-0.5 text-xs",
-                      llenos === CAMPOS_PRECIO.length
-                        ? "bg-accent/20 text-accent-2"
-                        : llenos > 0
-                          ? "bg-amber-500/15 text-amber-300"
-                          : "bg-[var(--field)] text-muted",
-                    )}
-                  >
-                    {llenos === CAMPOS_PRECIO.length
-                      ? "✓ completo"
-                      : llenos > 0
-                        ? `${llenos}/${CAMPOS_PRECIO.length}`
-                        : "sin precios"}
-                  </span>
-                </div>
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-                  {CAMPOS_PRECIO.map((c) => (
-                    <label key={c.k} className="flex flex-col gap-1 text-sm">
-                      <span className="text-muted">{c.l}</span>
-                      <input
-                        type="text"
-                        inputMode="numeric"
-                        value={p.precios?.[pa.codigo]?.[c.k] ?? ""}
-                        onChange={(e) => setPrecio(pa.codigo, c.k, e.target.value)}
-                        placeholder="0"
-                        className="rounded-lg border border-[var(--hairline)] bg-[var(--field)] px-3 py-2 text-text outline-none focus:border-accent"
-                      />
-                    </label>
-                  ))}
-                </div>
-              </div>
-            );
-          })}
-
-          {/* Dossier completo del producto para pasárselo a una IA. Va aquí, al
-              final del último paso de investigación: ya están la oferta Y los
-              precios, así que el .md sale entero de una vez. */}
-          <div className="flex flex-wrap items-center gap-3 rounded-xl border border-[var(--hairline)] glass p-4">
-            <button
-              onClick={descargarMarkdown}
-              className="rounded-lg border border-accent/50 bg-accent/10 px-4 py-2 text-sm font-medium text-accent-2"
-            >
-              ⬇️ Descargar Markdown
-            </button>
-            <span className="text-xs text-muted">
-              Baja <b>identidad + avatar + ángulos + oferta + precios</b> en un <code>.md</code>.
-              Pégaselo a Claude (u otra IA) para que te redacte los guiones de los anuncios.
-            </span>
-          </div>
-
-          <div className="sticky bottom-0 flex items-center gap-3 border-t border-[var(--hairline)] bg-bg/80 py-4 backdrop-blur">
-            <button
-              onClick={guardar}
-              disabled={estado === "guardando"}
-              className="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-white disabled:opacity-60"
-            >
-              {estado === "guardando" ? "Guardando…" : "Guardar precios"}
-            </button>
-            {estado === "ok" && <span className="text-sm text-accent-2">✓ Guardado</span>}
-            {estado === "error" && <span className="text-sm text-red-400">Error al guardar</span>}
-          </div>
-        </section>
-      )}
     </div>
   );
 }

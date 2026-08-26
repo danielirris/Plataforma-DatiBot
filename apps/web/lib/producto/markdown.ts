@@ -1,15 +1,12 @@
 import {
-  CAMPOS_PRECIO,
-  PAISES,
   type AnuncioReferencia,
   type Oferta,
-  type PreciosPais,
   type Producto,
 } from "@plataforma/products/schema";
 
-// Exporta el dossier del producto (identidad, anuncios ganadores de referencia,
-// oferta y precios) a un Markdown legible, pensado para pegárselo a una IA y que
-// redacte guiones de anuncios. Solo lectura: no toca nada del producto.
+// Exporta el dossier del producto (identidad, anuncios ganadores de referencia y
+// oferta) a un Markdown legible, pensado para pegárselo a una IA y que redacte
+// guiones de anuncios. Solo lectura: no toca nada del producto.
 
 function bloque(titulo: string, cuerpo: string): string {
   const c = (cuerpo ?? "").trim();
@@ -72,26 +69,6 @@ function seccionOferta(o: Oferta | null): string {
   return md;
 }
 
-function seccionPrecios(precios: Record<string, PreciosPais> | undefined): string {
-  // Solo los países que tienen algún precio puesto: el wizard deja en blanco los
-  // que no se usan, y una fila vacía solo despista a la IA que lee el dossier.
-  const conPrecio = PAISES.filter((pa) =>
-    CAMPOS_PRECIO.some((c) => String(precios?.[pa.codigo]?.[c.key] ?? "").trim()),
-  );
-  if (!conPrecio.length) return "";
-
-  let md = "## 4. Precios por país\n\n";
-  md += `| País | ${CAMPOS_PRECIO.map((c) => c.label).join(" | ")} |\n`;
-  md += `| --- | ${CAMPOS_PRECIO.map(() => "---:").join(" | ")} |\n`;
-  for (const pa of conPrecio) {
-    const fila = CAMPOS_PRECIO.map(
-      (c) => String(precios?.[pa.codigo]?.[c.key] ?? "").trim() || "—",
-    );
-    md += `| ${pa.nombre} (${pa.codigo}) | ${fila.join(" | ")} |\n`;
-  }
-  return md;
-}
-
 export function productoAMarkdown(p: Producto): string {
   let md = `# ${p.nombre || "Producto"}\n\n`;
   md +=
@@ -106,7 +83,6 @@ export function productoAMarkdown(p: Producto): string {
 
   md += seccionAnunciosReferencia(p.anunciosReferencia ?? []);
   md += seccionOferta(p.oferta);
-  md += seccionPrecios(p.precios);
 
   return md.replace(/\n{3,}/g, "\n\n").trim() + "\n";
 }

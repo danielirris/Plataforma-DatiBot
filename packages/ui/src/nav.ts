@@ -42,13 +42,6 @@ export const NAV_ITEMS: NavItem[] = [
       "Genera ebooks en PDF con temas de diseño listos para entregar y vender.",
   },
   {
-    href: "/dashboard",
-    label: "Dashboard ads",
-    icon: "📊",
-    description:
-      "ROAS, CPA y métricas de tus campañas de Facebook Ads en tiempo real.",
-  },
-  {
     href: "/extractor",
     label: "Editor de videos",
     icon: "🎬",
