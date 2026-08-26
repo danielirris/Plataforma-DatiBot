@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getProduct, bloqueQueVendemos, type GuionEmbudo, type Producto } from "@plataforma/products";
 import { generarTexto } from "@/lib/ai/textProvider";
+import { bloqueInstrucciones } from "@/lib/ai/instrucciones";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -99,7 +100,8 @@ export async function POST(req: Request, { params }: Ctx) {
   if (!producto?.nombre)
     return NextResponse.json({ error: "Producto no encontrado." }, { status: 404 });
 
-  const prompt = `${SYSTEM_PROMPT}\n\n${insumos(producto)}`;
+  const instrucciones = await bloqueInstrucciones("embudo");
+  const prompt = `${SYSTEM_PROMPT}${instrucciones}\n\n${insumos(producto)}`;
 
   async function intento(nota = ""): Promise<GuionEmbudo | null> {
     let raw: string;

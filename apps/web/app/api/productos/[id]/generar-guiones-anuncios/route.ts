@@ -6,6 +6,7 @@ import {
   type Producto,
 } from "@plataforma/products";
 import { generarTexto } from "@/lib/ai/textProvider";
+import { bloqueInstrucciones } from "@/lib/ai/instrucciones";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -114,7 +115,8 @@ export async function POST(req: Request, { params }: Ctx) {
     return NextResponse.json({ error: "Producto no encontrado." }, { status: 404 });
 
   const cantidad = Math.min(MAX, Math.max(MIN, Math.round(Number(body?.cantidad) || POR_DEFECTO)));
-  const prompt = `${SYSTEM_PROMPT}\n\n${insumos(producto, cantidad)}`;
+  const instrucciones = await bloqueInstrucciones("anuncios");
+  const prompt = `${SYSTEM_PROMPT}${instrucciones}\n\n${insumos(producto, cantidad)}`;
 
   // Mensaje real del proveedor para el 502 (evita el genérico "Reintenta" ante fallos
   // de configuración como una API key ausente).

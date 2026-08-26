@@ -1,17 +1,34 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type ChangeEvent } from "react";
 import {
   CONFIG_GROUPS,
   type ConfigGroup,
   type ConfigStore,
 } from "@plataforma/config/schema";
 
+// Instrucciones maestras que guían a la IA. Se guardan bajo la clave "instrucciones"
+// del mismo almacén de config (persiste en el volumen /data) y se inyectan en los
+// generadores correspondientes. Ver apps/web/lib/ai/instrucciones.ts.
+const INSTRUCCIONES: { key: string; titulo: string; desc: string }[] = [
+  {
+    key: "anuncios",
+    titulo: "Realización de anuncios del producto",
+    desc: "La IA la seguirá al generar los guiones de anuncios (paso «Guiones de anuncios» de cada producto).",
+  },
+  {
+    key: "embudo",
+    titulo: "Video del embudo",
+    desc: "La IA la seguirá al generar el guión del video de embudo de cada producto.",
+  },
+];
+
 export function ConfigForm({ initial }: { initial: ConfigStore }) {
   const [store, setStore] = useState<ConfigStore>(initial);
   const [status, setStatus] = useState<"idle" | "saving" | "saved" | "error">(
     "idle",
   );
+  const [nombresArchivo, setNombresArchivo] = useState<Record<string, string>>({});
 
   function setField(groupId: string, key: string, value: string) {
     setStore((prev) => ({
@@ -19,6 +36,20 @@ export function ConfigForm({ initial }: { initial: ConfigStore }) {
       [groupId]: { ...(prev[groupId] ?? {}), [key]: value },
     }));
     setStatus("idle");
+  }
+
+  // Lee un archivo de texto (.txt/.md) y vuelca su contenido en la instrucción.
+  async function subirInstruccion(key: string, e: ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = ""; // permite volver a subir el mismo archivo
+    if (!file) return;
+    try {
+      const texto = await file.text();
+      setField("instrucciones", key, texto);
+      setNombresArchivo((p) => ({ ...p, [key]: `📄 ${file.name}` }));
+    } catch {
+      setNombresArchivo((p) => ({ ...p, [key]: "⚠️ No se pudo leer el archivo" }));
+    }
   }
 
   async function save() {
@@ -50,6 +81,72 @@ export function ConfigForm({ initial }: { initial: ConfigStore }) {
 
   return (
     <div className="space-y-10">
+      {/* Instrucciones maestras de IA: se suben/pegan aquí y guían a los generadores. */}
+      <div className="space-y-4">
+        <h2 className="border-b border-[var(--hairline)] pb-1 text-sm font-semibold uppercase tracking-wide text-muted">
+          Instrucciones para la IA
+        </h2>
+        <p className="text-xs text-muted">
+          Sube (o pega) tus guías para que la IA las siga al generar. Se guardan de forma{" "}
+          <b>permanente</b> y se aplican a <b>todos</b> los productos. Archivos de texto
+          (<code>.txt</code> o <code>.md</code>); si tu guía está en PDF/Word, pega el texto
+          en el cuadro.
+        </p>
+
+        {INSTRUCCIONES.map((it) => {
+          const val = store.instrucciones?.[it.key] ?? "";
+          return (
+            <section
+              key={it.key}
+              className="rounded-xl border border-[var(--hairline)] glass p-5"
+            >
+              <div className="mb-1 flex items-baseline justify-between gap-3">
+                <h3 className="font-medium">{it.titulo}</h3>
+                <span className="shrink-0 text-xs text-muted">
+                  {val.trim() ? `${val.length.toLocaleString()} caracteres` : "vacío"}
+                </span>
+              </div>
+              <p className="mb-3 text-xs text-muted">{it.desc}</p>
+
+              <div className="flex flex-wrap items-center gap-3">
+                <label className="cursor-pointer rounded-lg border border-accent/50 bg-accent/10 px-4 py-2 text-sm font-medium text-accent-2 hover:bg-accent/20">
+                  ⬆️ Subir archivo (.txt / .md)
+                  <input
+                    type="file"
+                    accept=".txt,.md,.markdown,.text,text/plain,text/markdown"
+                    className="hidden"
+                    onChange={(e) => subirInstruccion(it.key, e)}
+                  />
+                </label>
+                {val.trim() && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setField("instrucciones", it.key, "");
+                      setNombresArchivo((p) => ({ ...p, [it.key]: "" }));
+                    }}
+                    className="text-xs text-muted hover:text-red-400"
+                  >
+                    Borrar
+                  </button>
+                )}
+                {nombresArchivo[it.key] && (
+                  <span className="text-xs text-muted">{nombresArchivo[it.key]}</span>
+                )}
+              </div>
+
+              <textarea
+                rows={8}
+                value={val}
+                placeholder="Pega aquí las instrucciones, o súbelas como archivo…"
+                onChange={(e) => setField("instrucciones", it.key, e.target.value)}
+                className="mt-3 w-full rounded-lg border border-[var(--hairline)] bg-[var(--field)] px-3 py-2 font-mono text-xs text-text outline-none focus:border-accent"
+              />
+            </section>
+          );
+        })}
+      </div>
+
       {sections.map((section) => (
         <div key={section.name} className="space-y-4">
           <h2 className="border-b border-[var(--hairline)] pb-1 text-sm font-semibold uppercase tracking-wide text-muted">
