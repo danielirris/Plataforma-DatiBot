@@ -72,7 +72,7 @@ export function Sidebar() {
 
       <div className="flex flex-col gap-3 px-3 py-4">
         <ThemeToggle />
-        <span className="px-2 text-xs text-muted/70">Datibot · v0.1</span>
+        <span className="px-2 text-xs text-muted/70">Datibot · versión #1</span>
       </div>
     </aside>
   );

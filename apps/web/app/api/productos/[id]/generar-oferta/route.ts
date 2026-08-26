@@ -22,7 +22,7 @@ TU TAREA
 1. PRODUCTO PRINCIPAL: el producto mismo, "vestido" para el embudo. Titúlalo de modo que el nombre venda solo. Detalla qué incluye en 3-6 bullets concretos (no genéricos; usa lo que el producto realmente entrega). Declara un valor percibido en TEXTO comparativo, no en dinero.
 
 2. STACK DE 3 O 4 BONOS. Cada bono:
-   - Desactiva una OBJECIÓN CONCRETA del avatar (cítala tal como está en objeciones_compra u objeciones_uso, no la reformules).
+   - Desactiva una OBJECIÓN CONCRETA del avatar (la que deduces de los anuncios ganadores de referencia y del público del producto).
    - LO MÁS BÁSICO POSIBLE: un ebook / PDF / checklist digital simple, entregable por WhatsApp al instante. Estos productos se prueban RÁPIDO; NO lo compliques.
    - PROHIBIDO: soporte, acompañamiento, grupos o comunidad, canal privado, sesiones 1-a-1, garantías, devoluciones. Nada que la marca tenga que sostener en el tiempo.
    - NO especifiques cantidades (nada de "5 videos", "10 plantillas", "3 clases"): un solo entregable básico por bono.
@@ -59,22 +59,15 @@ Devuelve un JSON con esta forma exacta:
 Nada fuera del JSON. Sin markdown, sin comentarios, sin explicaciones.`;
 
 function insumos(p: Producto): string {
-  const a = p.avatar;
-  const ang = (p.angulos ?? [])
-    .map((x) => `- ${x.tipo} · ${x.nombre}: ${x.gran_idea}`)
-    .join("\n");
+  const refs = (p.anunciosReferencia ?? [])
+    .filter((a) => a.guion?.trim())
+    .map((a) => `### Anuncio ganador${a.nicho ? ` (nicho: ${a.nicho})` : ""}${a.titulo ? ` — ${a.titulo}` : ""}\n${a.guion.trim()}`)
+    .join("\n\n");
   return `--- INSUMOS ---
 Producto: ${p.nombre} | Promesa: ${p.identidad.promesa} | Posicionamiento: ${p.identidad.posicionamiento} | Público: ${p.identidad.dirigidoA}
 
-Avatar:
-- quiénes compran: ${a?.compradores ?? ""}
-- deseos: ${a?.deseos ?? ""}
-- mecanismo único: ${a?.mecanismo_unico ?? ""}
-- objeciones_compra: ${JSON.stringify(a?.objeciones_compra ?? [])}
-- objeciones_uso: ${JSON.stringify(a?.objeciones_uso ?? [])}
-
-Ángulos:
-${ang}`;
+ANUNCIOS GANADORES DE REFERENCIA (avatar MUY similar al de este producto — de aquí sacas el avatar, sus deseos y sus objeciones):
+${refs || "(el usuario no cargó anuncios de referencia; deduce el avatar del público y la promesa)"}`;
 }
 
 // Lo que el usuario YA tiene: la IA debe RESPETARLO (no reinventar el principal ni

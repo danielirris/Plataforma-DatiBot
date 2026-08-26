@@ -1,33 +1,13 @@
 // ─────────────────────────────────────────────────────────────
-// Modelo de datos "PRODUCTO".
+// Modelo de datos "PRODUCTO" (rediseño v1).
 //
-// Principio: PRODUCTO (portátil) × PAÍS (config fija) = Lanzamiento.
-// El producto guarda SOLO lo reutilizable entre países: identidad, mensajes
-// (redactados por IA en español neutral, con los tokens del motor [PRECIO_BASE]…
-// intactos para que se llenen por país), overlays y links de imágenes.
-//
-// Excepción deliberada: `precios` va POR PAÍS dentro del producto, porque el
-// precio es una decisión COMERCIAL por mercado (en Chile ≠ en Ecuador), no
-// infraestructura fija por país. La moneda/símbolo sí sale de la config del país.
+// Un producto guarda lo reutilizable: identidad, ANUNCIOS GANADORES de referencia
+// (la base creativa, en vez de investigar avatar/ángulos), oferta, GUIÓN del video
+// de embudo, ebook, videos y precios por país. Los MENSAJES del embudo de WhatsApp
+// (modelo COD) viven en su propia sección y se guardan en `mensajes`.
 // ─────────────────────────────────────────────────────────────
 
-/** Los 5 creativos que se generan por producto. */
-export type TipoImagen =
-  | "contenido"
-  | "bonos"
-  | "bono_accion_rapida"
-  | "remarketing_60"
-  | "remarketing_180";
-
-export const TIPOS_IMAGEN: TipoImagen[] = [
-  "contenido",
-  "bonos",
-  "bono_accion_rapida",
-  "remarketing_60",
-  "remarketing_180",
-];
-
-/** Países con los que se puede emitir (deben tener config por país para emitir). */
+/** Países con los que se puede trabajar. */
 export const PAISES: { codigo: string; nombre: string }[] = [
   { codigo: "CO", nombre: "Colombia" },
   { codigo: "MX", nombre: "México" },
@@ -44,222 +24,23 @@ export interface IdentidadProducto {
   dirigidoA: string;
 }
 
-/** Secciones de la investigación de avatar (con las preguntas exactas para la IA). */
-export const AVATAR_SECCIONES: { key: string; label: string; pregunta: string }[] = [
-  {
-    key: "compradores",
-    label: "Quiénes compran",
-    pregunta:
-      "¿Quiénes son las personas más probables de comprar esto? Descríbelas con detalle.",
-  },
-  {
-    key: "deseos",
-    label: "Deseos",
-    pregunta: "¿Cuáles son sus deseos más profundos relacionados con esto?",
-  },
-  {
-    key: "demografia",
-    label: "Demografía y psicografía",
-    pregunta:
-      "¿Quién es exactamente el cliente (edad, género, ocupación)? ¿Qué actitudes políticas, religiosas o sociales tienen? ¿Cuáles son sus mayores esperanzas y sueños? ¿Sus mayores victorias y fracasos? ¿Qué fuerzas externas creen que les han impedido ser felices o mejorar? ¿Cuáles son sus prejuicios y creencias inamovibles sobre la vida, el amor y la familia? Termina con una síntesis de 1 a 3 frases.",
-  },
-  {
-    key: "otras_soluciones",
-    label: "Otras soluciones existentes",
-    pregunta:
-      "¿Qué otras soluciones usa ya el mercado para este problema (lista)? ¿Qué les gusta y qué les disgusta de esas alternativas? ¿Tienen historias de terror o malas experiencias? ¿Creen realmente que funcionan? Si no, ¿por qué?",
-  },
-  {
-    key: "curiosidad",
-    label: "Curiosidad y autoridad",
-    pregunta:
-      "¿Alguien ha intentado resolver esto de una manera muy original y con qué resultado? ¿Existe una historia de 'conspiración' de por qué las soluciones tradicionales no funcionan? ¿Hay algún dato histórico, estudio o descubrimiento poco conocido que valide este enfoque?",
-  },
-  {
-    key: "mecanismo_unico",
-    label: "Mecanismo único",
-    pregunta:
-      "¿Cuál es la causa raíz o el 'enemigo oculto' del problema del cliente? ¿Por qué este producto/método funciona de manera diferente a todo lo demás? ¿Cuál es el Mecanismo Único que hace que sea la única solución que realmente tiene sentido?",
-  },
-];
-
-export interface FuenteAvatar {
-  titulo: string;
-  url: string;
-}
-
-/** Objeciones de COMPRA: qué frena al cliente al momento de pagar. */
-export const CATEGORIAS_OBJECION_COMPRA = [
-  "precio",
-  "confianza",
-  "logistica",
-  "autenticidad",
-  "garantia",
-  "necesidad",
-  "otro",
-] as const;
-export type CategoriaObjecionCompra =
-  (typeof CATEGORIAS_OBJECION_COMPRA)[number];
-
-/** Objeciones de USO: qué frena al cliente DESPUÉS de comprar (usar/mantener). */
-export const CATEGORIAS_OBJECION_USO = [
-  "dificultad",
-  "tiempo",
-  "mantenimiento",
-  "riesgo_de_fallar",
-  "no_soy_capaz",
-  "efectos_secundarios",
-  "otro",
-] as const;
-export type CategoriaObjecionUso = (typeof CATEGORIAS_OBJECION_USO)[number];
-
-export interface ObjecionCompra {
-  objecion: string;
-  categoria: CategoriaObjecionCompra;
-  respuesta_sugerida: string;
-}
-export interface ObjecionUso {
-  objecion: string;
-  categoria: CategoriaObjecionUso;
-  respuesta_sugerida: string;
-}
-
-export interface Avatar {
-  compradores: string;
-  deseos: string;
-  demografia: string;
-  otras_soluciones: string;
-  curiosidad: string;
-  mecanismo_unico: string;
-  /** qué frena al cliente al momento de pagar (5-8) */
-  objeciones_compra: ObjecionCompra[];
-  /** qué frena al cliente al usar/mantener el producto tras comprar (5-8) */
-  objeciones_uso: ObjecionUso[];
-  /** fuentes web usadas por el grounding de Gemini */
-  fuentes: FuenteAvatar[];
-}
-
-/** Catálogo de tipos de ángulo publicitario (vector psicológico). */
-export const TIPOS_ANGULO = [
-  "DOLOR_AGUDO",
-  "RESULTADO_SOÑADO",
-  "MIEDO_OCULTO",
-  "AUTORIDAD_RESPALDO",
-  "PRUEBA_SOCIAL",
-  "CONSPIRACION_SECRETO",
-  "MECANISMO_UNICO",
-  "CONTRA_SOLUCIONES_FALLIDAS",
-  "IDENTIDAD_ASPIRACION",
-  "ATAJO_HACK",
-  "VERGUENZA_SOCIAL",
-  "URGENCIA_VENTANA",
-  "NEGOCIO_EMPRENDER",
-] as const;
-export type TipoAngulo = (typeof TIPOS_ANGULO)[number];
-
-/** Cuántos ángulos exige el producto. */
-export const NUM_ANGULOS = 6;
-
-/** Mecanismos psicológicos del banco de ganchos (data/ganchos_base.json). */
-export const MECANISMOS_GANCHO = [
-  "NOVEDAD_HACK",
-  "GENERAL",
-  "CURIOSIDAD_SECRETO",
-  "DOLOR_PROBLEMA",
-  "AUTORIDAD_CREDENCIAL",
-  "SORPRESA_REVELACION",
-  "CONTROVERSIA_OPINION",
-  "RELATABILIDAD_IDENTIFICACION",
-  "URGENCIA_FOMO",
-  "ADVERTENCIA_MIEDO",
-  "TRANSFORMACION_ANTES_DESPUES",
-  "PRUEBA_SOCIAL",
-] as const;
-export type MecanismoGancho = (typeof MECANISMOS_GANCHO)[number];
-
-/** Cuántos ganchos por ángulo. */
-export const NUM_GANCHOS = 3;
-
-/** Un GANCHO: los 2 primeros segundos de un anuncio (intro/titular). */
-export interface Gancho {
-  texto: string;
-  mecanismo: MecanismoGancho;
-  /** opcional: plantilla del banco que sirvió de semilla */
-  plantilla_origen?: string;
-  por_que_funciona: string;
-}
-
-/**
- * Un ÁNGULO es el encuadre emocional/argumental desde el que se vende el
- * producto. NO es una feature: es una entrada psicológica al deseo/dolor.
- */
-export interface Angulo {
+// ── ANUNCIOS GANADORES DE REFERENCIA ───────────────────────────
+// Guiones de anuncios ganadores de la competencia o del nicho, con un avatar MUY
+// similar al del producto (ej.: gano vendiendo neveras usando un ganador de aires
+// acondicionados). Son la base creativa: alimentan el guión de video de embudo y
+// el cerebro de los anuncios, en vez de investigar el avatar desde cero.
+export interface AnuncioReferencia {
   id: string;
-  nombre: string;
-  tipo: TipoAngulo;
-  promesa_central: string;
-  gran_idea: string;
-  publico_objetivo_del_angulo: string;
-  emocion_dominante: string;
-  dolor_o_deseo_atacado: string;
-  prueba_o_evidencia: string;
-  /** 3 ganchos ganadores (se rellenan en el paso de ganchos) */
-  hooks: Gancho[];
+  /** título corto para reconocerlo (ej. "Ganador aires acondicionados") */
+  titulo: string;
+  /** nicho/producto del anuncio original (ej. "aires acondicionados") */
+  nicho: string;
+  /** el guión/copy del anuncio ganador, pegado tal cual */
+  guion: string;
 }
 
-/**
- * Ranuras de mensaje del embudo que redacta la IA (coinciden con los campos del
- * nodo ⚙️ CONFIGURAR del motor n8n). El copy va en español neutral y DEJA
- * INTACTOS los tokens del motor ([PRECIO_BASE], [NUMERO_PAGO], …) que se
- * rellenan por país al emitir.
- */
-export const RANURAS_MENSAJE: { key: string; descripcion: string }[] = [
-  { key: "mensaje_1", descripcion: "Gancho inicial: golpea el problema/dolor y promete la solución." },
-  { key: "mensaje_2", descripcion: "Transformación: pinta el antes→después y los beneficios." },
-  { key: "mensaje_3", descripcion: "Lista '¿Qué recibes?' con checks ✅ de lo incluido." },
-  { key: "mensaje_4", descripcion: "Bonos de hoy: lista de bonos con emojis y su valor." },
-  { key: "mensaje_5", descripcion: "Cómo funciona + retorno de inversión. Usa [PRECIO_BASE] si mencionas precio." },
-  { key: "mensaje_6", descripcion: "Bono extra por urgencia ('solo por hoy')." },
-  { key: "mensaje_7", descripcion: "Precio: valor tachado y final. Usa [PRECIO_TACHADO] y [PRECIO_BASE]." },
-  { key: "mensaje_8_botones", descripcion: "Invita a elegir método de pago (previo a los botones)." },
-  { key: "mensaje_rmk_15m", descripcion: "Remarketing a los 15 min: recordatorio suave." },
-  { key: "mensaje_rmk_60m", descripcion: "Remarketing a los 60 min: escasez media." },
-  { key: "mensaje_rmk_180m", descripcion: "Remarketing a los 180 min: última llamada, urgencia fuerte." },
-  { key: "ob_mensaje_oferta", descripcion: "Oferta del Orderbump: propone el extra. Puedes usar [PRECIO_ADICIONAL_OB]." },
-  { key: "ob_mensaje_si", descripcion: "Confirmación cuando el cliente acepta el Orderbump." },
-  { key: "ob_mensaje_no", descripcion: "Confirmación cuando el cliente rechaza el Orderbump." },
-];
-
-/**
- * Precios por producto y país. Son los que el motor mapea a sus tokens
- * ([PRECIO_BASE], [PRECIO_TACHADO], [PRECIO_ADICIONAL_OB], [PRECIO_RMK_*]).
- * El combo y el regateo los DERIVA el motor; no se guardan aquí.
- */
-export interface PreciosPais {
-  base: string;
-  tachado: string;
-  adicional_ob: string;
-  /** precio "normal" del orderbump (si se vende suelto) */
-  normal_ob: string;
-  rmk_15m: string;
-  rmk_60m: string;
-  rmk_180m: string;
-}
-
-/** Los campos de PreciosPais con su etiqueta, en el orden en que se piden. */
-export const CAMPOS_PRECIO: { key: keyof PreciosPais; label: string; ayuda?: string }[] = [
-  { key: "base", label: "Precio base", ayuda: "El precio principal del producto." },
-  { key: "tachado", label: "Precio tachado", ayuda: "El precio “antes” que se muestra tachado." },
-  { key: "adicional_ob", label: "Adicional Orderbump", ayuda: "Lo que suma el orderbump al combo." },
-  { key: "normal_ob", label: "Normal Orderbump", ayuda: "Precio del orderbump si se vende suelto." },
-  { key: "rmk_15m", label: "Remarketing 15 min" },
-  { key: "rmk_60m", label: "Remarketing 60 min" },
-  { key: "rmk_180m", label: "Remarketing 180 min", ayuda: "También fija el piso del validador." },
-];
-
-export interface EmisionRegistro {
-  pais: string;
-  fecha: string;
+export function anuncioReferenciaVacio(): AnuncioReferencia {
+  return { id: "", titulo: "", nicho: "", guion: "" };
 }
 
 // ── OFERTA (Grand Slam Offer del embudo) ───────────────────────
@@ -282,7 +63,7 @@ export interface BonoOferta {
   titulo: string;
   descripcion_corta: string;
   por_que_lo_incluyo: string;
-  /** objeción del avatar (compra o uso) que este bono desactiva */
+  /** objeción del cliente (compra o uso) que este bono desactiva */
   objecion_que_desactiva: string;
   valor_percibido_texto: string;
 }
@@ -387,6 +168,77 @@ export interface VideoProducto {
   bytes: number;
 }
 
+// ── GUIÓN DEL VIDEO DE EMBUDO ──────────────────────────────────
+// El video de CIERRE que va DENTRO del embudo de WhatsApp (no el de captación).
+// La IA lo redacta a partir de los anuncios ganadores + la oferta. Se entrega como
+// texto listo para grabar (el usuario lo graba con su cara/voz).
+export interface GuionEmbudo {
+  /** formato usado (A: muestra · B: testimonial · C: cronología · D: corto · E: descubrimiento) */
+  formato: string;
+  /** el guión listo para grabar, en prosa con saltos de línea */
+  guion: string;
+  generadoEn: string;
+}
+
+// ── EMBUDO DE WHATSAPP (mensajes COD por país) ─────────────────
+// La escalera es base (nivel 1) + 6 ORDERBUMPS (niveles 2-7). El MONTO de cada
+// nivel es fijo por país (lib/embudo/paises.ts); aquí solo se define QUÉ bono
+// agrega cada orderbump. Los 10 mensajes se generan con IA por país.
+export interface Orderbump {
+  /** nivel de la escalera: 2..7 (el 1 es el producto base de la oferta) */
+  nivel: number;
+  /** el bono que agrega este nivel */
+  nombre_bono: string;
+  /** por qué le sirve al cliente (el paréntesis del msg_cobro) */
+  descripcion: string;
+}
+export interface VendedorEmbudo {
+  nombre: string;
+  genero: "F" | "M" | "N";
+  oficio: string;
+}
+export interface EmbudoWhatsApp {
+  vendedor: VendedorEmbudo;
+  /** los 6 orderbumps (niveles 2..7); el nivel 1 es el producto base de la oferta */
+  orderbumps: Orderbump[];
+  /** los 10 mensajes generados por país: { CO: { msg_bienvenida: "...", … }, … } */
+  mensajesPorPais: Record<string, Record<string, string>>;
+}
+export function embudoVacio(): EmbudoWhatsApp {
+  return {
+    vendedor: { nombre: "", genero: "F", oficio: "" },
+    orderbumps: Array.from({ length: 6 }, (_, i) => ({
+      nivel: i + 2,
+      nombre_bono: "",
+      descripcion: "",
+    })),
+    mensajesPorPais: {},
+  };
+}
+
+// ── PRECIOS por producto y país ────────────────────────────────
+export interface PreciosPais {
+  base: string;
+  tachado: string;
+  adicional_ob: string;
+  /** precio "normal" del orderbump (si se vende suelto) */
+  normal_ob: string;
+  rmk_15m: string;
+  rmk_60m: string;
+  rmk_180m: string;
+}
+
+/** Los campos de PreciosPais con su etiqueta, en el orden en que se piden. */
+export const CAMPOS_PRECIO: { key: keyof PreciosPais; label: string; ayuda?: string }[] = [
+  { key: "base", label: "Precio base", ayuda: "El precio principal del producto." },
+  { key: "tachado", label: "Precio tachado", ayuda: "El precio “antes” que se muestra tachado." },
+  { key: "adicional_ob", label: "Adicional Orderbump", ayuda: "Lo que suma el orderbump al combo." },
+  { key: "normal_ob", label: "Normal Orderbump", ayuda: "Precio del orderbump si se vende suelto." },
+  { key: "rmk_15m", label: "Remarketing 15 min" },
+  { key: "rmk_60m", label: "Remarketing 60 min" },
+  { key: "rmk_180m", label: "Remarketing 180 min", ayuda: "También fija el piso del validador." },
+];
+
 export function bonoVacio(): BonoOferta {
   return {
     titulo: "",
@@ -425,35 +277,22 @@ export interface Producto {
   identidad: IdentidadProducto;
   /** identificador propio del producto (NO el ID de pago/checkout, que es por país) */
   productoId: string;
-  /** investigación de avatar (grounding web con Gemini) */
-  avatar: Avatar;
-  /** 6 ángulos publicitarios (encuadres para vender el mismo producto) */
-  angulos: Angulo[];
+  /** anuncios ganadores de referencia (la base creativa, avatar similar) */
+  anunciosReferencia: AnuncioReferencia[];
   /** paquete de venta (Grand Slam Offer); null hasta que se genera */
   oferta: Oferta | null;
+  /** guión del video de embudo (cierre dentro del WhatsApp); null hasta generarlo */
+  guionEmbudo: GuionEmbudo | null;
   /** ebook del producto (se crea por fases desde la oferta) */
   ebook: EbookProducto;
   /** videos largos adjuntos (materia prima para editar los anuncios) */
   videos: VideoProducto[];
-  /** ranuras del motor (mensaje_1..8, mensaje_rmk_*, ob_mensaje_*, …) en español neutral */
-  mensajes: Record<string, string>;
-  /** líneas cortas de texto que el servidor superpone en cada imagen */
-  overlays: Record<TipoImagen, string>;
-  /** links públicos (VPS) de cada creativo */
-  imagenes: Record<TipoImagen, string>;
+  /** embudo de WhatsApp (COD): vendedor, orderbumps y los 10 mensajes por país. Se llena en la sección Mensajes. */
+  embudo: EmbudoWhatsApp | null;
   /** precios por país: { PE: {...}, CL: {...}, EC: {...} } */
   precios: Record<string, PreciosPais>;
-  orderbumpPorDefecto: boolean;
-  historialEmisiones: EmisionRegistro[];
   creadoEn: string;
   actualizadoEn: string;
-}
-
-function overlaysVacios(): Record<TipoImagen, string> {
-  return TIPOS_IMAGEN.reduce(
-    (acc, t) => ((acc[t] = ""), acc),
-    {} as Record<TipoImagen, string>,
-  );
 }
 
 /** Crea un producto borrador con todos los campos inicializados. */
@@ -463,27 +302,13 @@ export function crearProductoBorrador(parcial: Partial<Producto> = {}): Producto
     nombre: "",
     identidad: { promesa: "", posicionamiento: "", dirigidoA: "" },
     productoId: "",
-    avatar: {
-      compradores: "",
-      deseos: "",
-      demografia: "",
-      otras_soluciones: "",
-      curiosidad: "",
-      mecanismo_unico: "",
-      objeciones_compra: [],
-      objeciones_uso: [],
-      fuentes: [],
-    },
-    angulos: [],
+    anunciosReferencia: [],
     oferta: null,
+    guionEmbudo: null,
     ebook: ebookVacio(),
     videos: [],
-    mensajes: {},
-    overlays: overlaysVacios(),
-    imagenes: overlaysVacios(),
+    embudo: null,
     precios: {},
-    orderbumpPorDefecto: false,
-    historialEmisiones: [],
     creadoEn: "",
     actualizadoEn: "",
     ...parcial,

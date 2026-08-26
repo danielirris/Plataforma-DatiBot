@@ -1,17 +1,10 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
   crearProductoBorrador,
-  AVATAR_SECCIONES,
-  CATEGORIAS_OBJECION_COMPRA,
-  CATEGORIAS_OBJECION_USO,
-  RANURAS_MENSAJE,
-  TIPOS_IMAGEN,
-  TIPOS_ANGULO,
-  MECANISMOS_GANCHO,
   PAISES,
   CAMPOS_PRECIO as CAMPOS_PRECIO_SCHEMA,
   MIN_BONOS,
@@ -20,17 +13,13 @@ import {
   activoVacio,
   bonoVacio,
   ebookVacio,
+  anuncioReferenciaVacio,
   type VideoProducto,
-  type Angulo,
-  type Gancho,
-  type Avatar,
+  type AnuncioReferencia,
   type Oferta,
   type BonoOferta,
   type ActivoExistente,
-  type ObjecionCompra,
-  type ObjecionUso,
   type Producto,
-  type TipoImagen,
 } from "@plataforma/products/schema";
 import { cn } from "@plataforma/ui";
 import { AutoTextarea } from "./AutoTextarea";
@@ -38,45 +27,28 @@ import { productoAMarkdown, nombreArchivoMd } from "@/lib/producto/markdown";
 import { mensajeDeError, errorDeRed } from "@/lib/http/errores";
 import { subirPorTrozos } from "@/lib/uploads/cliente";
 
-// Los precios van ANTES de los mensajes: el copy usa los tokens [PRECIO_*], así
-// que conviene tenerlos puestos antes de redactar.
 const PASOS = [
   { key: "identidad", label: "1 · Identidad" },
-  { key: "avatar", label: "2 · Avatar" },
-  { key: "angulos", label: "3 · Ángulos" },
-  { key: "oferta", label: "4 · Oferta" },
-  { key: "precios", label: "5 · Precios" },
-  { key: "mensajes", label: "6 · Mensajes" },
-  { key: "imagenes", label: "7 · Imágenes" },
-  { key: "videos", label: "8 · Videos" },
+  { key: "anuncios", label: "2 · Anuncios ganadores" },
+  { key: "oferta", label: "3 · Oferta" },
+  { key: "precios", label: "4 · Precios" },
+  { key: "video", label: "5 · Video de embudo" },
+  { key: "videos", label: "6 · Videos" },
 ] as const;
 
 // Pasos ya implementados.
 const DISPONIBLES = new Set([
   "identidad",
-  "avatar",
-  "angulos",
+  "anuncios",
   "oferta",
-  "mensajes",
-  "imagenes",
-  "videos",
   "precios",
+  "video",
+  "videos",
 ]);
 
-// Campos de precio por país (van al motor de flujos como [PRECIO_*]).
 // Los campos de precio (y sus etiquetas) viven en el esquema: el dossier .md
 // pinta la misma tabla y así no se desincronizan.
 const CAMPOS_PRECIO = CAMPOS_PRECIO_SCHEMA.map((c) => ({ k: c.key, l: c.label, ayuda: c.ayuda }));
-
-
-const CAMPOS_ANGULO: { key: keyof Angulo; label: string; rows: number }[] = [
-  { key: "promesa_central", label: "Promesa central", rows: 2 },
-  { key: "gran_idea", label: "Gran idea (titular)", rows: 2 },
-  { key: "publico_objetivo_del_angulo", label: "Público del ángulo", rows: 2 },
-  { key: "emocion_dominante", label: "Emoción dominante", rows: 1 },
-  { key: "dolor_o_deseo_atacado", label: "Dolor/deseo atacado", rows: 2 },
-  { key: "prueba_o_evidencia", label: "Prueba/evidencia", rows: 2 },
-];
 
 export function ProductoWizard({ producto }: { producto?: Producto }) {
   const router = useRouter();
@@ -87,52 +59,30 @@ export function ProductoWizard({ producto }: { producto?: Producto }) {
     return {
       ...base,
       ...producto,
-      avatar: { ...base.avatar, ...(producto.avatar ?? {}) },
-      angulos: producto.angulos ?? base.angulos,
+      anunciosReferencia: producto.anunciosReferencia ?? base.anunciosReferencia,
       oferta: producto.oferta ?? null,
-      overlays: { ...base.overlays, ...(producto.overlays ?? {}) },
-      imagenes: { ...base.imagenes, ...(producto.imagenes ?? {}) },
+      guionEmbudo: producto.guionEmbudo ?? null,
       ebook: { ...ebookVacio(), ...(producto.ebook ?? {}) },
       videos: producto.videos ?? [],
     };
   });
   const [paso, setPaso] = useState<string>("identidad");
   const [estado, setEstado] = useState<"idle" | "guardando" | "ok" | "error">("idle");
-  const [genEstado, setGenEstado] = useState<string>("");
-  const [imgEstado, setImgEstado] = useState<string>("");
-  const [avatarEstado, setAvatarEstado] = useState<string>("");
-  const [investigandoAvatar, setInvestigandoAvatar] = useState<boolean>(false);
-  // Sondeo del avatar: timer + cerrojo síncrono + bandera de montado, para no
-  // fugar el intervalo ni hacer setState sobre un componente ya desmontado.
-  const avatarTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const avatarLockRef = useRef<boolean>(false);
-  const montadoRef = useRef<boolean>(true);
-  const [angulosEstado, setAngulosEstado] = useState<string>("");
-  const [ganchosEstado, setGanchosEstado] = useState<Record<string, string>>({});
   const [ofertaEstado, setOfertaEstado] = useState<string>("");
   const [incluyeVideo, setIncluyeVideo] = useState<boolean>(
     producto?.oferta?.incluye_video ?? false,
   );
   const [videoEstado, setVideoEstado] = useState<string>("");
   const [subiendoVideo, setSubiendoVideo] = useState<boolean>(false);
+  const [guionEstado, setGuionEstado] = useState<string>("");
 
   const esNuevo = !p.id;
-
-  // Marca el montaje y limpia el sondeo del avatar al desmontar (evita la fuga
-  // del intervalo y setState sobre un componente ya desmontado).
-  useEffect(() => {
-    montadoRef.current = true;
-    return () => {
-      montadoRef.current = false;
-      if (avatarTimerRef.current) clearInterval(avatarTimerRef.current);
-    };
-  }, []);
 
   function setCampo(campo: keyof Producto, valor: unknown) {
     setP((prev) => ({ ...prev, [campo]: valor }));
     setEstado("idle");
   }
-  // Descarga el dossier del producto (identidad + avatar + ángulos + oferta +
+  // Descarga el dossier del producto (identidad + anuncios ganadores + oferta +
   // precios) en Markdown, para pasárselo a una IA y que redacte los guiones de
   // anuncios. Lee el estado vivo: lo que se acaba de teclear ya sale, sin guardar.
   function descargarMarkdown() {
@@ -161,157 +111,26 @@ export function ProductoWizard({ producto }: { producto?: Producto }) {
     setP((prev) => ({ ...prev, identidad: { ...prev.identidad, [campo]: valor } }));
     setEstado("idle");
   }
-  function setMensaje(key: string, valor: string) {
-    setP((prev) => ({ ...prev, mensajes: { ...prev.mensajes, [key]: valor } }));
-  }
-  function setOverlay(key: TipoImagen, valor: string) {
-    setP((prev) => ({ ...prev, overlays: { ...prev.overlays, [key]: valor } }));
-  }
-  function setImagen(key: TipoImagen, valor: string) {
-    setP((prev) => ({ ...prev, imagenes: { ...prev.imagenes, [key]: valor } }));
-  }
-
-  // Elimina la imagen de un tipo: la quita del producto y borra el archivo del VPS.
-  async function eliminarImagenTipo(tipo: TipoImagen) {
-    const url = p.imagenes[tipo];
-    if (!url) return;
-    setImagen(tipo, ""); // se quita del UI de inmediato
-    setImgEstado(`Eliminando ${tipo}…`);
-    try {
-      const res = await fetch("/api/images/delete", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ url }),
-      });
-      const data = await res.json().catch(() => ({}));
-      setImgEstado(
-        res.ok
-          ? `✓ ${tipo} eliminada. Guarda para conservar el cambio.`
-          : `⚠️ Quitada del producto, pero el borrado en el VPS falló: ${data.error ?? res.status}`,
-      );
-    } catch {
-      setImgEstado(`⚠️ ${tipo} quitada del producto (no se pudo confirmar el borrado en el VPS).`);
-    }
-  }
-  function setAvatarSeccion(key: keyof Avatar, valor: string) {
-    setP((prev) => ({ ...prev, avatar: { ...prev.avatar, [key]: valor } }));
-  }
-
-  type BloqueObj = "objeciones_compra" | "objeciones_uso";
-  function setObjecion(
-    bloque: BloqueObj,
-    index: number,
-    campo: "objecion" | "categoria" | "respuesta_sugerida",
-    valor: string,
-  ) {
+  // ── Anuncios ganadores de referencia ──────────────────────────
+  function setAnuncio(i: number, campo: keyof AnuncioReferencia, valor: string) {
     setP((prev) => {
-      const lista = [...(prev.avatar[bloque] as (ObjecionCompra | ObjecionUso)[])];
-      lista[index] = { ...lista[index], [campo]: valor };
-      return { ...prev, avatar: { ...prev.avatar, [bloque]: lista } };
+      const lista = [...(prev.anunciosReferencia ?? [])];
+      lista[i] = { ...lista[i], [campo]: valor };
+      return { ...prev, anunciosReferencia: lista };
     });
+    setEstado("idle");
   }
-  function addObjecion(bloque: BloqueObj) {
-    setP((prev) => {
-      const vacia = { objecion: "", categoria: "otro", respuesta_sugerida: "" };
-      const lista = [...(prev.avatar[bloque] as (ObjecionCompra | ObjecionUso)[]), vacia];
-      return { ...prev, avatar: { ...prev.avatar, [bloque]: lista } };
-    });
+  function addAnuncio() {
+    setP((prev) => ({
+      ...prev,
+      anunciosReferencia: [...(prev.anunciosReferencia ?? []), anuncioReferenciaVacio()],
+    }));
   }
-  function removeObjecion(bloque: BloqueObj, index: number) {
-    setP((prev) => {
-      const lista = (prev.avatar[bloque] as (ObjecionCompra | ObjecionUso)[]).filter(
-        (_, i) => i !== index,
-      );
-      return { ...prev, avatar: { ...prev.avatar, [bloque]: lista } };
-    });
-  }
-
-  function setAngulo(index: number, campo: keyof Angulo, valor: string) {
-    setP((prev) => {
-      const lista = [...prev.angulos];
-      lista[index] = { ...lista[index], [campo]: valor };
-      return { ...prev, angulos: lista };
-    });
-  }
-
-  // Regenera todos (soloIndice undefined) o solo un ángulo (reemplaza ese índice).
-  async function generarAngulos(soloIndice?: number) {
-    if (!p.id) {
-      setAngulosEstado("⚠️ Guarda el producto primero (paso Identidad).");
-      return;
-    }
-    setAngulosEstado(
-      soloIndice == null ? "Generando 6 ángulos con IA…" : `Regenerando ángulo ${soloIndice + 1}…`,
-    );
-    try {
-      const res = await fetch(`/api/productos/${p.id}/generar-angulos`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ producto: p }),
-      });
-      if (!res.ok) {
-        setAngulosEstado("⚠️ " + (await mensajeDeError(res)));
-        return;
-      }
-      const data = await res.json();
-      const nuevos = data.angulos as Angulo[];
-      if (soloIndice == null) {
-        setP((prev) => ({ ...prev, angulos: nuevos }));
-        setAngulosEstado("✓ 6 ángulos generados. Revisa y ajusta.");
-      } else {
-        setP((prev) => {
-          const lista = [...prev.angulos];
-          lista[soloIndice] = nuevos[soloIndice] ?? nuevos[0];
-          return { ...prev, angulos: lista };
-        });
-        setAngulosEstado(`✓ Ángulo ${soloIndice + 1} regenerado.`);
-      }
-    } catch (e) {
-      setAngulosEstado("⚠️ " + errorDeRed(e));
-    }
-  }
-
-  function setGancho(
-    ai: number,
-    hi: number,
-    campo: keyof Gancho,
-    valor: string,
-  ) {
-    setP((prev) => {
-      const angulos = [...prev.angulos];
-      const hooks = [...(angulos[ai].hooks ?? [])];
-      hooks[hi] = { ...hooks[hi], [campo]: valor };
-      angulos[ai] = { ...angulos[ai], hooks };
-      return { ...prev, angulos };
-    });
-  }
-
-  async function generarGanchos(anguloId: string) {
-    if (!p.id) {
-      setGanchosEstado((s) => ({ ...s, [anguloId]: "⚠️ Guarda el producto primero." }));
-      return;
-    }
-    setGanchosEstado((s) => ({ ...s, [anguloId]: "Generando 3 ganchos…" }));
-    try {
-      const res = await fetch(`/api/productos/${p.id}/generar-ganchos`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ producto: p, angulo_id: anguloId }),
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        setGanchosEstado((s) => ({ ...s, [anguloId]: "⚠️ " + (data.error ?? "Error") }));
-        return;
-      }
-      setP((prev) => ({ ...prev, angulos: data.angulos }));
-      const err = data.errores?.[anguloId];
-      setGanchosEstado((s) => ({
-        ...s,
-        [anguloId]: err ? "⚠️ " + err : "✓ 3 ganchos generados.",
-      }));
-    } catch {
-      setGanchosEstado((s) => ({ ...s, [anguloId]: "⚠️ No se pudo generar." }));
-    }
+  function removeAnuncio(i: number) {
+    setP((prev) => ({
+      ...prev,
+      anunciosReferencia: (prev.anunciosReferencia ?? []).filter((_, k) => k !== i),
+    }));
   }
 
   // ── Oferta ──────────────────────────────────────────────────
@@ -419,89 +238,6 @@ export function ProductoWizard({ producto }: { producto?: Producto }) {
     }
   }
 
-  // Detiene el sondeo del avatar y suelta el cerrojo (idempotente).
-  function pararAvatar() {
-    if (avatarTimerRef.current) {
-      clearInterval(avatarTimerRef.current);
-      avatarTimerRef.current = null;
-    }
-    avatarLockRef.current = false;
-    if (montadoRef.current) setInvestigandoAvatar(false);
-  }
-
-  async function investigarAvatar() {
-    if (avatarLockRef.current) return; // cerrojo SÍNCRONO (evita doble lanzamiento)
-    avatarLockRef.current = true;
-    setInvestigandoAvatar(true);
-    setAvatarEstado("Investigando en la web (Gemini + Google Search)… puede tardar ~1 min.");
-    try {
-      const res = await fetch("/api/avatar", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ producto: p }),
-      });
-      if (!res.ok) {
-        if (montadoRef.current) setAvatarEstado("⚠️ " + (await mensajeDeError(res)));
-        pararAvatar();
-        return;
-      }
-      const { job_id } = (await res.json()) as { job_id: string };
-      pollAvatar(job_id);
-    } catch (e) {
-      if (montadoRef.current) setAvatarEstado("⚠️ " + errorDeRed(e));
-      pararAvatar();
-    }
-  }
-
-  function pollAvatar(jobId: string) {
-    if (avatarTimerRef.current) clearInterval(avatarTimerRef.current); // limpia previo
-    let intentos = 0;
-    let faltantes = 0; // 404 seguidos (el proceso pudo reiniciar): tolera algunos
-    const MAX = 90; // ~4.5 min: cubre el peor caso del servidor (2 llamadas lentas)
-    avatarTimerRef.current = setInterval(async () => {
-      intentos += 1;
-      if (intentos > MAX) {
-        if (montadoRef.current)
-          setAvatarEstado("⚠️ La investigación tardó demasiado. Vuelve a intentarlo.");
-        pararAvatar();
-        return;
-      }
-      try {
-        const r = await fetch(`/api/avatar/${jobId}`, { cache: "no-store" });
-        if (r.status === 404) {
-          faltantes += 1;
-          if (faltantes >= 3) {
-            if (montadoRef.current) setAvatarEstado("⚠️ " + (await mensajeDeError(r)));
-            pararAvatar();
-          }
-          return;
-        }
-        faltantes = 0;
-        if (!r.ok) return; // transitorio: reintenta en el próximo tick
-        const j = (await r.json()) as {
-          status: string;
-          avatar?: Avatar | null;
-          error?: string | null;
-        };
-        if (j.status === "done" && j.avatar) {
-          if (montadoRef.current) {
-            setP((prev) => ({ ...prev, avatar: j.avatar as Avatar }));
-            setAvatarEstado(
-              `✓ Investigación lista (${j.avatar.fuentes?.length ?? 0} fuentes). Revisa y ajusta.`,
-            );
-          }
-          pararAvatar();
-        } else if (j.status === "error") {
-          if (montadoRef.current) setAvatarEstado("⚠️ " + (j.error ?? "Error en la investigación"));
-          pararAvatar();
-        }
-        // status === "running" → sigue sondeando
-      } catch {
-        /* corte de red: reintenta en el próximo tick */
-      }
-    }, 3000);
-  }
-
   async function guardar(): Promise<Producto | null> {
     setEstado("guardando");
     try {
@@ -525,52 +261,29 @@ export function ProductoWizard({ producto }: { producto?: Producto }) {
     }
   }
 
-  async function generar(soloRanuras?: string[]) {
-    setGenEstado(soloRanuras ? "Regenerando…" : "Generando mensajes…");
-    try {
-      const res = await fetch("/api/generate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ producto: p, soloRanuras }),
-      });
-      if (!res.ok) {
-        setGenEstado("⚠️ " + (await mensajeDeError(res)));
-        return;
-      }
-      const data = await res.json();
-      setP((prev) => ({
-        ...prev,
-        mensajes: { ...prev.mensajes, ...(data.mensajes ?? {}) },
-        overlays: { ...prev.overlays, ...(data.overlays ?? {}) },
-      }));
-      setGenEstado("✓ Listo. Revisa y ajusta antes de guardar.");
-    } catch (e) {
-      setGenEstado("⚠️ " + errorDeRed(e));
+  // Genera el GUIÓN del video de embudo con IA (a partir de los anuncios ganadores
+  // + la oferta). El guión se guarda en producto.guionEmbudo.
+  async function generarGuion() {
+    if (!p.id) {
+      setGuionEstado("⚠️ Guarda el producto primero (paso Identidad).");
+      return;
     }
-  }
-
-  async function generarImagenes(tipos?: TipoImagen[]) {
-    setImgEstado(tipos ? `Regenerando ${tipos.join(", ")}…` : "Generando 5 imágenes… (puede tardar)");
+    setGuionEstado("Generando el guión del video de embudo… (puede tardar)");
     try {
-      const res = await fetch("/api/images", {
+      const res = await fetch(`/api/productos/${p.id}/generar-guion-embudo`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ producto: p, tipos }),
+        body: JSON.stringify({ producto: p }),
       });
-      const data = await res.json();
       if (!res.ok) {
-        setImgEstado("⚠️ " + (data.error ?? "Error al generar imágenes"));
+        setGuionEstado("⚠️ " + (await mensajeDeError(res)));
         return;
       }
-      setP((prev) => ({ ...prev, imagenes: { ...prev.imagenes, ...(data.imagenes ?? {}) } }));
-      const errs = Object.entries(data.errores ?? {});
-      setImgEstado(
-        errs.length
-          ? "⚠️ Fallaron: " + errs.map(([t, m]) => `${t} (${m})`).join("; ")
-          : "✓ Imágenes generadas y subidas. Guarda para conservar los links.",
-      );
-    } catch {
-      setImgEstado("⚠️ No se pudo generar.");
+      const data = await res.json();
+      setP((prev) => ({ ...prev, guionEmbudo: data.guionEmbudo }));
+      setGuionEstado("✓ Guión generado. Revisa y ajusta antes de guardar.");
+    } catch (e) {
+      setGuionEstado("⚠️ " + errorDeRed(e));
     }
   }
 
@@ -728,301 +441,78 @@ export function ProductoWizard({ producto }: { producto?: Producto }) {
         </section>
       )}
 
-      {paso === "avatar" && (
+
+      {paso === "anuncios" && (
         <section className="space-y-5">
+          <div className="rounded-xl border border-[var(--hairline)] glass p-4 text-sm text-muted">
+            Pega aquí los <b>guiones de anuncios ganadores</b> de la competencia o del
+            nicho con un avatar MUY similar al de tu producto (ej.: vendes neveras y
+            encontraste un ganador de aires acondicionados; o vender pudines vs. vender
+            paletas). Son la base creativa: de aquí salen el guión del video de embudo
+            y el ángulo de tus anuncios.
+          </div>
+
+          {(p.anunciosReferencia ?? []).map((a, i) => (
+            <div
+              key={i}
+              className="space-y-3 rounded-xl border border-[var(--hairline)] glass p-4"
+            >
+              <div className="flex items-center justify-between gap-3">
+                <span className="text-sm font-medium text-text">Ganador #{i + 1}</span>
+                <button
+                  onClick={() => removeAnuncio(i)}
+                  className="text-xs text-muted hover:text-red-400"
+                >
+                  Quitar
+                </button>
+              </div>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <label className="flex flex-col gap-1 text-sm">
+                  <span className="text-muted">Título</span>
+                  <input
+                    value={a.titulo}
+                    onChange={(e) => setAnuncio(i, "titulo", e.target.value)}
+                    placeholder="Ganador aires acondicionados"
+                    className="rounded-lg border border-[var(--hairline)] bg-[var(--field)] px-3 py-2 text-text outline-none focus:border-accent"
+                  />
+                </label>
+                <label className="flex flex-col gap-1 text-sm">
+                  <span className="text-muted">Nicho / producto original</span>
+                  <input
+                    value={a.nicho}
+                    onChange={(e) => setAnuncio(i, "nicho", e.target.value)}
+                    placeholder="aires acondicionados"
+                    className="rounded-lg border border-[var(--hairline)] bg-[var(--field)] px-3 py-2 text-text outline-none focus:border-accent"
+                  />
+                </label>
+              </div>
+              <label className="flex flex-col gap-1 text-sm">
+                <span className="text-muted">Guión del anuncio ganador</span>
+                <AutoTextarea
+                  value={a.guion}
+                  onChange={(e) => setAnuncio(i, "guion", e.target.value)}
+                  rows={5}
+                  placeholder="Pega aquí el guión/copy completo del anuncio ganador…"
+                  className="rounded-lg border border-[var(--hairline)] bg-[var(--field)] px-3 py-2 text-text outline-none focus:border-accent"
+                />
+              </label>
+            </div>
+          ))}
+
+          <button
+            onClick={addAnuncio}
+            className="rounded-lg border border-accent/50 bg-accent/10 px-4 py-2 text-sm font-medium text-accent-2"
+          >
+            + Agregar anuncio ganador
+          </button>
+
           <div className="flex flex-wrap items-center gap-3 rounded-xl border border-[var(--hairline)] glass p-4">
             <button
-              onClick={investigarAvatar}
-              disabled={investigandoAvatar}
+              onClick={guardar}
+              disabled={estado === "guardando"}
               className="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
             >
-              {investigandoAvatar ? "Investigando…" : "🔎 Investigar avatar (búsqueda web)"}
-            </button>
-            <span className="text-sm text-muted">{avatarEstado}</span>
-          </div>
-          <p className="text-xs text-muted">
-            La IA investiga en la web (Gemini + Google Search) al público de este
-            producto y responde cada sección. Revisa y ajusta antes de guardar.
-          </p>
-
-          <div className="space-y-3">
-            {AVATAR_SECCIONES.map((s) => (
-              <div key={s.key} className="rounded-xl border border-[var(--hairline)] glass p-4">
-                <div className="mb-1">
-                  <span className="text-sm font-medium">{s.label}</span>
-                  <p className="text-xs text-muted">{s.pregunta}</p>
-                </div>
-                <AutoTextarea
-                  value={(p.avatar[s.key as keyof Avatar] as string) ?? ""}
-                  onChange={(e) => setAvatarSeccion(s.key as keyof Avatar, e.target.value)}
-                  rows={4}
-                  className="w-full rounded-lg border border-[var(--hairline)] bg-[var(--field)] px-3 py-2 text-sm text-text outline-none focus:border-accent"
-                />
-              </div>
-            ))}
-          </div>
-
-          {(
-            [
-              {
-                bloque: "objeciones_compra",
-                titulo: "Objeciones de COMPRA",
-                ayuda: "qué frena al cliente al momento de pagar",
-                cats: CATEGORIAS_OBJECION_COMPRA,
-              },
-              {
-                bloque: "objeciones_uso",
-                titulo: "Objeciones de USO",
-                ayuda: "qué frena al cliente al usar/mantener, ya con el producto",
-                cats: CATEGORIAS_OBJECION_USO,
-              },
-            ] as const
-          ).map((b) => {
-            const lista = p.avatar[b.bloque] as (ObjecionCompra | ObjecionUso)[];
-            return (
-              <div key={b.bloque} className="rounded-xl border border-[var(--hairline)] glass p-4">
-                <div className="mb-3 flex items-center justify-between gap-2">
-                  <div>
-                    <span className="text-sm font-medium">{b.titulo}</span>
-                    <p className="text-xs text-muted">{b.ayuda}</p>
-                  </div>
-                  <button
-                    onClick={() => addObjecion(b.bloque)}
-                    className="shrink-0 rounded border border-[var(--hairline)] px-2 py-1 text-xs text-muted hover:text-text"
-                  >
-                    + Añadir
-                  </button>
-                </div>
-                <div className="space-y-3">
-                  {lista.length === 0 && (
-                    <p className="text-xs text-muted">
-                      Aún no hay objeciones. Genera con IA o añade a mano.
-                    </p>
-                  )}
-                  {lista.map((o, i) => (
-                    <div key={i} className="rounded-lg border border-[var(--hairline)] bg-[var(--field)] p-3">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <span className="text-xs font-medium text-muted">{i + 1}.</span>
-                        <AutoTextarea
-                          value={o.objecion}
-                          onChange={(e) => setObjecion(b.bloque, i, "objecion", e.target.value)}
-                          rows={1}
-                          placeholder="objeción en primera persona"
-                          className="min-w-[10rem] flex-1 rounded border border-[var(--hairline)] glass px-2 py-1 text-sm text-text outline-none focus:border-accent"
-                        />
-                        <select
-                          value={o.categoria}
-                          onChange={(e) => setObjecion(b.bloque, i, "categoria", e.target.value)}
-                          className="rounded border border-[var(--hairline)] glass px-2 py-1 text-xs text-text outline-none focus:border-accent"
-                        >
-                          {b.cats.map((c) => (
-                            <option key={c} value={c}>
-                              {c}
-                            </option>
-                          ))}
-                        </select>
-                        <button
-                          onClick={() => removeObjecion(b.bloque, i)}
-                          className="rounded border border-[var(--hairline)] px-2 text-xs text-muted hover:text-red-400"
-                          title="Eliminar"
-                        >
-                          ✕
-                        </button>
-                      </div>
-                      <AutoTextarea
-                        value={o.respuesta_sugerida}
-                        onChange={(e) => setObjecion(b.bloque, i, "respuesta_sugerida", e.target.value)}
-                        rows={2}
-                        placeholder="respuesta sugerida para desactivarla (accionable, sin inventar datos)"
-                        className="mt-2 w-full rounded border border-[var(--hairline)] glass px-2 py-1 text-sm text-text outline-none focus:border-accent"
-                      />
-                    </div>
-                  ))}
-                </div>
-              </div>
-            );
-          })}
-
-          {p.avatar.fuentes?.length > 0 && (
-            <div className="rounded-xl border border-[var(--hairline)] glass p-4">
-              <h3 className="mb-2 text-sm font-medium">
-                Fuentes ({p.avatar.fuentes.length})
-              </h3>
-              <ul className="space-y-1 text-xs">
-                {p.avatar.fuentes.map((f, i) => (
-                  <li key={i}>
-                    <a
-                      href={f.url}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="text-accent-2 hover:underline"
-                    >
-                      {f.titulo || f.url}
-                    </a>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-
-          <div className="sticky bottom-0 flex items-center gap-3 border-t border-[var(--hairline)] bg-bg/80 py-4 backdrop-blur">
-            <button
-              onClick={guardar}
-              disabled={estado === "guardando"}
-              className="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-white disabled:opacity-60"
-            >
-              {estado === "guardando" ? "Guardando…" : "Guardar avatar"}
-            </button>
-            {estado === "ok" && <span className="text-sm text-accent-2">✓ Guardado</span>}
-            {estado === "error" && <span className="text-sm text-red-400">Error al guardar</span>}
-          </div>
-        </section>
-      )}
-
-      {paso === "angulos" && (
-        <section className="space-y-5">
-          <div className="flex flex-wrap items-center gap-3 rounded-xl border border-[var(--hairline)] glass p-4">
-            <button
-              onClick={() => generarAngulos()}
-              className="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-white"
-            >
-              🎯 Generar 6 ángulos
-            </button>
-            {p.angulos.length > 0 && (
-              <button
-                onClick={() => generarAngulos()}
-                className="rounded-lg border border-[var(--hairline)] px-4 py-2 text-sm text-muted hover:text-text"
-              >
-                Regenerar todos
-              </button>
-            )}
-            <span className="text-sm text-muted">{angulosEstado}</span>
-          </div>
-          <p className="text-xs text-muted">
-            Un ángulo es la entrada emocional al deseo/dolor del cliente (no una
-            feature). Cada uno produce un anuncio distinto. Usa el avatar; edita
-            libremente y regenera todos o uno a uno.
-          </p>
-
-          {p.angulos.length === 0 ? (
-            <div className="rounded-xl border border-dashed border-[var(--hairline)] p-8 text-center text-muted">
-              Aún no hay ángulos. Pulsa “Generar 6 ángulos”.
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-              {p.angulos.map((ang, i) => (
-                <div key={i} className="space-y-3 rounded-xl border border-[var(--hairline)] glass p-4">
-                  <div className="flex items-center gap-2">
-                    <span className="rounded bg-accent/15 px-2 py-0.5 text-xs text-accent-2">
-                      {i + 1}
-                    </span>
-                    <AutoTextarea
-                      value={ang.nombre}
-                      onChange={(e) => setAngulo(i, "nombre", e.target.value)}
-                      rows={1}
-                      placeholder="Nombre del ángulo"
-                      className="flex-1 rounded border border-[var(--hairline)] bg-[var(--field)] px-2 py-1 text-sm font-medium text-text outline-none focus:border-accent"
-                    />
-                    <button
-                      onClick={() => generarAngulos(i)}
-                      className="shrink-0 rounded border border-[var(--hairline)] px-2 py-1 text-xs text-muted hover:text-text"
-                    >
-                      Regenerar
-                    </button>
-                  </div>
-                  <label className="flex flex-col gap-1 text-xs">
-                    <span className="text-muted">Tipo</span>
-                    <select
-                      value={ang.tipo}
-                      onChange={(e) => setAngulo(i, "tipo", e.target.value)}
-                      className="rounded border border-[var(--hairline)] bg-[var(--field)] px-2 py-1 text-sm text-text outline-none focus:border-accent"
-                    >
-                      {TIPOS_ANGULO.map((t) => (
-                        <option key={t} value={t}>
-                          {t}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                  {CAMPOS_ANGULO.map((c) => (
-                    <label key={c.key} className="flex flex-col gap-1 text-xs">
-                      <span className="text-muted">{c.label}</span>
-                      <AutoTextarea
-                        value={(ang[c.key] as string) ?? ""}
-                        onChange={(e) => setAngulo(i, c.key, e.target.value)}
-                        rows={c.rows}
-                        className="w-full rounded border border-[var(--hairline)] bg-[var(--field)] px-2 py-1 text-sm text-text outline-none focus:border-accent"
-                      />
-                    </label>
-                  ))}
-
-                  {/* Ganchos del ángulo */}
-                  <div className="mt-2 border-t border-[var(--hairline)] pt-3">
-                    <div className="mb-2 flex items-center justify-between gap-2">
-                      <span className="text-xs font-medium">
-                        Ganchos ({ang.hooks?.length ?? 0}/3)
-                      </span>
-                      <button
-                        onClick={() => generarGanchos(ang.id)}
-                        className="shrink-0 rounded border border-[var(--hairline)] px-2 py-1 text-xs text-muted hover:text-text"
-                      >
-                        Regenerar los 3 ganchos
-                      </button>
-                    </div>
-                    {ganchosEstado[ang.id] && (
-                      <p className="mb-2 text-xs text-muted">{ganchosEstado[ang.id]}</p>
-                    )}
-                    {(!ang.hooks || ang.hooks.length === 0) && (
-                      <p className="text-xs text-muted">
-                        Aún no hay ganchos. Pulsa “Regenerar los 3 ganchos”.
-                      </p>
-                    )}
-                    <div className="space-y-2">
-                      {(ang.hooks ?? []).map((g, hi) => (
-                        <div key={hi} className="rounded-lg border border-[var(--hairline)] bg-[var(--field)] p-2">
-                          <AutoTextarea
-                            value={g.texto}
-                            onChange={(e) => setGancho(i, hi, "texto", e.target.value)}
-                            rows={2}
-                            placeholder="gancho (≤ 20 palabras)"
-                            className="w-full rounded border border-[var(--hairline)] glass px-2 py-1 text-sm text-text outline-none focus:border-accent"
-                          />
-                          <div className="mt-1 flex gap-2">
-                            <select
-                              value={g.mecanismo}
-                              onChange={(e) => setGancho(i, hi, "mecanismo", e.target.value)}
-                              className="rounded border border-[var(--hairline)] glass px-1 py-0.5 text-[11px] text-text outline-none focus:border-accent"
-                            >
-                              {MECANISMOS_GANCHO.map((m) => (
-                                <option key={m} value={m}>
-                                  {m}
-                                </option>
-                              ))}
-                            </select>
-                            <AutoTextarea
-                              value={g.por_que_funciona}
-                              onChange={(e) => setGancho(i, hi, "por_que_funciona", e.target.value)}
-                              rows={1}
-                              placeholder="por qué funciona"
-                              className="flex-1 rounded border border-[var(--hairline)] glass px-2 py-0.5 text-xs text-text outline-none focus:border-accent"
-                            />
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-
-          <div className="sticky bottom-0 flex items-center gap-3 border-t border-[var(--hairline)] bg-bg/80 py-4 backdrop-blur">
-            <button
-              onClick={guardar}
-              disabled={estado === "guardando"}
-              className="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-white disabled:opacity-60"
-            >
-              {estado === "guardando" ? "Guardando…" : "Guardar ángulos"}
+              {estado === "guardando" ? "Guardando…" : "Guardar anuncios"}
             </button>
             {estado === "ok" && <span className="text-sm text-accent-2">✓ Guardado</span>}
             {estado === "error" && <span className="text-sm text-red-400">Error al guardar</span>}
@@ -1343,136 +833,56 @@ export function ProductoWizard({ producto }: { producto?: Producto }) {
         </section>
       )}
 
-      {paso === "mensajes" && (
+
+      {paso === "video" && (
         <section className="space-y-5">
+          <div className="rounded-xl border border-[var(--hairline)] glass p-4 text-sm text-muted">
+            El <b>video de embudo</b> es el video de CIERRE que va DENTRO del WhatsApp
+            (no el de captación). La IA redacta el <b>guión</b> a partir de tus anuncios
+            ganadores + la oferta. Sale listo para grabar (tú lo grabas con tu cara/voz).
+          </div>
+
           <div className="flex flex-wrap items-center gap-3 rounded-xl border border-[var(--hairline)] glass p-4">
             <button
-              onClick={() => generar()}
+              onClick={generarGuion}
               className="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-white"
             >
-              ✨ Generar mensajes con IA
+              {p.guionEmbudo ? "🔄 Regenerar guión" : "✨ Generar guión con IA"}
             </button>
-            <span className="text-sm text-muted">{genEstado}</span>
+            {guionEstado && <span className="text-sm text-muted">{guionEstado}</span>}
           </div>
-          <p className="text-xs text-muted">
-            El copy usa <b>los 6 ángulos</b> (distintos mensajes se apoyan en
-            distintos ángulos){p.oferta ? " y la oferta (mensaje_3 = qué incluye, mensaje_4 = bonos)" : ""}.
-          </p>
 
-          <div className="space-y-3">
-            {RANURAS_MENSAJE.map((r) => (
-              <div key={r.key} className="rounded-xl border border-[var(--hairline)] glass p-4">
-                <div className="mb-1 flex items-center justify-between gap-2">
-                  <div>
-                    <span className="font-mono text-xs text-accent-2">{r.key}</span>
-                    <p className="text-xs text-muted">{r.descripcion}</p>
-                  </div>
-                  <button
-                    onClick={() => generar([r.key])}
-                    className="shrink-0 rounded border border-[var(--hairline)] px-2 py-1 text-xs text-muted hover:text-text"
-                  >
-                    Regenerar
-                  </button>
-                </div>
+          {p.guionEmbudo && (
+            <div className="space-y-2 rounded-xl border border-[var(--hairline)] glass p-4">
+              <div className="text-xs text-muted">
+                Formato: <b>{p.guionEmbudo.formato || "—"}</b>
+              </div>
+              <label className="flex flex-col gap-1 text-sm">
+                <span className="text-muted">Guión (editable)</span>
                 <AutoTextarea
-                  value={p.mensajes[r.key] ?? ""}
-                  onChange={(e) => setMensaje(r.key, e.target.value)}
-                  rows={3}
-                  className="w-full rounded-lg border border-[var(--hairline)] bg-[var(--field)] px-3 py-2 text-sm text-text outline-none focus:border-accent"
+                  value={p.guionEmbudo.guion}
+                  onChange={(e) =>
+                    setP((prev) => ({
+                      ...prev,
+                      guionEmbudo: prev.guionEmbudo
+                        ? { ...prev.guionEmbudo, guion: e.target.value }
+                        : prev.guionEmbudo,
+                    }))
+                  }
+                  rows={12}
+                  className="rounded-lg border border-[var(--hairline)] bg-[var(--field)] px-3 py-2 text-text outline-none focus:border-accent"
                 />
-              </div>
-            ))}
-          </div>
-
-          <div className="rounded-xl border border-[var(--hairline)] glass p-4">
-            <h3 className="mb-3 text-sm font-medium">Overlays (texto sobre las imágenes)</h3>
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              {TIPOS_IMAGEN.map((t) => (
-                <label key={t} className="flex flex-col gap-1 text-sm">
-                  <span className="font-mono text-xs text-muted">{t}</span>
-                  <AutoTextarea
-                    value={p.overlays[t] ?? ""}
-                    onChange={(e) => setOverlay(t, e.target.value)}
-                    rows={1}
-                    className="rounded-lg border border-[var(--hairline)] bg-[var(--field)] px-3 py-2 text-text outline-none focus:border-accent"
-                  />
-                </label>
-              ))}
+              </label>
             </div>
-          </div>
+          )}
 
-          <div className="sticky bottom-0 flex items-center gap-3 border-t border-[var(--hairline)] bg-bg/80 py-4 backdrop-blur">
-            <button
-              onClick={guardar}
-              disabled={estado === "guardando"}
-              className="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-white disabled:opacity-60"
-            >
-              {estado === "guardando" ? "Guardando…" : "Guardar mensajes"}
-            </button>
-            {estado === "ok" && <span className="text-sm text-accent-2">✓ Guardado</span>}
-            {estado === "error" && <span className="text-sm text-red-400">Error al guardar</span>}
-          </div>
-        </section>
-      )}
-
-      {paso === "imagenes" && (
-        <section className="space-y-5">
           <div className="flex flex-wrap items-center gap-3 rounded-xl border border-[var(--hairline)] glass p-4">
             <button
-              onClick={() => generarImagenes()}
-              className="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-white"
-            >
-              🖼️ Generar 5 imágenes
-            </button>
-            <span className="text-sm text-muted">{imgEstado}</span>
-          </div>
-          <p className="text-xs text-muted">
-            Gemini genera la escena (sin texto) y el servidor superpone el overlay
-            del Paso 2. Las imágenes se suben a tu VPS; se guardan solo los links.
-          </p>
-
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {TIPOS_IMAGEN.map((t) => (
-              <div key={t} className="overflow-hidden rounded-xl border border-[var(--hairline)] glass">
-                <div className="flex aspect-square items-center justify-center bg-bg">
-                  {p.imagenes[t] ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={p.imagenes[t]} alt={t} className="h-full w-full object-cover" />
-                  ) : (
-                    <span className="text-2xl opacity-30">🖼️</span>
-                  )}
-                </div>
-                <div className="flex items-center justify-between gap-2 p-3">
-                  <span className="font-mono text-xs text-muted">{t}</span>
-                  <div className="flex gap-1">
-                    {p.imagenes[t] && (
-                      <button
-                        onClick={() => eliminarImagenTipo(t)}
-                        className="rounded border border-[var(--hairline)] px-2 py-1 text-xs text-muted hover:border-red-400 hover:text-red-400"
-                        title="Eliminar esta imagen"
-                      >
-                        🗑 Eliminar
-                      </button>
-                    )}
-                    <button
-                      onClick={() => generarImagenes([t])}
-                      className="rounded border border-[var(--hairline)] px-2 py-1 text-xs text-muted hover:text-text"
-                    >
-                      Regenerar
-                    </button>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-
-          <div className="sticky bottom-0 flex items-center gap-3 border-t border-[var(--hairline)] bg-bg/80 py-4 backdrop-blur">
-            <button
               onClick={guardar}
               disabled={estado === "guardando"}
-              className="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-white disabled:opacity-60"
+              className="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
             >
-              {estado === "guardando" ? "Guardando…" : "Guardar imágenes"}
+              {estado === "guardando" ? "Guardando…" : "Guardar guión"}
             </button>
             {estado === "ok" && <span className="text-sm text-accent-2">✓ Guardado</span>}
             {estado === "error" && <span className="text-sm text-red-400">Error al guardar</span>}
@@ -1628,15 +1038,6 @@ export function ProductoWizard({ producto }: { producto?: Producto }) {
               </div>
             );
           })}
-
-          <p className="text-xs text-muted">
-            Otros datos del flujo (categoría, industria, marcas, Orderbump, Drive,
-            formularios) se ponen en{" "}
-            <Link href="/configuracion" className="text-accent-2 hover:underline">
-              Configuración → Creador de Flujos
-            </Link>
-            .
-          </p>
 
           {/* Dossier completo del producto para pasárselo a una IA. Va aquí, al
               final del último paso de investigación: ya están la oferta Y los

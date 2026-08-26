@@ -53,16 +53,7 @@ export default function ProductosPage() {
             >
               <Link href={`/productos/${p.id}`} className="block">
                 <div className="flex aspect-video items-center justify-center bg-bg">
-                  {p.imagenes?.contenido ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src={p.imagenes.contenido}
-                      alt={p.nombre}
-                      className="h-full w-full object-cover"
-                    />
-                  ) : (
-                    <span className="text-3xl opacity-40">📦</span>
-                  )}
+                  <span className="text-3xl opacity-40">📦</span>
                 </div>
                 <div className="p-4">
                   <div className="truncate font-medium">
@@ -74,24 +65,12 @@ export default function ProductosPage() {
                       ? new Date(p.actualizadoEn).toLocaleDateString("es")
                       : ""}
                   </div>
-                  {p.historialEmisiones?.length > 0 && (
-                    <div className="mt-1 text-xs text-accent-2">
-                      Emitido:{" "}
-                      {[...new Set(p.historialEmisiones.map((e) => e.pais))].join(", ")}
-                    </div>
-                  )}
                 </div>
               </Link>
               <div className="mt-auto flex items-center gap-2 border-t border-[var(--hairline)] px-4 py-2 text-sm">
                 <Link
-                  href={`/flujos?producto=${p.id}`}
-                  className="text-accent-2 hover:underline"
-                >
-                  Emitir flujo
-                </Link>
-                <Link
                   href={`/productos/${p.id}`}
-                  className="text-muted hover:text-text"
+                  className="text-accent-2 hover:underline"
                 >
                   Editar
                 </Link>

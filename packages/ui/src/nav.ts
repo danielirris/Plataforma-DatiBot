@@ -25,7 +25,14 @@ export const NAV_ITEMS: NavItem[] = [
     label: "Productos",
     icon: "📦",
     description:
-      "Crea un producto de principio a fin: avatar, ángulos, oferta, mensajes, imágenes y ebook.",
+      "Crea un producto: identidad, oferta, anuncios ganadores de referencia, guión de video de embudo, ebook y videos.",
+  },
+  {
+    href: "/mensajes",
+    label: "Mensajes",
+    icon: "💬",
+    description:
+      "Los 10 mensajes del embudo de WhatsApp (COD) por país, con oferta y orderbumps.",
   },
   {
     href: "/ebooks",
@@ -33,13 +40,6 @@ export const NAV_ITEMS: NavItem[] = [
     icon: "📕",
     description:
       "Genera ebooks en PDF con temas de diseño listos para entregar y vender.",
-  },
-  {
-    href: "/flujos",
-    label: "Creador de Flujos",
-    icon: "🔀",
-    description:
-      "Arma y emite SubWorkflows de n8n por país, sin tocar el motor a mano.",
   },
   {
     href: "/dashboard",

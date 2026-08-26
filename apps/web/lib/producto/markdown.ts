@@ -1,17 +1,15 @@
 import {
-  AVATAR_SECCIONES,
   CAMPOS_PRECIO,
   PAISES,
-  type Avatar,
-  type Angulo,
+  type AnuncioReferencia,
   type Oferta,
   type PreciosPais,
   type Producto,
 } from "@plataforma/products/schema";
 
-// Exporta TODO lo investigado del producto (identidad, avatar, ángulos, oferta y
-// precios) a un Markdown legible, pensado para pegárselo a una IA y que redacte
-// guiones de anuncios. Solo lectura: no toca nada del producto.
+// Exporta el dossier del producto (identidad, anuncios ganadores de referencia,
+// oferta y precios) a un Markdown legible, pensado para pegárselo a una IA y que
+// redacte guiones de anuncios. Solo lectura: no toca nada del producto.
 
 function bloque(titulo: string, cuerpo: string): string {
   const c = (cuerpo ?? "").trim();
@@ -23,69 +21,20 @@ function campo(label: string, valor: unknown): string {
   return v ? `- **${label}:** ${v}\n` : "";
 }
 
-function seccionAvatar(a: Avatar): string {
-  if (!a) return "";
-  let md = "## 2. Avatar (investigación del público)\n\n";
-  for (const s of AVATAR_SECCIONES) {
-    md += bloque(s.label, String((a as unknown as Record<string, unknown>)[s.key] ?? ""));
-  }
-
-  const compra = a.objeciones_compra ?? [];
-  if (compra.length) {
-    md += "### Objeciones de COMPRA (frenan el pago)\n\n";
-    compra.forEach((o, i) => {
-      md += `${i + 1}. **«${o.objecion}»** _(${o.categoria})_\n`;
-      if (o.respuesta_sugerida) md += `   - Respuesta sugerida: ${o.respuesta_sugerida}\n`;
-    });
-    md += "\n";
-  }
-
-  const uso = a.objeciones_uso ?? [];
-  if (uso.length) {
-    md += "### Objeciones de USO (frenan después de comprar)\n\n";
-    uso.forEach((o, i) => {
-      md += `${i + 1}. **«${o.objecion}»** _(${o.categoria})_\n`;
-      if (o.respuesta_sugerida) md += `   - Respuesta sugerida: ${o.respuesta_sugerida}\n`;
-    });
-    md += "\n";
-  }
-
-  const fuentes = a.fuentes ?? [];
-  if (fuentes.length) {
-    md += "### Fuentes de la investigación\n\n";
-    for (const f of fuentes) md += `- [${f.titulo || f.url}](${f.url})\n`;
-    md += "\n";
-  }
-  return md;
-}
-
-function seccionAngulos(angulos: Angulo[]): string {
-  if (!angulos?.length) return "";
-  let md = "## 3. Ángulos publicitarios\n\n";
-  angulos.forEach((g, i) => {
-    md += `### Ángulo ${i + 1}: ${g.nombre || "(sin nombre)"}${g.tipo ? ` — _${g.tipo}_` : ""}\n\n`;
-    md += campo("Promesa central", g.promesa_central);
-    md += campo("Gran idea (titular)", g.gran_idea);
-    md += campo("Público del ángulo", g.publico_objetivo_del_angulo);
-    md += campo("Emoción dominante", g.emocion_dominante);
-    md += campo("Dolor/deseo atacado", g.dolor_o_deseo_atacado);
-    md += campo("Prueba/evidencia", g.prueba_o_evidencia);
-    const hooks = g.hooks ?? [];
-    if (hooks.length) {
-      md += `\n**Ganchos:**\n\n`;
-      hooks.forEach((h, k) => {
-        md += `${k + 1}. «${h.texto}»${h.mecanismo ? ` — _${h.mecanismo}_` : ""}\n`;
-        if (h.por_que_funciona) md += `   - Por qué funciona: ${h.por_que_funciona}\n`;
-      });
-    }
-    md += "\n";
+function seccionAnunciosReferencia(refs: AnuncioReferencia[]): string {
+  const conGuion = (refs ?? []).filter((a) => a.guion?.trim());
+  if (!conGuion.length) return "";
+  let md = "## 2. Anuncios ganadores de referencia (avatar similar)\n\n";
+  conGuion.forEach((a, i) => {
+    md += `### Ganador ${i + 1}${a.titulo ? `: ${a.titulo}` : ""}${a.nicho ? ` — _nicho: ${a.nicho}_` : ""}\n\n`;
+    md += `${a.guion.trim()}\n\n`;
   });
   return md;
 }
 
 function seccionOferta(o: Oferta | null): string {
   if (!o) return "";
-  let md = "## 4. Oferta\n\n";
+  let md = "## 3. Oferta\n\n";
   md += campo("Nombre de la oferta", o.nombre_oferta);
   md += campo("Promesa grande", o.promesa_grande);
   md += campo("¿Incluye video?", o.incluye_video ? "Sí" : "No");
@@ -131,7 +80,7 @@ function seccionPrecios(precios: Record<string, PreciosPais> | undefined): strin
   );
   if (!conPrecio.length) return "";
 
-  let md = "## 5. Precios por país\n\n";
+  let md = "## 4. Precios por país\n\n";
   md += `| País | ${CAMPOS_PRECIO.map((c) => c.label).join(" | ")} |\n`;
   md += `| --- | ${CAMPOS_PRECIO.map(() => "---:").join(" | ")} |\n`;
   for (const pa of conPrecio) {
@@ -140,16 +89,13 @@ function seccionPrecios(precios: Record<string, PreciosPais> | undefined): strin
     );
     md += `| ${pa.nombre} (${pa.codigo}) | ${fila.join(" | ")} |\n`;
   }
-  md +=
-    "\n> Cifras sin moneda, tal como se cargaron. El combo, los regateos y los pisos\n" +
-    "> los deriva el motor a partir de estos precios: no se guardan aquí.\n";
   return md;
 }
 
 export function productoAMarkdown(p: Producto): string {
   let md = `# ${p.nombre || "Producto"}\n\n`;
   md +=
-    "> Dossier del producto (identidad, avatar, ángulos, oferta y precios) para redactar guiones de anuncios.\n\n";
+    "> Dossier del producto (identidad, anuncios ganadores, oferta y precios) para redactar guiones de anuncios.\n\n";
 
   md += "## 1. Identidad del producto\n\n";
   md += campo("Nombre", p.nombre);
@@ -158,8 +104,7 @@ export function productoAMarkdown(p: Producto): string {
   md += campo("Dirigido a", p.identidad?.dirigidoA);
   md += "\n";
 
-  md += seccionAvatar(p.avatar);
-  md += seccionAngulos(p.angulos ?? []);
+  md += seccionAnunciosReferencia(p.anunciosReferencia ?? []);
   md += seccionOferta(p.oferta);
   md += seccionPrecios(p.precios);
 

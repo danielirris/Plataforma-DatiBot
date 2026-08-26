@@ -71,26 +71,23 @@ def _texto(v: object) -> str:
 def product_brief(product: dict) -> str:
     """Resumen compacto del producto para alimentar la escena/refinado."""
     ident = product.get("identidad") or {}
-    avatar = product.get("avatar") or {}
     oferta = product.get("oferta") or {}
     ebook = (product.get("ebook") or {}).get("idea") or {}
-    angulos = product.get("angulos") or []
+    refs = product.get("anuncios_referencia") or []
     prod_ppal = (oferta.get("producto_principal") or {}) if isinstance(oferta, dict) else {}
     partes = [
         f"Producto: {_texto(product.get('nombre'))}",
         f"Promesa: {_texto(ident.get('promesa'))}",
         f"Posicionamiento (tono de marca): {_texto(ident.get('posicionamiento'))}",
         f"Dirigido a: {_texto(ident.get('dirigidoA'))}",
-        f"Deseos del avatar: {_texto(avatar.get('deseos'))}",
-        f"Mecanismo único: {_texto(avatar.get('mecanismo_unico'))}",
         f"Oferta: {_texto(oferta.get('promesa_grande')) if isinstance(oferta, dict) else ''}",
         f"Incluye: {_texto(prod_ppal.get('titulo'))}",
         f"Ebook: {_texto(ebook.get('titulo'))} — {_texto(ebook.get('concepto'))}",
     ]
-    if angulos:
-        emos = ", ".join(_texto(a.get("emocion_dominante")) for a in angulos[:3] if _texto(a.get("emocion_dominante")))
-        if emos:
-            partes.append(f"Emociones dominantes: {emos}")
+    if isinstance(refs, list) and refs:
+        nichos = ", ".join(_texto(r.get("nicho")) for r in refs[:3] if isinstance(r, dict) and _texto(r.get("nicho")))
+        if nichos:
+            partes.append(f"Anuncios ganadores de referencia (nichos): {nichos}")
     return "\n".join(p for p in partes if p.rsplit(": ", 1)[-1].strip())
 
 

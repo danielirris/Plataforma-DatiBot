@@ -64,11 +64,10 @@ export async function POST(req: Request) {
   if (!urls.length)
     return NextResponse.json({ error: "Elige al menos un video del producto." }, { status: 400 });
 
-  // Habilitador del avatar: el cerebro del editor recibe un BRIEF del producto
-  // (promesa, deseos, objeciones, mecanismo único, oferta, emociones) para hacer el
-  // gancho y el ángulo a la medida del público. Se lee SERVER-SIDE por id (el avatar
-  // NO viaja por el navegador) y solo en la app completa (en solo-editor no hay
-  // productos). Es opcional: si falla, el anuncio se genera igual, sin brief.
+  // BRIEF del producto: el cerebro del editor recibe la promesa, la oferta y los
+  // anuncios ganadores de referencia para hacer el gancho y el ángulo a la medida
+  // del público. Se lee SERVER-SIDE por id y solo en la app completa (en solo-editor
+  // no hay productos). Es opcional: si falla, el anuncio se genera igual, sin brief.
   let productoBrief: Record<string, unknown> | null = null;
   if (body.producto_id && !esSoloEditor()) {
     try {
@@ -78,9 +77,10 @@ export async function POST(req: Request) {
           id: prod.id,
           nombre: prod.nombre,
           identidad: prod.identidad,
-          avatar: prod.avatar,
           oferta: prod.oferta,
-          angulos: prod.angulos,
+          anuncios_referencia: (prod.anunciosReferencia ?? [])
+            .filter((a) => a.guion?.trim())
+            .map((a) => ({ nicho: a.nicho, titulo: a.titulo, guion: a.guion })),
           ebook: { idea: prod.ebook?.idea ?? null },
         };
     } catch {

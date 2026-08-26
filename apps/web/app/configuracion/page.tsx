@@ -12,7 +12,7 @@ export default async function ConfiguracionPage() {
       <p className="mt-2 mb-8 text-muted">
         Las API keys de cada servicio se gestionan en el{" "}
         <b>Environment de EasyPanel</b>. Aquí solo quedan los ajustes que usa el
-        propio panel (Creador de Flujos).
+        propio panel.
       </p>
       <ConfigForm initial={initial} />
     </div>

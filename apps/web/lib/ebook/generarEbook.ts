@@ -163,13 +163,9 @@ function contextoProducto(p: Producto): string {
         );
     }
   }
-  const a = p.avatar;
-  if (a?.deseos || a?.compradores) {
-    partes.push(
-      `Avatar (para el tono):`,
-      a.compradores ? `- Quiénes compran: ${a.compradores.slice(0, 400)}` : "",
-      a.deseos ? `- Deseos: ${a.deseos.slice(0, 400)}` : "",
-    );
+  const publico = (p.identidad?.dirigidoA ?? "").trim();
+  if (publico) {
+    partes.push(`Público (para el tono): ${publico.slice(0, 400)}`);
   }
   return partes.filter(Boolean).join("\n");
 }

@@ -169,57 +169,7 @@ export const CONFIG_GROUPS: ConfigGroup[] = [
     ],
   },
 
-  // ── Creador de Flujos: datos de emisión (no por país) ──────────
-  // El motor resuelve estos tokens ([CATEGORIA_PRODUCTO], [DRIVE_CONTENIDO_PRODUCTO],
-  // [FORMS_GLE_COMPRADORES_*]…). Los formularios: un solo valor sirve para todos
-  // los países (el motor colapsa los sufijos _PE/_CO al mismo campo).
-  {
-    id: "flujos_general",
-    title: "Creador de Flujos — datos de emisión",
-    section: "Creador de Flujos",
-    envTarget: null,
-    note: "Valores que el emisor inyecta en el workflow (no dependen del país).",
-    fields: [
-      { key: "categoria_producto", label: "Categoría del producto", type: "text", placeholder: "neveras" },
-      { key: "descripcion_corta", label: "Descripción corta", type: "text" },
-      { key: "industria_del_producto", label: "Industria del producto", type: "text", placeholder: "electrodomésticos" },
-      { key: "marcas_comunes", label: "Marcas comunes del rubro", type: "text", placeholder: "Samsung, LG, Mabe…" },
-      { key: "nombre_orderbump", label: "Nombre del Orderbump", type: "text", placeholder: "Kit de instalación" },
-      { key: "emoji_producto", label: "Emoji del producto", type: "text", placeholder: "🎮" },
-      { key: "drive_contenido", label: "Drive de contenido (entrega)", type: "url" },
-      { key: "forms_compradores", label: "Formulario compradores (Google Forms)", type: "url" },
-      { key: "forms_salida", label: "Formulario salida / no compradores", type: "url" },
-    ],
-  },
-
-  // ── Creador de Flujos: base por país ───────────────────────────
-  // Estos grupos NO generan .env. Los consume el puente del navegador
-  // (apps/web/public/tools/flujos/bridge.js), que inyecta estos valores
-  // en la app de flujos según el país seleccionado.
-  ...flujosPais("flujos_pe", "🇵🇪 Perú"),
-  ...flujosPais("flujos_cl", "🇨🇱 Chile"),
-  ...flujosPais("flujos_co", "🇨🇴 Colombia"),
 ];
-
-/** Genera un grupo de configuración base para un país del Creador de Flujos. */
-function flujosPais(id: string, title: string): ConfigGroup[] {
-  return [
-    {
-      id,
-      title: `Creador de Flujos — ${title}`,
-      section: "Creador de Flujos — por país",
-      envTarget: null,
-      fields: [
-        { key: "capi_token", label: "Token Facebook Graph / CAPI", type: "password", help: "El token de Meta para este país (CAPI + envío de WhatsApp)." },
-        { key: "chatwoot_token", label: "Token de Chatwoot", type: "password" },
-        { key: "pixel_id", label: "Píxel ID", type: "text", help: "Píxel de Meta para este país. Si lo dejas vacío, la app usa el de la categoría." },
-        { key: "phone_id", label: "Phone ID (WhatsApp)", type: "text" },
-        { key: "account_id", label: "Account ID (Chatwoot)", type: "text" },
-        { key: "page_id", label: "Page ID", type: "text" },
-      ],
-    },
-  ];
-}
 
 /** Estado guardado: { [groupId]: { [fieldKey]: value } } */
 export type ConfigStore = Record<string, Record<string, string>>;
