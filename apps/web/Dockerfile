@@ -9,6 +9,12 @@ FROM node:20-slim AS builder
 RUN corepack enable
 WORKDIR /repo
 
+# Techo de memoria del build. En el VPS el build compite por RAM con los
+# servicios que ya corren (clipgen come 4-5 GB); sin un techo, Node se infla en
+# "Collecting build traces" y el host lo mata (build "Killed" / context canceled).
+# Con esto Node hace GC y se mantiene bajo el límite en vez de reventar.
+ENV NODE_OPTIONS="--max-old-space-size=2048"
+
 # Copiamos todo el monorepo (el .dockerignore de la raíz excluye node_modules,
 # .next, .venv, secretos, etc.).
 COPY . .
