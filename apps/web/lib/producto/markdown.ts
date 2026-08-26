@@ -1,5 +1,7 @@
 import {
+  type AnalisisAnuncios,
   type AnuncioReferencia,
+  type GuionAnuncio,
   type Oferta,
   type Producto,
 } from "@plataforma/products/schema";
@@ -25,6 +27,29 @@ function seccionAnunciosReferencia(refs: AnuncioReferencia[]): string {
   conGuion.forEach((a, i) => {
     md += `### Ganador ${i + 1}${a.titulo ? `: ${a.titulo}` : ""}${a.nicho ? ` — _nicho: ${a.nicho}_` : ""}\n\n`;
     md += `${a.guion.trim()}\n\n`;
+  });
+  return md;
+}
+
+function seccionAnalisis(a: AnalisisAnuncios | null): string {
+  if (!a) return "";
+  const hayAlgo = [a.angulo, a.dolor, a.avatar, a.notas].some((x) => String(x ?? "").trim());
+  if (!hayAlgo) return "";
+  let md = "## 2.1 Análisis del material (ángulo · dolor · avatar)\n\n";
+  md += bloque("Ángulo", a.angulo);
+  md += bloque("Dolor / deseo central", a.dolor);
+  md += bloque("Avatar al que apuntamos", a.avatar);
+  md += bloque("Notas / insights", a.notas);
+  return md;
+}
+
+function seccionGuionesAnuncios(guiones: GuionAnuncio[]): string {
+  const conGuion = (guiones ?? []).filter((g) => g.guion?.trim());
+  if (!conGuion.length) return "";
+  let md = "## 4. Guiones de anuncios\n\n";
+  conGuion.forEach((g, i) => {
+    md += `### Anuncio ${i + 1}${g.titulo ? `: ${g.titulo}` : ""}${g.angulo ? ` — _ángulo: ${g.angulo}_` : ""}\n\n`;
+    md += `${g.guion.trim()}\n\n`;
   });
   return md;
 }
@@ -79,10 +104,13 @@ export function productoAMarkdown(p: Producto): string {
   md += campo("Promesa", p.identidad?.promesa);
   md += campo("Posicionamiento", p.identidad?.posicionamiento);
   md += campo("Dirigido a", p.identidad?.dirigidoA);
+  md += campo("Qué vendemos realmente", p.queVendemos);
   md += "\n";
 
   md += seccionAnunciosReferencia(p.anunciosReferencia ?? []);
+  md += seccionAnalisis(p.analisisAnuncios);
   md += seccionOferta(p.oferta);
+  md += seccionGuionesAnuncios(p.guionesAnuncios ?? []);
 
   return md.replace(/\n{3,}/g, "\n\n").trim() + "\n";
 }

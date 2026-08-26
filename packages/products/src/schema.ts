@@ -43,6 +43,54 @@ export function anuncioReferenciaVacio(): AnuncioReferencia {
   return { id: "", titulo: "", nicho: "", guion: "" };
 }
 
+// Resultado de la fase "Anuncios ganadores": el análisis del material de referencia.
+// Identifica hacia dónde apuntan los anuncios que vamos a generar (ángulo, dolor y
+// avatar), ya adaptado a lo que vendemos REALMENTE (ver Producto.queVendemos).
+export interface AnalisisAnuncios {
+  /** el ángulo/gran idea con que atacamos (ej. "ahorro brutal vs. el método viejo") */
+  angulo: string;
+  /** el dolor o deseo central del avatar que el anuncio toca */
+  dolor: string;
+  /** quién es el avatar: quién es, cómo habla, qué teme, qué quiere */
+  avatar: string;
+  /** notas/insights extra: objeciones, ganchos que funcionan, cómo adaptarlo a lo nuestro */
+  notas: string;
+  generadoEn: string;
+}
+
+export function analisisAnunciosVacio(): AnalisisAnuncios {
+  return { angulo: "", dolor: "", avatar: "", notas: "", generadoEn: "" };
+}
+
+// Un guión de anuncio de CAPTACIÓN listo para grabar (distinto del guión de embudo,
+// que es de cierre dentro del WhatsApp). Se generan varios a partir del análisis.
+export interface GuionAnuncio {
+  id: string;
+  /** título corto para reconocerlo (ej. "Anuncio 1 — testimonio en 1ª persona") */
+  titulo: string;
+  /** el ángulo/gancho concreto de ESTE anuncio */
+  angulo: string;
+  /** el guión completo listo para grabar, en prosa con saltos de línea */
+  guion: string;
+  generadoEn: string;
+}
+
+export function guionAnuncioVacio(): GuionAnuncio {
+  return { id: "", titulo: "", angulo: "", guion: "", generadoEn: "" };
+}
+
+/**
+ * Bloque de prompt que le recuerda a la IA QUÉ se vende realmente. Los anuncios de
+ * referencia suelen ser de un nicho más general; esto reorienta toda la generación
+ * (avatar, lenguaje, ejemplos, beneficios) hacia el producto real. "" si no hay nota.
+ */
+export function bloqueQueVendemos(p: Pick<Producto, "queVendemos">): string {
+  const q = (p.queVendemos ?? "").trim();
+  if (!q) return "";
+  return `\n⚠️ QUÉ VENDEMOS REALMENTE (máxima prioridad): ${q}
+Los anuncios ganadores de referencia son de un nicho más GENERAL y solo sirven para copiar el AVATAR, el tono y la estructura persuasiva. ADAPTA TODO (ejemplos, lenguaje, beneficios, inventario, objeciones, dolor) a ESTE producto real, NO al nicho de los anuncios de referencia. Si algo del ganador no aplica a lo que vendemos, cámbialo por su equivalente en nuestro producto.\n`;
+}
+
 // ── OFERTA (Grand Slam Offer del embudo) ───────────────────────
 export interface ProductoPrincipalOferta {
   titulo: string;
@@ -256,8 +304,19 @@ export interface Producto {
   productoId: string;
   /** anuncios ganadores de referencia (la base creativa, avatar similar) */
   anunciosReferencia: AnuncioReferencia[];
+  /**
+   * Nota clave: QUÉ estamos vendiendo realmente. Los anuncios de referencia suelen
+   * ser de un nicho más general (ej. "confección de ropa"), pero el producto real
+   * es específico (ej. "confección de ropa PARA PERROS"). Esta nota le dice a la IA
+   * hacia dónde adaptar todo (guiones, oferta, mensajes, anuncios). Opcional.
+   */
+  queVendemos: string;
+  /** análisis de los anuncios ganadores: ángulo, dolor y avatar. null hasta analizarlo */
+  analisisAnuncios: AnalisisAnuncios | null;
   /** paquete de venta (Grand Slam Offer); null hasta que se genera */
   oferta: Oferta | null;
+  /** guiones de anuncios de captación generados a partir del análisis */
+  guionesAnuncios: GuionAnuncio[];
   /** guión del video de embudo (cierre dentro del WhatsApp); null hasta generarlo */
   guionEmbudo: GuionEmbudo | null;
   /** ebook del producto (se crea por fases desde la oferta) */
@@ -278,7 +337,10 @@ export function crearProductoBorrador(parcial: Partial<Producto> = {}): Producto
     identidad: { promesa: "", posicionamiento: "", dirigidoA: "" },
     productoId: "",
     anunciosReferencia: [],
+    queVendemos: "",
+    analisisAnuncios: null,
     oferta: null,
+    guionesAnuncios: [],
     guionEmbudo: null,
     ebook: ebookVacio(),
     videos: [],

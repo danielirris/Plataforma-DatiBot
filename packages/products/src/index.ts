@@ -38,6 +38,14 @@ function fileFor(id: string): string {
   return path.join(STORE_DIR, `${safeId(id)}.json`);
 }
 
+// Los nombres de producto SIEMPRE van en mayúsculas (regla de negocio). Se aplica al
+// leer y al guardar, así los productos que ya existían también salen en mayúsculas sin
+// necesidad de migrar el volumen a mano.
+function conNombreMayus(p: Producto): Producto {
+  const nombre = (p.nombre ?? "").toUpperCase();
+  return nombre === p.nombre ? p : { ...p, nombre };
+}
+
 export async function listProducts(): Promise<Producto[]> {
   let files: string[];
   try {
@@ -50,9 +58,11 @@ export async function listProducts(): Promise<Producto[]> {
       .filter((f) => f.endsWith(".json"))
       .map(async (f) => {
         try {
-          return JSON.parse(
-            await fs.readFile(path.join(STORE_DIR, f), "utf8"),
-          ) as Producto;
+          return conNombreMayus(
+            JSON.parse(
+              await fs.readFile(path.join(STORE_DIR, f), "utf8"),
+            ) as Producto,
+          );
         } catch {
           return null;
         }
@@ -65,7 +75,7 @@ export async function listProducts(): Promise<Producto[]> {
 
 export async function getProduct(id: string): Promise<Producto | null> {
   try {
-    return JSON.parse(await fs.readFile(fileFor(id), "utf8")) as Producto;
+    return conNombreMayus(JSON.parse(await fs.readFile(fileFor(id), "utf8")) as Producto);
   } catch {
     return null;
   }
@@ -80,6 +90,7 @@ export async function saveProduct(p: Producto): Promise<Producto> {
   const now = new Date().toISOString();
   const producto: Producto = {
     ...p,
+    nombre: (p.nombre ?? "").toUpperCase(),
     id: p.id || generarId(),
     creadoEn: p.creadoEn || now,
     actualizadoEn: now,

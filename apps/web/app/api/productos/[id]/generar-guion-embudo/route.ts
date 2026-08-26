@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getProduct, type GuionEmbudo, type Producto } from "@plataforma/products";
+import { getProduct, bloqueQueVendemos, type GuionEmbudo, type Producto } from "@plataforma/products";
 import { generarTexto } from "@/lib/ai/textProvider";
 
 export const runtime = "nodejs";
@@ -75,7 +75,7 @@ Producto: ${p.nombre} | Promesa: ${p.identidad.promesa} | Posicionamiento: ${p.i
 
 ANUNCIOS GANADORES DE REFERENCIA (avatar MUY similar; de aquí sacas el tono, el avatar y sus objeciones):
 ${refs || "(sin anuncios de referencia; deduce el avatar del público y la promesa)"}
-${oferta}`;
+${bloqueQueVendemos(p)}${oferta}`;
 }
 
 function parsearJson(raw: string): Record<string, unknown> {

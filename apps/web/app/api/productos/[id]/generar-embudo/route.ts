@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getProduct, type Producto, type EmbudoWhatsApp } from "@plataforma/products";
+import { getProduct, bloqueQueVendemos, type Producto, type EmbudoWhatsApp } from "@plataforma/products";
 import { generarTexto } from "@/lib/ai/textProvider";
 import { PAISES_EMBUDO, paisEmbudo, fmtMonto, RANURAS_EMBUDO } from "@/lib/embudo/paises";
 
@@ -45,7 +45,7 @@ function bloqueProducto(p: Producto): string {
 OFERTA: ${o?.promesa_grande ?? ""}
 Producto principal: ${pp?.titulo ?? p.nombre}${incluye.length ? ` — incluye: ${incluye.join("; ")}` : ""}
 AVATAR (dedúcelo de estos anuncios ganadores, avatar similar):
-${refs || "(sin anuncios de referencia)"}`;
+${refs || "(sin anuncios de referencia)"}${bloqueQueVendemos(p)}`;
 }
 
 function bloquePais(p: Producto, codigo: string): string {

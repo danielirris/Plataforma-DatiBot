@@ -14,6 +14,8 @@ import {
   anuncioReferenciaVacio,
   type VideoProducto,
   type AnuncioReferencia,
+  type AnalisisAnuncios,
+  type GuionAnuncio,
   type Oferta,
   type BonoOferta,
   type ActivoExistente,
@@ -30,11 +32,12 @@ const PASOS = [
   { key: "anuncios", label: "2 · Anuncios ganadores" },
   { key: "oferta", label: "3 · Oferta" },
   { key: "video", label: "4 · Video de embudo" },
-  { key: "videos", label: "5 · Videos" },
+  { key: "guiones", label: "5 · Guiones de anuncios" },
+  { key: "videos", label: "6 · Videos" },
 ] as const;
 
 // Pasos ya implementados.
-const DISPONIBLES = new Set(["identidad", "anuncios", "oferta", "video", "videos"]);
+const DISPONIBLES = new Set(["identidad", "anuncios", "oferta", "video", "guiones", "videos"]);
 
 export function ProductoWizard({ producto }: { producto?: Producto }) {
   const router = useRouter();
@@ -46,7 +49,10 @@ export function ProductoWizard({ producto }: { producto?: Producto }) {
       ...base,
       ...producto,
       anunciosReferencia: producto.anunciosReferencia ?? base.anunciosReferencia,
+      queVendemos: producto.queVendemos ?? base.queVendemos,
+      analisisAnuncios: producto.analisisAnuncios ?? null,
       oferta: producto.oferta ?? null,
+      guionesAnuncios: producto.guionesAnuncios ?? [],
       guionEmbudo: producto.guionEmbudo ?? null,
       ebook: { ...ebookVacio(), ...(producto.ebook ?? {}) },
       videos: producto.videos ?? [],
@@ -61,6 +67,9 @@ export function ProductoWizard({ producto }: { producto?: Producto }) {
   const [videoEstado, setVideoEstado] = useState<string>("");
   const [subiendoVideo, setSubiendoVideo] = useState<boolean>(false);
   const [guionEstado, setGuionEstado] = useState<string>("");
+  const [analisisEstado, setAnalisisEstado] = useState<string>("");
+  const [guionesEstado, setGuionesEstado] = useState<string>("");
+  const [cantidadGuiones, setCantidadGuiones] = useState<number>(3);
 
   const esNuevo = !p.id;
 
@@ -214,6 +223,115 @@ export function ProductoWizard({ producto }: { producto?: Producto }) {
     }
   }
 
+  // Segundo botón de oferta: el usuario ya escribió su oferta y la IA le pule los textos
+  // (mismo endpoint, modo "mejorar"). Respeta el concepto; solo mejora la redacción.
+  async function mejorarOferta() {
+    if (!p.id) {
+      setOfertaEstado("⚠️ Guarda el producto primero (paso Identidad).");
+      return;
+    }
+    if (!p.oferta?.promesa_grande?.trim() && !p.oferta?.producto_principal?.titulo?.trim()) {
+      setOfertaEstado("⚠️ Escribe tu oferta primero (aunque sea a medias) y luego la mejoro.");
+      return;
+    }
+    setOfertaEstado("Mejorando tus textos con IA…");
+    try {
+      const res = await fetch(`/api/productos/${p.id}/generar-oferta`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ producto: p, incluye_video: incluyeVideo, modo: "mejorar" }),
+      });
+      if (!res.ok) {
+        setOfertaEstado("⚠️ " + (await mensajeDeError(res)));
+        return;
+      }
+      const data = await res.json();
+      setP((prev) => ({ ...prev, oferta: data.oferta }));
+      setOfertaEstado("✓ Textos mejorados. Revisa y ajusta.");
+    } catch (e) {
+      setOfertaEstado("⚠️ " + errorDeRed(e));
+    }
+  }
+
+  // ── Análisis de anuncios ganadores (ángulo · dolor · avatar) ──
+  function setAnalisisCampo(campo: keyof AnalisisAnuncios, valor: string) {
+    setP((prev) => {
+      const base: AnalisisAnuncios = prev.analisisAnuncios ?? {
+        angulo: "",
+        dolor: "",
+        avatar: "",
+        notas: "",
+        generadoEn: "",
+      };
+      return { ...prev, analisisAnuncios: { ...base, [campo]: valor } };
+    });
+    setEstado("idle");
+  }
+  async function analizarAnuncios() {
+    if (!p.id) {
+      setAnalisisEstado("⚠️ Guarda el producto primero (paso Identidad).");
+      return;
+    }
+    setAnalisisEstado("Analizando anuncios con IA…");
+    try {
+      const res = await fetch(`/api/productos/${p.id}/analizar-anuncios`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ producto: p }),
+      });
+      if (!res.ok) {
+        setAnalisisEstado("⚠️ " + (await mensajeDeError(res)));
+        return;
+      }
+      const data = await res.json();
+      setP((prev) => ({ ...prev, analisisAnuncios: data.analisisAnuncios }));
+      setAnalisisEstado("✓ Análisis listo. Revisa y ajusta.");
+    } catch (e) {
+      setAnalisisEstado("⚠️ " + errorDeRed(e));
+    }
+  }
+
+  // ── Guiones de anuncios (captación) ───────────────────────────
+  function setGuionAnuncio(i: number, campo: keyof GuionAnuncio, valor: string) {
+    setP((prev) => {
+      const lista = [...(prev.guionesAnuncios ?? [])];
+      lista[i] = { ...lista[i], [campo]: valor };
+      return { ...prev, guionesAnuncios: lista };
+    });
+    setEstado("idle");
+  }
+  function removeGuionAnuncio(i: number) {
+    setP((prev) => ({
+      ...prev,
+      guionesAnuncios: (prev.guionesAnuncios ?? []).filter((_, k) => k !== i),
+    }));
+  }
+  async function generarGuionesAnuncios() {
+    if (!p.id) {
+      setGuionesEstado("⚠️ Guarda el producto primero (paso Identidad).");
+      return;
+    }
+    setGuionesEstado("Generando guiones de anuncios con IA…");
+    try {
+      const res = await fetch(`/api/productos/${p.id}/generar-guiones-anuncios`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ producto: p, cantidad: cantidadGuiones }),
+      });
+      if (!res.ok) {
+        setGuionesEstado("⚠️ " + (await mensajeDeError(res)));
+        return;
+      }
+      const data = await res.json();
+      const nuevos = (data.guionesAnuncios ?? []) as GuionAnuncio[];
+      // Se agregan a los que ya había (no se pierden los anteriores).
+      setP((prev) => ({ ...prev, guionesAnuncios: [...(prev.guionesAnuncios ?? []), ...nuevos] }));
+      setGuionesEstado(`✓ ${nuevos.length} guion(es) generado(s). Revisa y ajusta.`);
+    } catch (e) {
+      setGuionesEstado("⚠️ " + errorDeRed(e));
+    }
+  }
+
   async function guardar(): Promise<Producto | null> {
     setEstado("guardando");
     try {
@@ -354,10 +472,10 @@ export function ProductoWizard({ producto }: { producto?: Producto }) {
             <span className="text-muted">Nombre del producto</span>
             <AutoTextarea
               value={p.nombre}
-              onChange={(e) => setCampo("nombre", e.target.value)}
+              onChange={(e) => setCampo("nombre", e.target.value.toUpperCase())}
               rows={1}
-              placeholder="chorizos para emprender desde casa"
-              className="rounded-lg border border-[var(--hairline)] bg-[var(--field)] px-3 py-2 text-text outline-none focus:border-accent"
+              placeholder="CHORIZOS PARA EMPRENDER DESDE CASA"
+              className="rounded-lg border border-[var(--hairline)] bg-[var(--field)] px-3 py-2 uppercase text-text outline-none focus:border-accent"
             />
           </label>
           <label className="flex flex-col gap-1 text-sm">
@@ -428,6 +546,29 @@ export function ProductoWizard({ producto }: { producto?: Producto }) {
             y el ángulo de tus anuncios.
           </div>
 
+          {/* Nota clave: QUÉ se vende realmente. Los ganadores suelen ser de un nicho
+              general; esto le dice a la IA hacia dónde adaptar TODO (guiones, oferta,
+              mensajes y anuncios). Se guarda con el producto y viaja a cada generador. */}
+          <label className="flex flex-col gap-2 rounded-xl border border-accent/60 bg-accent/10 p-4 text-sm">
+            <span className="font-medium text-text">🎯 ¿Qué estás vendiendo realmente?</span>
+            <span className="text-xs text-muted">
+              Los ganadores de arriba pueden ser de un nicho más general. Aclara aquí tu
+              producto exacto para que la IA apunte los guiones, la oferta, los mensajes y
+              los anuncios hacia lo tuyo. Ej.:{" "}
+              <i>
+                &ldquo;Los ganadores son de confección de ropa en general, pero yo vendo
+                confección de ropa PARA PERROS.&rdquo;
+              </i>
+            </span>
+            <AutoTextarea
+              value={p.queVendemos ?? ""}
+              onChange={(e) => setCampo("queVendemos", e.target.value)}
+              rows={2}
+              placeholder="Ej.: vendo confección de ropa para perros; los ganadores son de confección en general…"
+              className="rounded-lg border border-[var(--hairline)] bg-[var(--field)] px-3 py-2 text-text outline-none focus:border-accent"
+            />
+          </label>
+
           {(p.anunciosReferencia ?? []).map((a, i) => (
             <div
               key={i}
@@ -482,6 +623,50 @@ export function ProductoWizard({ producto }: { producto?: Producto }) {
             + Agregar anuncio ganador
           </button>
 
+          {/* Resultado de esta fase: el análisis del material (ángulo · dolor · avatar). */}
+          <div className="space-y-3 rounded-xl border border-accent/40 glass p-4">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="min-w-0">
+                <div className="text-sm font-medium text-text">🔍 Análisis del material</div>
+                <div className="text-xs text-muted">
+                  El resultado de esta fase: identifica el <b>ángulo</b>, el <b>dolor</b> y el{" "}
+                  <b>avatar</b> al que apuntarán los anuncios que vamos a generar (adaptado a lo
+                  que vendes de verdad).
+                </div>
+              </div>
+              <button
+                onClick={analizarAnuncios}
+                className="shrink-0 rounded-lg bg-accent px-4 py-2 text-sm font-medium text-white"
+              >
+                {p.analisisAnuncios ? "🔄 Reanalizar" : "🔍 Analizar anuncios"}
+              </button>
+            </div>
+            {analisisEstado && <div className="text-xs text-muted">{analisisEstado}</div>}
+            {p.analisisAnuncios && (
+              <div className="grid gap-3">
+                {(
+                  [
+                    ["angulo", "Ángulo", "la gran idea / enfoque con que atacamos"],
+                    ["dolor", "Dolor / deseo central", "lo que de verdad le duele o desea al avatar"],
+                    ["avatar", "Avatar", "quién es, cómo habla, qué teme, qué quiere"],
+                    ["notas", "Notas / insights", "objeciones, ganchos que funcionan, cómo adaptarlo"],
+                  ] as [keyof AnalisisAnuncios, string, string][]
+                ).map(([campo, label, hint]) => (
+                  <label key={campo} className="flex flex-col gap-1 text-sm">
+                    <span className="text-muted">{label}</span>
+                    <AutoTextarea
+                      value={String(p.analisisAnuncios?.[campo] ?? "")}
+                      onChange={(e) => setAnalisisCampo(campo, e.target.value)}
+                      rows={2}
+                      placeholder={hint}
+                      className="rounded-lg border border-[var(--hairline)] bg-[var(--field)] px-3 py-2 text-text outline-none focus:border-accent"
+                    />
+                  </label>
+                ))}
+              </div>
+            )}
+          </div>
+
           {/* Dossier del producto (identidad + anuncios + oferta) para pasárselo a una IA. */}
           <div className="flex flex-wrap items-center gap-3 rounded-xl border border-[var(--hairline)] glass p-4">
             <button
@@ -525,6 +710,15 @@ export function ProductoWizard({ producto }: { producto?: Producto }) {
                 className="rounded-lg border border-[var(--hairline)] px-4 py-2 text-sm text-muted hover:text-text"
               >
                 Empezar en blanco
+              </button>
+            )}
+            {p.oferta && (
+              <button
+                onClick={mejorarOferta}
+                title="Toma la oferta que escribiste y la IA te mejora los textos (sin cambiar el concepto)."
+                className="rounded-lg border border-accent/50 bg-accent/10 px-4 py-2 text-sm font-medium text-accent-2"
+              >
+                ✨ Mejorar mi oferta
               </button>
             )}
             <label className="flex items-center gap-2 text-sm text-muted">
@@ -872,6 +1066,99 @@ export function ProductoWizard({ producto }: { producto?: Producto }) {
               className="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
             >
               {estado === "guardando" ? "Guardando…" : "Guardar guión"}
+            </button>
+            {estado === "ok" && <span className="text-sm text-accent-2">✓ Guardado</span>}
+            {estado === "error" && <span className="text-sm text-red-400">Error al guardar</span>}
+          </div>
+        </section>
+      )}
+
+      {paso === "guiones" && (
+        <section className="space-y-5">
+          <div className="rounded-xl border border-[var(--hairline)] glass p-4 text-sm text-muted">
+            Genera los <b>guiones de tus anuncios</b> de captación (los que frenan el scroll
+            en el feed y llevan al WhatsApp). Se apoyan en el <b>análisis</b> (ángulo · dolor ·
+            avatar) del paso 2 y en tus anuncios ganadores. Genera, revisa y ajusta.
+          </div>
+
+          {!p.analisisAnuncios && (
+            <div className="rounded-xl border border-accent/40 bg-accent/10 p-3 text-xs text-muted">
+              💡 Aún no corriste el <b>análisis</b> (paso 2 · Anuncios ganadores). Puedes generar
+              igual, pero los guiones salen bastante mejor si primero lo analizas.
+            </div>
+          )}
+
+          <div className="flex flex-wrap items-center gap-3 rounded-xl border border-[var(--hairline)] glass p-4">
+            <label className="flex items-center gap-2 text-sm text-muted">
+              ¿Cuántos?
+              <input
+                type="number"
+                min={1}
+                max={8}
+                value={cantidadGuiones}
+                onChange={(e) =>
+                  setCantidadGuiones(Math.min(8, Math.max(1, Number(e.target.value) || 1)))
+                }
+                className="w-16 rounded-lg border border-[var(--hairline)] bg-[var(--field)] px-2 py-1 text-text outline-none focus:border-accent"
+              />
+            </label>
+            <button
+              onClick={generarGuionesAnuncios}
+              className="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-white"
+            >
+              ✍️ Generar guiones
+            </button>
+            <span className="text-sm text-muted">{guionesEstado}</span>
+          </div>
+
+          {(p.guionesAnuncios ?? []).map((g, i) => (
+            <div
+              key={g.id || i}
+              className="space-y-3 rounded-xl border border-[var(--hairline)] glass p-4"
+            >
+              <div className="flex items-center justify-between gap-3">
+                <input
+                  value={g.titulo}
+                  onChange={(e) => setGuionAnuncio(i, "titulo", e.target.value)}
+                  placeholder={`Anuncio ${i + 1}`}
+                  className="min-w-0 flex-1 rounded-lg border border-[var(--hairline)] bg-[var(--field)] px-3 py-2 text-sm font-medium text-text outline-none focus:border-accent"
+                />
+                <button
+                  onClick={() => removeGuionAnuncio(i)}
+                  className="shrink-0 text-xs text-muted hover:text-red-400"
+                >
+                  Quitar
+                </button>
+              </div>
+              <label className="flex flex-col gap-1 text-sm">
+                <span className="text-muted">Ángulo</span>
+                <input
+                  value={g.angulo}
+                  onChange={(e) => setGuionAnuncio(i, "angulo", e.target.value)}
+                  placeholder="el ángulo/gancho de este anuncio"
+                  className="rounded-lg border border-[var(--hairline)] bg-[var(--field)] px-3 py-2 text-text outline-none focus:border-accent"
+                />
+              </label>
+              <label className="flex flex-col gap-1 text-sm">
+                <span className="text-muted">Guión</span>
+                <AutoTextarea
+                  value={g.guion}
+                  onChange={(e) => setGuionAnuncio(i, "guion", e.target.value)}
+                  rows={6}
+                  placeholder="El guión completo listo para grabar…"
+                  className="rounded-lg border border-[var(--hairline)] bg-[var(--field)] px-3 py-2 text-text outline-none focus:border-accent"
+                />
+              </label>
+            </div>
+          ))}
+
+          <div className="flex flex-wrap items-center gap-3 rounded-xl border border-[var(--hairline)] glass p-4">
+            <button
+              onClick={guardar}
+              disabled={estado === "guardando"}
+              className="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
+            >
+              {estado === "guardando" ? "Guardando…" : "Guardar guiones"}
             </button>
             {estado === "ok" && <span className="text-sm text-accent-2">✓ Guardado</span>}
             {estado === "error" && <span className="text-sm text-red-400">Error al guardar</span>}

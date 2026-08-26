@@ -3,6 +3,7 @@ import {
   MIN_BONOS,
   MAX_BONOS,
   getProduct,
+  bloqueQueVendemos,
   type BonoOferta,
   type Oferta,
   type Producto,
@@ -67,7 +68,7 @@ function insumos(p: Producto): string {
 Producto: ${p.nombre} | Promesa: ${p.identidad.promesa} | Posicionamiento: ${p.identidad.posicionamiento} | Público: ${p.identidad.dirigidoA}
 
 ANUNCIOS GANADORES DE REFERENCIA (avatar MUY similar al de este producto — de aquí sacas el avatar, sus deseos y sus objeciones):
-${refs || "(el usuario no cargó anuncios de referencia; deduce el avatar del público y la promesa)"}`;
+${refs || "(el usuario no cargó anuncios de referencia; deduce el avatar del público y la promesa)"}${bloqueQueVendemos(p)}`;
 }
 
 // Lo que el usuario YA tiene: la IA debe RESPETARLO (no reinventar el principal ni
@@ -87,6 +88,39 @@ Instrucciones sobre esto:
 - Si hay un ítem marcado PRODUCTO PRINCIPAL, ese ES el producto_principal: respeta su título e idea (puedes pulir el copy, NO cambiar el concepto).
 - Cada ítem marcado BONO debe aparecer entre los bonos, respetando su título e idea.
 - Construye el resto de la oferta (promesa, los bonos que falten hasta ${MIN_BONOS}-${MAX_BONOS}, framing y urgencia) alrededor de lo que ya existe.`;
+}
+
+// MODO MEJORA: el usuario ya escribió su oferta y quiere que la IA le pula los textos.
+// Le pasamos su oferta actual y le pedimos mejorar la redacción SIN cambiar el concepto.
+function ofertaActualBloque(p: Producto): string {
+  const o = p.oferta;
+  if (!o) return "";
+  const pp = o.producto_principal;
+  const incluye = (pp?.que_incluye ?? []).filter((x) => String(x).trim());
+  const bonos = (o.bonos ?? [])
+    .filter((b) => String(b?.titulo ?? "").trim())
+    .map(
+      (b, i) =>
+        `Bono ${i + 1}: ${b.titulo}\n  - Descripción: ${b.descripcion_corta}\n  - Por qué lo incluyo: ${b.por_que_lo_incluyo}\n  - Objeción que desactiva: ${b.objecion_que_desactiva}\n  - Valor percibido: ${b.valor_percibido_texto}`,
+    )
+    .join("\n");
+  return `
+
+--- OFERTA ACTUAL DEL USUARIO (MEJÓRALA, NO LA REINVENTES) ---
+Nombre de la oferta: ${o.nombre_oferta}
+Promesa grande: ${o.promesa_grande}
+Producto principal: ${pp?.titulo ?? ""} — ${pp?.descripcion_corta ?? ""}
+${incluye.length ? `Incluye: ${incluye.join("; ")}` : ""}
+Valor percibido (principal): ${pp?.valor_percibido_texto ?? ""}
+${bonos ? `Bonos actuales:\n${bonos}` : "(sin bonos aún)"}
+Framing del stack: ${o.framing_del_stack}
+Razón de urgencia: ${o.razon_de_urgencia}
+
+INSTRUCCIONES DE MEJORA (OBLIGATORIAS):
+- NO inventes una oferta distinta: respeta el concepto, el producto principal y la INTENCIÓN de cada bono de arriba.
+- MEJORA la redacción: títulos más imantados, descripciones más claras y orientadas a beneficios, promesa más potente, framing y urgencia más persuasivos.
+- Mantén la MISMA cantidad de bonos que trae el usuario (si trae menos de ${MIN_BONOS}, complétalos hasta ${MIN_BONOS} con bonos coherentes; nunca pases de ${MAX_BONOS}).
+- Respeta TODAS las reglas duras (sin precios/moneda/links, sin soporte/garantía, tokens [PRECIO_*] si anclas precio).`;
 }
 
 // Producto por CANTIDAD ("N ejemplos de X"): el título del principal debe reflejarlo
@@ -182,9 +216,9 @@ function validar(sec: Record<string, unknown>): { oferta?: Oferta; error?: strin
 
 export async function POST(req: Request, { params }: Ctx) {
   const { id } = await params;
-  let body: { producto?: Producto; incluye_video?: boolean } = {};
+  let body: { producto?: Producto; incluye_video?: boolean; modo?: "generar" | "mejorar" } = {};
   try {
-    body = (await req.json()) as typeof body;
+    body = ((await req.json()) as typeof body) ?? {};
   } catch {
     /* opcional */
   }
@@ -192,11 +226,23 @@ export async function POST(req: Request, { params }: Ctx) {
   if (!producto?.nombre)
     return NextResponse.json({ error: "Producto no encontrado." }, { status: 404 });
 
+  // Dos modos: "generar" (desde la identidad/anuncios, por defecto) o "mejorar"
+  // (el usuario ya escribió su oferta y la IA le pule los textos sin cambiar el concepto).
+  const modo = body.modo === "mejorar" ? "mejorar" : "generar";
+  if (modo === "mejorar" && !producto.oferta?.promesa_grande?.trim() && !producto.oferta?.producto_principal?.titulo?.trim())
+    return NextResponse.json(
+      { error: "No hay una oferta escrita que mejorar. Escribe tu oferta primero." },
+      { status: 400 },
+    );
+
   const incluyeVideo = !!body.incluye_video;
   const reglaVideo = incluyeVideo
     ? "REGLA DE VIDEO: se permite que UNO de los bonos sea un video corto simple (ej. una mini-clase). Los demás, ebook/PDF/checklist."
     : "REGLA DE VIDEO: NINGÚN bono en video. TODOS los bonos son ebook/PDF/checklist digitales simples.";
-  const promptBase = `${SYSTEM_PROMPT}\n\n${reglaVideo}\n\n${insumos(producto)}${yaTengoBloque(producto)}${cantidadBloque(producto)}`;
+  const promptBase =
+    modo === "mejorar"
+      ? `${SYSTEM_PROMPT}\n\n${reglaVideo}\n\n${insumos(producto)}${cantidadBloque(producto)}${ofertaActualBloque(producto)}`
+      : `${SYSTEM_PROMPT}\n\n${reglaVideo}\n\n${insumos(producto)}${yaTengoBloque(producto)}${cantidadBloque(producto)}`;
 
   async function intento(nota = ""): Promise<{ oferta?: Oferta; error?: string }> {
     let raw: string;

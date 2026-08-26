@@ -77,10 +77,18 @@ export async function POST(req: Request) {
           id: prod.id,
           nombre: prod.nombre,
           identidad: prod.identidad,
+          // Qué vendemos REALMENTE (los anuncios de referencia son del nicho general).
+          que_vendemos: prod.queVendemos ?? "",
+          // Análisis del material: ángulo, dolor y avatar al que apuntamos.
+          analisis_anuncios: prod.analisisAnuncios ?? null,
           oferta: prod.oferta,
           anuncios_referencia: (prod.anunciosReferencia ?? [])
             .filter((a) => a.guion?.trim())
             .map((a) => ({ nicho: a.nicho, titulo: a.titulo, guion: a.guion })),
+          // Guiones de anuncios ya generados (por si el motor los quiere usar como base).
+          guiones_anuncios: (prod.guionesAnuncios ?? [])
+            .filter((g) => g.guion?.trim())
+            .map((g) => ({ titulo: g.titulo, angulo: g.angulo, guion: g.guion })),
           ebook: { idea: prod.ebook?.idea ?? null },
         };
     } catch {
