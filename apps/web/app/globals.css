@@ -3,32 +3,55 @@
 /* Fuentes que Tailwind 4 debe escanear (paquetes del workspace) */
 @source "../../../packages/ui/src";
 
-:root {
-  --bg: #06090b;
-  --panel: #0f171a;
-  --border: #223029;
-  --text: #eaf1ed;
-  --muted: #93a39b;
-  --accent: #10b981;
-  --accent-2: #2dd4bf;
-  /* superficies que dependen del tema (glass, campos, bordes, hovers) */
-  --hairline: rgba(255, 255, 255, 0.1);
-  --field: rgba(255, 255, 255, 0.05);
-  --hover: rgba(255, 255, 255, 0.07);
+/* ─────────────────────────────────────────────────────────────
+   Design System — "Editorial Minimalista / Papel + Neón"
+   Fondo papel cálido, tinta negra, un único acento neón lima.
+   Sin sombras pesadas, sin gradientes de relleno, sin glass.
+   ───────────────────────────────────────────────────────────── */
+
+/* ── PAPEL + NEÓN (tema por defecto) ────────────────────────── */
+:root,
+[data-theme="light"] {
+  --bg: #f3f1ec;          /* papel (fondo base) */
+  --sidebar: #ece9e1;     /* papel sidebar */
+  --panel: #ffffff;       /* superficie tarjeta */
+  --field: #fbfaf7;       /* superficie sutil / inputs */
+  --border: #ded9d0;      /* línea / borde */
+  --input-border: #cdc8be;/* borde de inputs */
+  --row-line: #eae6dd;    /* línea de fila (tabla) */
+  --text: #111111;        /* tinta (texto principal) */
+  --muted: #6b6b6b;       /* texto secundario */
+  --faint: #9a968c;       /* texto tenue */
+  --accent: #d7ff3a;      /* acento NEÓN (signal) */
+  --accent-ink: #3a4a00;  /* contorno oscuro del neón (para texto) */
+  --accent-2: #3a4a00;    /* acento legible en texto/enlaces (oliva oscuro) */
+  --hairline: #ded9d0;
+  --hover: rgba(17, 17, 17, 0.05);
+  --ok: #d7ff3a;
+  --warn: #b45309;
+  --bad: #c0392b;
 }
 
-/* ── Tema claro ─────────────────────────────────────────────── */
-[data-theme="light"] {
-  --bg: #f4f7f5;
-  --panel: #ffffff;
-  --border: #e2e8e4;
-  --text: #16201b;
-  --muted: #5c6b62;
-  --accent: #059669;
-  --accent-2: #0d9488;
-  --hairline: rgba(0, 0, 0, 0.1);
-  --field: rgba(0, 0, 0, 0.03);
-  --hover: rgba(0, 0, 0, 0.05);
+/* ── Oscuro (inverso, para el toggle) ───────────────────────── */
+[data-theme="dark"] {
+  --bg: #121311;
+  --sidebar: #171a15;
+  --panel: #1b1e18;
+  --field: #202419;
+  --border: #2e3327;
+  --input-border: #3a4030;
+  --row-line: #262a20;
+  --text: #f3f1ec;
+  --muted: #a7a99c;
+  --faint: #7d8072;
+  --accent: #d7ff3a;
+  --accent-ink: #d7ff3a;
+  --accent-2: #d7ff3a; /* en oscuro el neón sí se lee como texto */
+  --hairline: rgba(255, 255, 255, 0.1);
+  --hover: rgba(255, 255, 255, 0.06);
+  --ok: #d7ff3a;
+  --warn: #d97706;
+  --bad: #ef4444;
 }
 
 @theme inline {
@@ -39,28 +62,84 @@
   --color-muted: var(--muted);
   --color-accent: var(--accent);
   --color-accent-2: var(--accent-2);
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "Space Mono", ui-monospace, "SFMono-Regular", monospace;
+  --font-display: "Anton", ui-sans-serif, system-ui, sans-serif;
 }
 
 html,
 body {
   color: var(--text);
-  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  font-family: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
 }
 
 body {
   background: var(--bg);
 }
 
-/* Utilidad de vidrio esmerilado reutilizable. */
-.glass {
-  background: color-mix(in srgb, var(--panel) 70%, transparent);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
+/* Títulos masivos condensados (jerarquía por tipografía, no por color). */
+h1 {
+  font-family: "Anton", ui-sans-serif, sans-serif;
+  text-transform: uppercase;
+  letter-spacing: -0.02em;
+  line-height: 0.95;
+  font-weight: 400;
 }
 
-/* ── Fondo animado global (aurora verde) ──────────────────────
-   Manchas de luz verde/teal que se mueven muy lento detrás de TODA la app,
-   para que Datibot se sienta como un solo producto unificado. */
+/* Etiquetas/monoespaciadas. */
+.font-mono,
+code {
+  font-family: "Space Mono", ui-monospace, "SFMono-Regular", monospace;
+}
+
+/* ── Tarjetas: PLANAS (adiós glassmorphism) ─────────────────── */
+.glass {
+  background: var(--panel);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+/* ── Botones/enlaces de ACENTO = píldora neón, texto oscuro ─── */
+button[class~="bg-accent"],
+a[class~="bg-accent"],
+button[class~="bg-accent/90"] {
+  color: #111 !important;
+  border-radius: 9999px;
+  border: 1px solid #111;
+  font-family: "Space Mono", ui-monospace, monospace;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-weight: 700;
+  transition: all 0.3s ease-out;
+}
+button[class~="bg-accent"]:hover:not(:disabled),
+a[class~="bg-accent"]:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 22px -10px rgba(17, 17, 17, 0.45);
+}
+
+/* Botones "outline" (bg-accent/10): píldora también, texto oliva legible. */
+button[class~="bg-accent/10"],
+a[class~="bg-accent/10"] {
+  border-radius: 9999px;
+  font-family: "Space Mono", ui-monospace, monospace;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-weight: 700;
+  transition: all 0.3s ease-out;
+}
+button[class~="bg-accent/10"]:hover,
+a[class~="bg-accent/10"]:hover {
+  transform: translateY(-2px);
+}
+
+/* Badges (span) con fondo de acento: solo texto oscuro (el neón no se lee blanco). */
+span[class~="bg-accent"],
+span[class~="bg-accent/90"] {
+  color: #111 !important;
+}
+
+/* ── Fondo papel + verde MUY difuminado (plano, sin animación) ── */
 .aurora {
   position: fixed;
   inset: 0;
@@ -71,47 +150,30 @@ body {
 .aurora-blob {
   position: absolute;
   border-radius: 9999px;
-  filter: blur(100px);
-  will-change: transform;
+  filter: blur(130px);
 }
 .aurora-a {
-  width: 42vw;
-  height: 42vw;
-  top: -12vw;
-  right: -8vw;
-  background: rgba(16, 185, 129, 0.22);
-  animation: aurora-a 20s ease-in-out infinite;
+  width: 46vw;
+  height: 46vw;
+  top: -16vw;
+  right: -12vw;
+  background: rgba(215, 255, 58, 0.1);
 }
 .aurora-b {
   width: 40vw;
   height: 40vw;
-  bottom: -14vw;
-  left: -8vw;
-  background: rgba(45, 212, 191, 0.16);
-  animation: aurora-b 26s ease-in-out infinite;
+  bottom: -18vw;
+  left: -12vw;
+  background: rgba(215, 255, 58, 0.07);
 }
 .aurora-c {
-  width: 32vw;
-  height: 32vw;
-  top: 35%;
-  left: 45%;
-  background: rgba(16, 185, 129, 0.1);
-  animation: aurora-c 32s ease-in-out infinite;
+  width: 30vw;
+  height: 30vw;
+  top: 40%;
+  left: 48%;
+  background: rgba(215, 255, 58, 0.05);
 }
-@keyframes aurora-a {
-  0%, 100% { transform: translate(0, 0) scale(1); }
-  50% { transform: translate(-8%, 12%) scale(1.18); }
+[data-theme="dark"] .aurora-blob {
+  filter: blur(120px);
+  opacity: 0.5;
 }
-@keyframes aurora-b {
-  0%, 100% { transform: translate(0, 0) scale(1); }
-  50% { transform: translate(12%, -10%) scale(1.12); }
-}
-@keyframes aurora-c {
-  0%, 100% { transform: translate(0, 0) scale(1); opacity: 0.8; }
-  50% { transform: translate(-10%, -6%) scale(1.25); opacity: 1; }
-}
-@media (prefers-reduced-motion: reduce) {
-  .aurora-blob { animation: none; }
-}
-/* En tema claro las manchas van más tenues para no lavar el fondo. */
-[data-theme="light"] .aurora { opacity: 0.5; }

@@ -24,11 +24,11 @@ export function Sidebar() {
   const inicio = soloEditor ? "/extractor" : "/";
 
   return (
-    <aside className="glass flex w-60 shrink-0 flex-col border-r border-[var(--hairline)]">
+    <aside className="flex w-60 shrink-0 flex-col border-r border-[var(--border)] bg-[var(--sidebar)]">
       {/* Marca */}
       <Link href={inicio} className="flex items-center gap-2.5 px-5 py-6">
         <Logo size={34} />
-        <span className="bg-gradient-to-r from-accent to-accent-2 bg-clip-text text-lg font-bold tracking-tight text-transparent">
+        <span className="font-[Anton] text-xl uppercase tracking-tight text-text">
           Datibot
         </span>
       </Link>
@@ -45,16 +45,16 @@ export function Sidebar() {
               href={item.href}
               title={item.description}
               className={cn(
-                "group relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition-all",
+                "group relative flex items-center gap-3 rounded-full px-3 py-2.5 text-sm transition-all",
                 active
-                  ? "bg-[var(--hover)] text-text ring-1 ring-[var(--hairline)]"
+                  ? "bg-[var(--hover)] font-semibold text-text ring-1 ring-[var(--border)]"
                   : "text-muted hover:bg-[var(--hover)] hover:text-text",
               )}
             >
-              {/* barra de sección activa */}
+              {/* barra de sección activa (neón sólido) */}
               <span
                 className={cn(
-                  "absolute left-0 top-1/2 h-6 w-0.5 -translate-y-1/2 rounded-full bg-gradient-to-b from-accent to-accent-2 transition-opacity",
+                  "absolute left-0 top-1/2 h-6 w-1 -translate-y-1/2 rounded-full bg-accent transition-opacity",
                   active ? "opacity-100" : "opacity-0",
                 )}
               />

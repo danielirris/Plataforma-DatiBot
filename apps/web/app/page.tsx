@@ -21,8 +21,8 @@ export default function HomePage() {
             <span className="h-1.5 w-1.5 rounded-full bg-accent-2 shadow-[0_0_8px] shadow-accent-2" />
             Centro de mando
           </span>
-          <h1 className="mt-5 text-5xl font-bold tracking-tight sm:text-6xl">
-            <span className="bg-gradient-to-r from-accent via-accent-2 to-accent bg-clip-text text-transparent">
+          <h1 className="mt-5 text-6xl tracking-tight text-text sm:text-7xl">
+            <span className="bg-[var(--accent)] box-decoration-clone px-2 py-0.5 text-[#111]">
               Datibot
             </span>
           </h1>
