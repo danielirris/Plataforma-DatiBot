@@ -3,11 +3,12 @@ import { readConfig } from "@plataforma/config";
 // Instrucciones maestras que el usuario sube/pega en Configuración. Viven en el mismo
 // almacén de config (clave "instrucciones"), que persiste en el volumen /data, así que
 // sobreviven a los redeploys. Se inyectan en los generadores de IA con prioridad alta.
-export type TipoInstruccion = "anuncios" | "embudo";
+export type TipoInstruccion = "anuncios" | "embudo" | "mensajes";
 
 const TITULOS: Record<TipoInstruccion, string> = {
   anuncios: "REALIZACIÓN DE ANUNCIOS DEL PRODUCTO",
   embudo: "VIDEO DE EMBUDO",
+  mensajes: "FLUJO DE MENSAJES (WHATSAPP COD)",
 };
 
 /**

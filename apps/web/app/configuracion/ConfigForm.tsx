@@ -21,6 +21,11 @@ const INSTRUCCIONES: { key: string; titulo: string; desc: string }[] = [
     titulo: "Video del embudo",
     desc: "La IA la seguirá al generar el guión del video de embudo de cada producto.",
   },
+  {
+    key: "mensajes",
+    titulo: "Flujo de mensajes (WhatsApp COD)",
+    desc: "La IA la seguirá al generar los 10 mensajes del flujo por país (sección «Mensajes»).",
+  },
 ];
 
 export function ConfigForm({ initial }: { initial: ConfigStore }) {

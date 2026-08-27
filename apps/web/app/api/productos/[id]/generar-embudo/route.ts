@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getProduct, bloqueQueVendemos, type Producto, type EmbudoWhatsApp } from "@plataforma/products";
 import { generarTexto } from "@/lib/ai/textProvider";
+import { bloqueInstrucciones } from "@/lib/ai/instrucciones";
 import { PAISES_EMBUDO, paisEmbudo, fmtMonto, RANURAS_EMBUDO } from "@/lib/embudo/paises";
 
 export const runtime = "nodejs";
@@ -98,8 +99,12 @@ function parsearJson(raw: string): Record<string, unknown> {
   return JSON.parse(s);
 }
 
-async function generarPais(p: Producto, codigo: string): Promise<Record<string, string> | null> {
-  const prompt = `${SYSTEM_PROMPT}\n\n${bloquePais(p, codigo)}`;
+async function generarPais(
+  p: Producto,
+  codigo: string,
+  instrucciones: string,
+): Promise<Record<string, string> | null> {
+  const prompt = `${SYSTEM_PROMPT}${instrucciones}\n\n${bloquePais(p, codigo)}`;
   for (let intento = 0; intento < 2; intento++) {
     let raw: string;
     try {
@@ -126,7 +131,7 @@ export async function POST(req: Request, { params }: Ctx) {
   const { id } = await params;
   let body: { producto?: Producto; paises?: string[] } = {};
   try {
-    body = (await req.json()) as typeof body;
+    body = ((await req.json()) as typeof body) ?? {};
   } catch {
     /* opcional */
   }
@@ -134,13 +139,17 @@ export async function POST(req: Request, { params }: Ctx) {
   if (!producto?.nombre)
     return NextResponse.json({ error: "Producto no encontrado." }, { status: 404 });
 
-  const codigos = (body.paises && body.paises.length
+  const codigos = (body?.paises && body.paises.length
     ? body.paises
     : PAISES_EMBUDO.map((x) => x.codigo)
   ).filter((c) => paisEmbudo(c));
 
+  // Instrucciones maestras del flujo de mensajes (configuradas en Configuración). Se
+  // leen una sola vez y se pasan a cada país (evita leer el config 5 veces en paralelo).
+  const instrucciones = await bloqueInstrucciones("mensajes");
+
   const resultados = await Promise.all(
-    codigos.map(async (c) => [c, await generarPais(producto, c)] as const),
+    codigos.map(async (c) => [c, await generarPais(producto, c, instrucciones)] as const),
   );
 
   const mensajesPorPais: Record<string, Record<string, string>> = {};
