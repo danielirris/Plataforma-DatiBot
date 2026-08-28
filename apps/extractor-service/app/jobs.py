@@ -853,9 +853,10 @@ class JobManager:
         # emociones/tarjetas, música, CTA, guía ni movimientos de cámara. Solo el
         # recorte (montage) + el audio del usuario.
         solo = bool((self._params.get(job_id, {}) or {}).get("solo_recorte"))
-        # Música: OPCIONAL. Si el job la desactivó va sin música; si la activó,
-        # usa la subida o, en su defecto, la biblioteca (libre de derechos).
-        use_music = self._use_music.get(job_id, True) and not solo
+        # Música: OPCIONAL (también en "solo recorte": el usuario la conserva si la deja
+        # activada). Si el job la desactivó va sin música; si la activó, usa la subida o,
+        # en su defecto, la biblioteca (libre de derechos).
+        use_music = self._use_music.get(job_id, True)
         music_paths = (self._music.get(job_id) or library.list_music()) if use_music else []
         sfx = library.ensure_sfx()  # whoosh/pop/ding generados, sin copyright
         intro = self._intro.get(job_id)  # sonido de inicio opcional
@@ -1013,7 +1014,11 @@ class JobManager:
                 cta_texto=cta_texto, whatsapp=settings.whatsapp_link,
                 cta_sub=settings.cta_sub, cta_on=cta_on, cta_boton=cta_boton, cta_wa=cta_wa,
                 oferta_pill=oferta_pill,
-                vol=settings.musica_volumen, vol_duck=settings.musica_volumen_ducking,
+                # En "solo recorte" no hay subtítulos, así que el ducking por palabras
+                # no dispara: dejamos la música al nivel bajo TODO el clip, debajo de la
+                # locución (que suena de principio a fin), en vez de a volumen pleno.
+                vol=settings.musica_volumen_ducking if solo else settings.musica_volumen,
+                vol_duck=settings.musica_volumen_ducking,
                 sfx=None if solo else sfx,
                 guides=[] if solo else self._guias.get(job_id, []),
                 intro=None if solo else intro,

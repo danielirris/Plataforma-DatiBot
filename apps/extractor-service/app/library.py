@@ -121,9 +121,21 @@ _SFX_SPECS = {
     ),
 }
 
+# Golpe de INICIO (sonido de apertura del anuncio). A diferencia del whoosh sutil de
+# las tarjetas, este SÍ debe OÍRSE: un whoosh brillante MÁS un boom grave, mezclados y
+# a buen volumen. Se genera con filter_complex (2 fuentes + amix), por eso va aparte.
+_INTRO_ARGS = [
+    "-f", "lavfi", "-i", "anoisesrc=d=0.9:c=pink:a=0.6",
+    "-f", "lavfi", "-i", "anoisesrc=d=0.9:c=brown:a=0.9",
+    "-filter_complex",
+    "[0:a]highpass=f=250,lowpass=f=6000,afade=t=in:d=0.4,afade=t=out:st=0.45:d=0.4[w];"
+    "[1:a]lowpass=f=180,afade=t=out:st=0.12:d=0.5,volume=1.3[b];"
+    "[w][b]amix=inputs=2:duration=longest,volume=1.6",
+]
+
 
 def ensure_sfx() -> dict[str, Path]:
-    """Genera (si faltan) los SFX whoosh/pop/ding y devuelve sus rutas."""
+    """Genera (si faltan) los SFX whoosh/pop/ding + el golpe de inicio y sus rutas."""
     out: dict[str, Path] = {}
     for name, (src, af) in _SFX_SPECS.items():
         dest = sfx_dir() / f"{name}.m4a"
@@ -136,4 +148,15 @@ def ensure_sfx() -> dict[str, Path]:
                 continue
         if dest.exists():
             out[name] = dest
+
+    # Golpe de inicio (whoosh + boom mezclados). Si falla, no rompe nada: el que
+    # pida "sonido de inicio" cae al whoosh normal.
+    intro_dest = sfx_dir() / "intro.m4a"
+    if not intro_dest.exists():
+        cmd = ["ffmpeg", "-y", *_INTRO_ARGS, "-c:a", "aac", "-b:a", "128k", str(intro_dest)]
+        proc = subprocess.run(cmd, capture_output=True, text=True)
+        if proc.returncode != 0:
+            logger.warning("No se pudo generar SFX intro: %s", proc.stderr[-300:])
+    if intro_dest.exists():
+        out["intro"] = intro_dest
     return out

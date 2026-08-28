@@ -409,10 +409,11 @@ export const Ad: React.FC<{ v: any; cta: any; musica: any; sfx: any; intro?: any
         <Audio src={staticFile(v.music)} loop volume={musicVol} />
       ) : null}
 
-      {/* Sonido de inicio opcional (golpe de apertura). */}
+      {/* Sonido de inicio opcional (golpe de apertura). Va a volumen pleno para que
+          SE OIGA claramente sobre el arranque del video/locución. */}
       {intro ? (
-        <Sequence from={0} durationInFrames={Math.round(1.6 * fps)}>
-          <Audio src={staticFile(intro)} volume={0.75} />
+        <Sequence from={0} durationInFrames={Math.round(1.2 * fps)}>
+          <Audio src={staticFile(intro)} volume={1} />
         </Sequence>
       ) : null}
 

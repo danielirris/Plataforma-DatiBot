@@ -250,6 +250,12 @@ def _clean_hook_list(raw: object) -> list[dict | None]:
     return out
 
 
+def _intro_sfx():
+    """Sonido de inicio: el golpe de apertura con cuerpo; si no está, el whoosh."""
+    m = library.ensure_sfx()
+    return m.get("intro") or m.get("whoosh")
+
+
 @app.post("/api/jobs/from-urls")
 async def create_job_from_urls(payload: dict = Body(...)) -> JSONResponse:
     """Crea un job a partir de URLs de video (los adjuntos al producto).
@@ -316,7 +322,7 @@ async def create_job_from_urls(payload: dict = Body(...)) -> JSONResponse:
         for url in urls[:20]:
             saved.append(await _download_url(url, max_bytes))
         if use_intro:
-            whoosh = library.ensure_sfx().get("whoosh")
+            whoosh = _intro_sfx()
             if whoosh and whoosh.exists():
                 itmp = Path(tempfile.mkstemp(suffix=whoosh.suffix,
                                              dir=str(settings.storage_dir))[1])
@@ -452,7 +458,7 @@ async def create_job_from_files(
 
     intro_saved: tuple[Path, str] | None = None
     if use_intro in ("1", "true", "True"):
-        whoosh = library.ensure_sfx().get("whoosh")
+        whoosh = _intro_sfx()
         if whoosh and whoosh.exists():
             itmp = Path(tempfile.mkstemp(suffix=whoosh.suffix, dir=str(settings.storage_dir))[1])
             shutil.copy(whoosh, itmp)
@@ -914,7 +920,7 @@ async def create_job(
         if intro is not None and intro.filename:
             intro_saved = await _save_upload(intro, max_bytes, ALLOWED_AUDIO_EXT)
         elif use_intro == "1":
-            whoosh = library.ensure_sfx().get("whoosh")
+            whoosh = _intro_sfx()
             if whoosh and whoosh.exists():
                 itmp = Path(tempfile.mkstemp(suffix=whoosh.suffix,
                                              dir=str(settings.storage_dir))[1])

@@ -752,9 +752,9 @@ export function EditorVideos({
           <span className="font-medium text-text">✂️ Solo recortar (video crudo + mi audio)</span>
           <span className="mt-1 block text-xs text-muted">
             Entrega los pedazos de video con el audio que subes, <b>sin subtítulos, sin
-            emociones/tarjetas, sin música, sin CTA, sin ganchos ni guía</b>. Cuando está
-            activo se ignoran el estilo y las opciones de abajo. Igual necesitas subir un
-            audio por anuncio.
+            emociones/tarjetas, sin CTA, sin ganchos ni guía</b>. La <b>música de fondo sí
+            se respeta</b> si la dejas activada (queda por debajo de tu locución). Ignora
+            el estilo, los subtítulos y el CTA. Igual necesitas subir un audio por anuncio.
           </span>
         </span>
       </label>
