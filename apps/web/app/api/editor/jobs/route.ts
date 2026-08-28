@@ -54,6 +54,8 @@ export async function POST(req: Request) {
     ganchos?: string[] | null;
     /** título por anuncio (opcional, en orden) */
     titulos?: string[] | null;
+    /** SOLO recortar: clips + audio, sin subtítulos/emociones/música/CTA/guía */
+    solo_recorte?: boolean;
   };
   try {
     body = (await req.json()) as typeof body;
@@ -190,6 +192,7 @@ export async function POST(req: Request) {
         producto: productoBrief,
         ganchos: body.ganchos ?? [],
         titulos: body.titulos ?? [],
+        solo_recorte: !!body.solo_recorte,
         mode: "full",
       }),
     });
@@ -220,6 +223,7 @@ export async function POST(req: Request) {
       if (productoBrief) form.append("producto", JSON.stringify(productoBrief));
       form.append("ganchos", JSON.stringify(body.ganchos ?? []));
       form.append("titulos", JSON.stringify(body.titulos ?? []));
+      form.append("solo_recorte", body.solo_recorte ? "1" : "0");
       if (body.hook) form.append("hook", JSON.stringify(body.hook));
       if (body.hooks?.length) form.append("hooks", JSON.stringify(body.hooks));
       // Editor suelto (subdominio): quien lo usa no tiene la página de preview del

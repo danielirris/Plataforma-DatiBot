@@ -849,9 +849,13 @@ class JobManager:
                     work_dir: Path, output_dir: Path) -> None:
         """Modo anuncio: genera un proyecto Remotion (1 composición por video)."""
         settings = self._settings
+        # SOLO RECORTAR: entrega cada clip con la locución tal cual, sin subtítulos,
+        # emociones/tarjetas, música, CTA, guía ni movimientos de cámara. Solo el
+        # recorte (montage) + el audio del usuario.
+        solo = bool((self._params.get(job_id, {}) or {}).get("solo_recorte"))
         # Música: OPCIONAL. Si el job la desactivó va sin música; si la activó,
         # usa la subida o, en su defecto, la biblioteca (libre de derechos).
-        use_music = self._use_music.get(job_id, True)
+        use_music = self._use_music.get(job_id, True) and not solo
         music_paths = (self._music.get(job_id) or library.list_music()) if use_music else []
         sfx = library.ensure_sfx()  # whoosh/pop/ding generados, sin copyright
         intro = self._intro.get(job_id)  # sonido de inicio opcional
@@ -864,7 +868,13 @@ class JobManager:
                 width, height = audio.probe_resolution(src)
                 voz_i = (voces[vid] if vid < len(voces)
                          else (voces[0] if len(voces) == 1 else None))
-                if voz_i is not None:
+                if solo:
+                    # Solo recorte: sin subtítulos -> no transcribimos (más rápido).
+                    # La duración manda la locución si existe; si no, el clip.
+                    words = []
+                    duration = (audio.probe_duration(voz_i) if voz_i is not None else None) \
+                        or audio.probe_duration(src)
+                elif voz_i is not None:
                     # La locución de ESTE anuncio manda: dura lo que ella y de ella
                     # salen los subtítulos. Se transcribe la suya, no una común.
                     self._update(job_id, status=JobStatus.TRANSCRIBING,
@@ -947,6 +957,11 @@ class JobManager:
             ganchos = params.get("ganchos") or []
             titulos = params.get("titulos") or []
             for i, v in enumerate(videos):
+                if solo:
+                    # Sin edición: plan vacío -> ni tarjetas, ni emojis, ni fullscreen,
+                    # ni píldoras. build_ad_project colapsa a un plan por defecto vacío.
+                    v.plan = {}
+                    continue
                 v.plan = analyze.plan_ad(v.words, v.duration, prompt_text)
                 # Semilla de paleta REALMENTE aleatoria por generación: así los COLORES
                 # cambian cada vez (antes dependía de job_id y salían siempre iguales para
@@ -987,18 +1002,22 @@ class JobManager:
                          message="Generando proyecto Remotion (anuncio)")
             # Controles de CTA del usuario (sobre los defaults de config).
             cta_texto = str(params.get("cta_texto") or "").strip() or settings.cta_texto
-            cta_on = params.get("use_cta", True) is not False
+            # Solo recorte: sin CTA, sin píldora de oferta, sin guía, sin intro y sin
+            # movimientos de cámara (bare). Solo el clip recortado + la locución.
+            cta_on = False if solo else (params.get("use_cta", True) is not False)
             cta_boton = str(params.get("cta_boton") or "").strip() or "WhatsApp →"
             cta_wa = params.get("cta_wa", True) is not False
-            oferta_pill = str(params.get("oferta_pill") or "").strip()
+            oferta_pill = "" if solo else str(params.get("oferta_pill") or "").strip()
             build_ad_project(
                 videos, output_dir,
                 cta_texto=cta_texto, whatsapp=settings.whatsapp_link,
                 cta_sub=settings.cta_sub, cta_on=cta_on, cta_boton=cta_boton, cta_wa=cta_wa,
                 oferta_pill=oferta_pill,
                 vol=settings.musica_volumen, vol_duck=settings.musica_volumen_ducking,
-                sfx=sfx, guides=self._guias.get(job_id, []),
-                intro=intro, font=font,
+                sfx=None if solo else sfx,
+                guides=[] if solo else self._guias.get(job_id, []),
+                intro=None if solo else intro,
+                font=font, bare=solo,
             )
             # Empaquetar el proyecto editable (.zip).
             shutil.make_archive(str(output_dir / "anuncio-remotion"), "zip",

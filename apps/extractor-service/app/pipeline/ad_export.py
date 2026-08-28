@@ -76,8 +76,14 @@ def build_ad_project(
     guides: list[Path] | None = None,
     intro: Path | None = None,
     font: str = "Anton",
+    bare: bool = False,
 ) -> Path:
-    """Escribe el proyecto Remotion del anuncio. Devuelve la carpeta del proyecto."""
+    """Escribe el proyecto Remotion del anuncio. Devuelve la carpeta del proyecto.
+
+    ``bare=True`` (modo "solo recorte"): entrega el clip con su locución sin ninguna
+    edición — sin subtítulos (words vacío), sin tarjetas/emociones (plan vacío), sin
+    música, sin CTA, sin guía y SIN movimientos de cámara.
+    """
     from app.pipeline import audio  # import perezoso (evita ciclos)
 
     root = output_dir / "remotion-ad"
@@ -166,8 +172,12 @@ def build_ad_project(
         # Movidas sobre el video (Fase 5): punch-in, B&N, shake, flash, etc.
         # según el estilo. El motor Remotion las acumula por frame.
         line_starts = [round(l[0].start, 3) for l in _lines_from_words(v.words)]
-        from app.pipeline import styles as _styles  # import perezoso
-        plan["moves"] = _styles.plan_moves(plan, line_starts, v.duration, seed=str(v.id))
+        if bare:
+            # Solo recorte: nada de punch-in/B&N/shake/flash. Video crudo.
+            plan["moves"] = []
+        else:
+            from app.pipeline import styles as _styles  # import perezoso
+            plan["moves"] = _styles.plan_moves(plan, line_starts, v.duration, seed=str(v.id))
 
         entries.append({
             "id": v.id, "name": v.name, "video": video_name,

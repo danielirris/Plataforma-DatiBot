@@ -136,6 +136,9 @@ export function EditorVideos({
   // Quitar el silencio de cabeza/cola de cada locución: anuncios más compactos.
   // Por defecto ON (mejora casi siempre); nunca corta voz, solo el aire muerto.
   const [trimSilence, setTrimSilence] = useState<boolean>(true);
+  // Solo recorte: entrega los pedazos de video con TU audio, sin subtítulos, sin
+  // emociones/tarjetas, sin música y sin CTA. Cuando está activo, ignora todo lo demás.
+  const [soloRecorte, setSoloRecorte] = useState<boolean>(false);
 
   // Llamada a la acción (CTA) del cierre y píldora de oferta a mitad.
   const [useCta, setUseCta] = useState<boolean>(true);
@@ -550,6 +553,7 @@ export function EditorVideos({
           hooks,
           hook_uploads,
           guia: guiaVid?.nombre ?? "",
+          solo_recorte: soloRecorte,
           voces: voces.map((v) => v.nombre),
           // El server lee el avatar/oferta de este producto para el brief del cerebro.
           producto_id: productoId,
@@ -728,8 +732,40 @@ export function EditorVideos({
       </div>
 
 
+      {/* Solo recortar: entrega los pedazos de video + el audio del usuario, sin
+          subtítulos, emociones, música, CTA, ganchos ni guía. Ignora lo de abajo. */}
+      <label
+        className={
+          "mt-4 flex cursor-pointer items-start gap-3 rounded-2xl border p-5 transition-all " +
+          (soloRecorte
+            ? "border-accent bg-accent/10 ring-1 ring-accent/40"
+            : "border-[var(--hairline)] glass")
+        }
+      >
+        <input
+          type="checkbox"
+          checked={soloRecorte}
+          onChange={(e) => setSoloRecorte(e.target.checked)}
+          className="mt-1"
+        />
+        <span className="text-sm">
+          <span className="font-medium text-text">✂️ Solo recortar (video crudo + mi audio)</span>
+          <span className="mt-1 block text-xs text-muted">
+            Entrega los pedazos de video con el audio que subes, <b>sin subtítulos, sin
+            emociones/tarjetas, sin música, sin CTA, sin ganchos ni guía</b>. Cuando está
+            activo se ignoran el estilo y las opciones de abajo. Igual necesitas subir un
+            audio por anuncio.
+          </span>
+        </span>
+      </label>
+
       {/* Estilo de edición */}
-      <div className="mt-4 space-y-3 rounded-2xl border border-[var(--hairline)] glass p-5">
+      <div
+        className={
+          "mt-4 space-y-3 rounded-2xl border border-[var(--hairline)] glass p-5 transition-opacity" +
+          (soloRecorte ? " pointer-events-none opacity-40" : "")
+        }
+      >
         <p className="text-sm text-muted">Estilo de edición</p>
         <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
           {ESTILOS.map((s) => {
@@ -761,7 +797,12 @@ export function EditorVideos({
       </div>
 
       {/* Parámetros de los subtítulos */}
-      <div className="mt-4 grid grid-cols-1 gap-4 rounded-2xl border border-[var(--hairline)] glass p-5 sm:grid-cols-2">
+      <div
+        className={
+          "mt-4 grid grid-cols-1 gap-4 rounded-2xl border border-[var(--hairline)] glass p-5 sm:grid-cols-2 transition-opacity" +
+          (soloRecorte ? " pointer-events-none opacity-40" : "")
+        }
+      >
         <label className="flex flex-col gap-1 text-sm">
           <span className="text-muted">Tipo de subtítulo</span>
           <select
@@ -848,7 +889,12 @@ export function EditorVideos({
       </div>
 
       {/* Cierre (CTA) + oferta */}
-      <div className="mt-4 space-y-4 rounded-2xl border border-[var(--hairline)] glass p-5">
+      <div
+        className={
+          "mt-4 space-y-4 rounded-2xl border border-[var(--hairline)] glass p-5 transition-opacity" +
+          (soloRecorte ? " pointer-events-none opacity-40" : "")
+        }
+      >
         <label className="flex items-center gap-2 text-sm font-medium text-text">
           <input type="checkbox" checked={useCta} onChange={(e) => setUseCta(e.target.checked)} />
           🎯 Poner llamada a la acción (CTA) al final

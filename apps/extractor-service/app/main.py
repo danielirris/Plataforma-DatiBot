@@ -277,6 +277,9 @@ async def create_job_from_urls(payload: dict = Body(...)) -> JSONResponse:
     # Paridad con from-files: CTA / oferta / trim (antes se perdían por este camino).
     if payload.get("trim_silence"):
         params["trim_silence"] = True
+    # Solo recortar: clips + audio, sin subtítulos/emociones/música/CTA/movimientos.
+    if payload.get("solo_recorte"):
+        params["solo_recorte"] = True
     params["use_cta"] = bool(payload.get("use_cta", True))
     params["cta_wa"] = bool(payload.get("cta_wa", True))
     if str(payload.get("cta_texto") or "").strip():
@@ -360,6 +363,7 @@ async def create_job_from_files(
     ganchos: str = Form(""),       # JSON array: gancho de texto por anuncio (opcional)
     titulos: str = Form(""),       # JSON array: título por anuncio (opcional)
     hook_meta: str = Form(""),     # JSON array [{ad, secs}] alineado a hook_videos
+    solo_recorte: str = Form("0"), # SOLO recortar: clips + audio, sin subtítulos/emociones/música/CTA
 ) -> JSONResponse:
     """Igual que /api/jobs/from-urls pero el web MANDA LOS VIDEOS como archivos.
 
@@ -399,6 +403,10 @@ async def create_job_from_files(
         params["auto_render"] = True
     if trim_silence in ("1", "true", "True"):
         params["trim_silence"] = True
+    # Solo recortar: entrega los clips con la locución tal cual, sin subtítulos,
+    # emociones/tarjetas, música, CTA ni movimientos de cámara.
+    if solo_recorte in ("1", "true", "True"):
+        params["solo_recorte"] = True
     # Controles de CTA / oferta.
     params["use_cta"] = use_cta in ("1", "true", "True")
     params["cta_wa"] = cta_wa in ("1", "true", "True")
