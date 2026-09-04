@@ -55,6 +55,13 @@ export const NAV_ITEMS: NavItem[] = [
     description: "Los anuncios que ya creaste, listos para ver y descargar.",
   },
   {
+    href: "/embudos",
+    label: "Embudos",
+    icon: "🤖",
+    description:
+      "Configura los bots de WhatsApp: números, y por producto los mensajes, prompts, pasos y datos de pago (se guardan en Supabase, en vivo).",
+  },
+  {
     href: "/configuracion",
     label: "Configuración",
     icon: "⚙️",
