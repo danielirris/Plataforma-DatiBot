@@ -32,7 +32,7 @@ export const NAV_ITEMS: NavItem[] = [
     label: "Mensajes",
     icon: "💬",
     description:
-      "Los 10 mensajes del embudo de WhatsApp (COD) por país, con oferta y orderbumps.",
+      "Pega tus mensajes del embudo de WhatsApp (COD) por país y guárdalos.",
   },
   {
     href: "/ebooks",
