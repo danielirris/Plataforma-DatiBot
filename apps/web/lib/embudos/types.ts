@@ -69,3 +69,12 @@ export interface ProductoBot {
   validacion_alias: string;
   actualizado_at?: string;
 }
+
+/** `mensajes_rotador` — variantes anti-spam de un mensaje (por producto, país-agnóstico). */
+export interface RotadorRow {
+  producto: string;
+  campo: string;
+  variante: number;
+  texto: string;
+}
+

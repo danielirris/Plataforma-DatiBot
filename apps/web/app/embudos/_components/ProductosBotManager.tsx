@@ -6,6 +6,7 @@ import {
   NOMBRE_PAIS,
   type ProductoBot,
 } from "@/lib/embudos/types";
+import { RotadorEditor } from "./RotadorEditor";
 
 type ProductoLite = { id: string; nombre: string; productoId?: string };
 type Fila = Record<string, string>; // producto, pais + campos (todos como string)
@@ -304,14 +305,17 @@ export function ProductosBotManager() {
             </div>
           </div>
 
-          {/* Guardar */}
+          {/* Mensajes con variantes (rotador), por producto. Tiene su propio guardado. */}
+          <RotadorEditor producto={productoKey} />
+
+          {/* Guardar (mensajes fijos + prompts + pixel + pago) */}
           <div className="flex flex-wrap items-center gap-3 rounded-xl border border-[var(--hairline)] glass p-4">
             <button
               onClick={guardar}
               disabled={guardando}
               className="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
             >
-              {guardando ? "Guardando…" : "Guardar en Supabase"}
+              {guardando ? "Guardando…" : "Guardar mensajes, prompts y pago"}
             </button>
             {estado && (
               <span className={"text-sm " + (estado.startsWith("✓") ? "text-accent-2" : "text-muted")}>
