@@ -4,9 +4,10 @@ import { useEffect, useState } from "react";
 import { NumerosManager } from "./NumerosManager";
 import { ProductosBotManager } from "./ProductosBotManager";
 import { PasosEmbudoEditor } from "./PasosEmbudoEditor";
+import { MediaManager } from "./MediaManager";
 import { SupabaseSetupBanner } from "./SupabaseSetupBanner";
 
-type Tab = "numeros" | "bots" | "embudo";
+type Tab = "numeros" | "bots" | "embudo" | "media";
 
 export function EmbudosTabs() {
   const [configurado, setConfigurado] = useState<boolean | null>(null);
@@ -26,6 +27,7 @@ export function EmbudosTabs() {
     { id: "numeros", label: "Números" },
     { id: "bots", label: "Bot por producto" },
     { id: "embudo", label: "Embudo (pasos)" },
+    { id: "media", label: "Media" },
   ];
 
   return (
@@ -51,8 +53,10 @@ export function EmbudosTabs() {
         <NumerosManager />
       ) : tab === "bots" ? (
         <ProductosBotManager />
-      ) : (
+      ) : tab === "embudo" ? (
         <PasosEmbudoEditor />
+      ) : (
+        <MediaManager />
       )}
     </div>
   );
