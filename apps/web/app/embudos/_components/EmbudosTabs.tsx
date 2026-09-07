@@ -3,9 +3,10 @@
 import { useEffect, useState } from "react";
 import { NumerosManager } from "./NumerosManager";
 import { ProductosBotManager } from "./ProductosBotManager";
+import { PasosEmbudoEditor } from "./PasosEmbudoEditor";
 import { SupabaseSetupBanner } from "./SupabaseSetupBanner";
 
-type Tab = "numeros" | "bots";
+type Tab = "numeros" | "bots" | "embudo";
 
 export function EmbudosTabs() {
   const [configurado, setConfigurado] = useState<boolean | null>(null);
@@ -24,6 +25,7 @@ export function EmbudosTabs() {
   const tabs: { id: Tab; label: string }[] = [
     { id: "numeros", label: "Números" },
     { id: "bots", label: "Bot por producto" },
+    { id: "embudo", label: "Embudo (pasos)" },
   ];
 
   return (
@@ -45,7 +47,13 @@ export function EmbudosTabs() {
         ))}
       </div>
 
-      {tab === "numeros" ? <NumerosManager /> : <ProductosBotManager />}
+      {tab === "numeros" ? (
+        <NumerosManager />
+      ) : tab === "bots" ? (
+        <ProductosBotManager />
+      ) : (
+        <PasosEmbudoEditor />
+      )}
     </div>
   );
 }

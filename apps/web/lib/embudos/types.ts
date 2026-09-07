@@ -78,3 +78,27 @@ export interface RotadorRow {
   texto: string;
 }
 
+/** `pasos_embudo` — un paso de la secuencia del embudo. */
+export interface PasoEmbudo {
+  producto: string;
+  estado: string;
+  orden: number;
+  tipo: string;
+  contenido: string;
+  fuente: string;
+  delay_segundos: number;
+}
+
+export const ESTADOS_EMBUDO = ["MENU", "VIDEO", "CONFIRMACION", "ENTREGA", "STOP"] as const;
+export const TIPOS_PASO = ["mensaje", "video", "pdf", "boton", "etiqueta", "wait"] as const;
+export const FUENTES_PASO = ["config", "media", "rotador", "directo"] as const;
+
+/** Descripción corta de cada estado (para la UI del editor de embudo). */
+export const ESTADO_INFO: Record<string, string> = {
+  MENU: "Primer contacto → menú de bienvenida (rotado) → etiqueta menu_enviado.",
+  VIDEO: "Video (con caption) → mensaje con BOTÓN → etiqueta bienvenida.",
+  CONFIRMACION: "Tras el botón → “escribe SI RECIBIR” → etiqueta contenido_solicitado.",
+  ENTREGA: "Etiqueta contenido_enviado (candado) → PDFs → link bonos → cobro → datos de pago.",
+  STOP: "“No te escribo más” → etiqueta stop.",
+};
+
