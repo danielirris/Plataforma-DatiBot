@@ -15,11 +15,17 @@ export default function MensajesPage() {
   const [cargando, setCargando] = useState<boolean>(false);
   const [guardando, setGuardando] = useState<boolean>(false);
   const [okMsg, setOkMsg] = useState<string>("");
+  // Precios globales (Configuración): sirven de valor por defecto de los montos.
+  const [globalPrecios, setGlobalPrecios] = useState<Record<string, number[]>>({});
 
   useEffect(() => {
     fetch("/api/products")
       .then((r) => r.json())
       .then((d: Producto[]) => setProductos(d.map((x) => ({ id: x.id, nombre: x.nombre }))))
+      .catch(() => {});
+    fetch("/api/precios")
+      .then((r) => r.json())
+      .then((d) => setGlobalPrecios(d.precios ?? {}))
       .catch(() => {});
   }, []);
 
@@ -53,16 +59,18 @@ export default function MensajesPage() {
     setOkMsg("");
   }
 
-  // Montos de la escalera (7 "fases") por país. Editables; por defecto los de PAISES_EMBUDO.
+  // Montos de la escalera (7 "fases") por país. Por defecto: los precios GLOBALES de
+  // Configuración (o los de PAISES_EMBUDO si no hay); cada producto puede sobreescribirlos.
+  function baseMontos(codigo: string): number[] {
+    return globalPrecios[codigo] ?? paisEmbudo(codigo)?.montos ?? [];
+  }
   function montosDe(codigo: string): number[] {
-    const def = paisEmbudo(codigo)?.montos ?? [];
-    return def.map((d, i) => emb.montosPorPais?.[codigo]?.[i] ?? d);
+    return baseMontos(codigo).map((d, i) => emb.montosPorPais?.[codigo]?.[i] ?? d);
   }
   function setMonto(codigo: string, i: number, valor: string) {
     const n = Number(valor);
     setEmb((prev) => {
-      const def = paisEmbudo(codigo)?.montos ?? [];
-      const arr = def.map((d, k) => prev.montosPorPais?.[codigo]?.[k] ?? d);
+      const arr = baseMontos(codigo).map((d, k) => prev.montosPorPais?.[codigo]?.[k] ?? d);
       arr[i] = Number.isFinite(n) ? n : 0;
       return { ...prev, montosPorPais: { ...(prev.montosPorPais ?? {}), [codigo]: arr } };
     });

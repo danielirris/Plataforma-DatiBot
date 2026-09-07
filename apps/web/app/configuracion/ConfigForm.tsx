@@ -6,6 +6,7 @@ import {
   type ConfigGroup,
   type ConfigStore,
 } from "@plataforma/config/schema";
+import { PAISES_EMBUDO } from "@/lib/embudo/paises";
 
 // Instrucciones maestras que guían a la IA. Se guardan bajo la clave "instrucciones"
 // del mismo almacén de config (persiste en el volumen /data) y se inyectan en los
@@ -41,6 +42,22 @@ export function ConfigForm({ initial }: { initial: ConfigStore }) {
       [groupId]: { ...(prev[groupId] ?? {}), [key]: value },
     }));
     setStatus("idle");
+  }
+
+  // Precios globales (montos de la escalera por país). Se guardan como CSV por país en
+  // store.precios[pais]; sirven de valor por defecto para los montos de cada producto.
+  function preciosDe(pais: string): string[] {
+    const def = PAISES_EMBUDO.find((p) => p.codigo === pais)?.montos.map(String) ?? [];
+    const guardados = (store.precios?.[pais] ?? "").split(",");
+    return def.map((d, i) => {
+      const v = (guardados[i] ?? "").trim();
+      return v !== "" ? v : d;
+    });
+  }
+  function setPrecio(pais: string, i: number, valor: string) {
+    const arr = preciosDe(pais);
+    arr[i] = valor.trim();
+    setField("precios", pais, arr.join(","));
   }
 
   // Lee un archivo de texto (.txt/.md) y vuelca su contenido en la instrucción.
@@ -150,6 +167,52 @@ export function ConfigForm({ initial }: { initial: ConfigStore }) {
             </section>
           );
         })}
+      </div>
+
+      {/* Precios globales: montos de la escalera por país. Sirven de valor por defecto
+          para los montos de cada producto (sección Mensajes). */}
+      <div className="space-y-4">
+        <h2 className="border-b border-[var(--hairline)] pb-1 text-sm font-semibold uppercase tracking-wide text-muted">
+          Precios por país (escalera)
+        </h2>
+        <p className="text-xs text-muted">
+          Los 7 montos de la escalera por país. Lo que pongas aquí sale <b>predeterminado</b>{" "}
+          al editar los montos de cada producto (en <b>Mensajes</b>); cada producto puede
+          ajustarlos sin afectar estos globales.
+        </p>
+        <div className="space-y-3">
+          {PAISES_EMBUDO.map((pa) => (
+            <section
+              key={pa.codigo}
+              className="rounded-xl border border-[var(--hairline)] glass p-4"
+            >
+              <div className="mb-2 flex items-baseline gap-2">
+                <span className="text-sm font-medium">
+                  {pa.bandera} {pa.nombre}
+                </span>
+                <span className="text-xs text-muted">
+                  {pa.moneda} ({pa.simbolo})
+                </span>
+              </div>
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-7">
+                {preciosDe(pa.codigo).map((v, i) => (
+                  <label key={i} className="flex flex-col gap-0.5 text-[11px] text-muted">
+                    <span>Fase {i + 1}</span>
+                    <div className="flex items-center gap-1">
+                      <span>{pa.simbolo}</span>
+                      <input
+                        type="number"
+                        value={v}
+                        onChange={(e) => setPrecio(pa.codigo, i, e.target.value)}
+                        className="w-full rounded border border-[var(--hairline)] bg-[var(--field)] px-2 py-1 text-sm text-text outline-none focus:border-accent"
+                      />
+                    </div>
+                  </label>
+                ))}
+              </div>
+            </section>
+          ))}
+        </div>
       </div>
 
       {sections.map((section) => (

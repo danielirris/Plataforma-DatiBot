@@ -67,4 +67,11 @@ export const NAV_ITEMS: NavItem[] = [
     icon: "⚙️",
     description: "API keys y ajustes de toda la plataforma en un solo panel.",
   },
+  {
+    href: "/tutorial",
+    label: "Tutorial",
+    icon: "📖",
+    description:
+      "Guía completa paso a paso: cómo crear un producto y cómo montar el número y el bot de WhatsApp.",
+  },
 ];
