@@ -7,6 +7,9 @@ import {
   type ConfigStore,
 } from "@plataforma/config/schema";
 import { PAISES_EMBUDO } from "@/lib/embudo/paises";
+import { ConfigTutorialNumero } from "./ConfigTutorialNumero";
+
+type TabConfig = "instrucciones" | "precios" | "tutorial";
 
 // Instrucciones maestras que guían a la IA. Se guardan bajo la clave "instrucciones"
 // del mismo almacén de config (persiste en el volumen /data) y se inyectan en los
@@ -35,6 +38,7 @@ export function ConfigForm({ initial }: { initial: ConfigStore }) {
     "idle",
   );
   const [nombresArchivo, setNombresArchivo] = useState<Record<string, string>>({});
+  const [tab, setTab] = useState<TabConfig>("instrucciones");
 
   function setField(groupId: string, key: string, value: string) {
     setStore((prev) => ({
@@ -102,8 +106,33 @@ export function ConfigForm({ initial }: { initial: ConfigStore }) {
   }
 
   return (
-    <div className="space-y-10">
+    <div className="space-y-6">
+      {/* Pestañas: qué se está configurando */}
+      <div className="flex flex-wrap gap-2 border-b border-[var(--hairline)]">
+        {(
+          [
+            ["instrucciones", "Instrucciones IA"],
+            ["precios", "Precios"],
+            ["tutorial", "Tutorial: nuevo número"],
+          ] as [TabConfig, string][]
+        ).map(([id, label]) => (
+          <button
+            key={id}
+            onClick={() => setTab(id)}
+            className={
+              "-mb-px border-b-2 px-3 py-2 text-sm transition-colors " +
+              (tab === id
+                ? "border-accent font-medium text-text"
+                : "border-transparent text-muted hover:text-text")
+            }
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+
       {/* Instrucciones maestras de IA: se suben/pegan aquí y guían a los generadores. */}
+      {tab === "instrucciones" && (
       <div className="space-y-4">
         <h2 className="border-b border-[var(--hairline)] pb-1 text-sm font-semibold uppercase tracking-wide text-muted">
           Instrucciones para la IA
@@ -168,9 +197,11 @@ export function ConfigForm({ initial }: { initial: ConfigStore }) {
           );
         })}
       </div>
+      )}
 
       {/* Precios globales: montos de la escalera por país. Sirven de valor por defecto
           para los montos de cada producto (sección Mensajes). */}
+      {tab === "precios" && (
       <div className="space-y-4">
         <h2 className="border-b border-[var(--hairline)] pb-1 text-sm font-semibold uppercase tracking-wide text-muted">
           Precios por país (escalera)
@@ -214,7 +245,9 @@ export function ConfigForm({ initial }: { initial: ConfigStore }) {
           ))}
         </div>
       </div>
+      )}
 
+      {/* Grupos por variables de entorno (todos ocultos hoy) */}
       {sections.map((section) => (
         <div key={section.name} className="space-y-4">
           <h2 className="border-b border-[var(--hairline)] pb-1 text-sm font-semibold uppercase tracking-wide text-muted">
@@ -303,6 +336,10 @@ export function ConfigForm({ initial }: { initial: ConfigStore }) {
         </div>
       ))}
 
+      {/* Tutorial técnico: dar de alta un número nuevo (plomería fuera de la app) */}
+      {tab === "tutorial" && <ConfigTutorialNumero />}
+
+      {tab !== "tutorial" && (
       <div className="sticky bottom-0 flex items-center gap-3 border-t border-[var(--hairline)] bg-bg/80 py-4 backdrop-blur">
         <button
           onClick={save}
@@ -320,6 +357,7 @@ export function ConfigForm({ initial }: { initial: ConfigStore }) {
           <span className="text-sm text-red-400">Error al guardar.</span>
         )}
       </div>
+      )}
     </div>
   );
 }
