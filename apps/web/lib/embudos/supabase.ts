@@ -98,6 +98,27 @@ export async function upsertRow<T>(
   return rows[0];
 }
 
+/** UPSERT en lote: inserta/actualiza VARIAS filas en una sola llamada. */
+export async function upsertRows<T>(
+  tabla: string,
+  filas: Record<string, unknown>[],
+  onConflict: string,
+): Promise<T[]> {
+  if (!filas.length) return [];
+  const res = await fetch(
+    `${supabaseUrl()}/rest/v1/${tabla}?on_conflict=${encodeURIComponent(onConflict)}`,
+    {
+      method: "POST",
+      headers: headers({
+        Prefer: "resolution=merge-duplicates,return=representation",
+      }),
+      body: JSON.stringify(filas),
+    },
+  );
+  if (!res.ok) throw new SupabaseError(await parseError(res), res.status);
+  return (await res.json()) as T[];
+}
+
 /** DELETE: borra filas que cumplan los filtros (ej. { phone_id: "eq.123" }). */
 export async function deleteRows(tabla: string, params: QueryParams): Promise<void> {
   const qs = new URLSearchParams(params).toString();

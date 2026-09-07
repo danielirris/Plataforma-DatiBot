@@ -1,4 +1,4 @@
-import { NumerosManager } from "./_components/NumerosManager";
+import { EmbudosTabs } from "./_components/EmbudosTabs";
 
 export const dynamic = "force-dynamic";
 
@@ -11,8 +11,7 @@ export default function EmbudosPage() {
         vivo: editar aquí cambia el bot al instante, sin redesplegar nada.
       </p>
 
-      {/* Fase 1: Números (la config técnica de cada número + qué producto vende hoy). */}
-      <NumerosManager />
+      <EmbudosTabs />
     </div>
   );
 }
