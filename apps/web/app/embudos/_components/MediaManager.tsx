@@ -155,8 +155,9 @@ export function MediaManager() {
         <h2 className="text-lg font-medium">Media (video y PDFs)</h2>
         <p className="text-xs text-muted">
           Sube el video y los PDFs. La app los guarda en el servidor de archivos y los sube
-          a WhatsApp para obtener el <code>media_id</code> (envío instantáneo). Se renuevan
-          antes de caducar (~30 días).
+          a WhatsApp para obtener el <code>media_id</code> (envío instantáneo). Se{" "}
+          <b>renuevan solas cada ~20 días</b> (los media_id caducan); también puedes forzarlo
+          con «Renovar media».
         </p>
       </div>
 
