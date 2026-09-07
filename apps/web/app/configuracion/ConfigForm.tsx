@@ -7,9 +7,8 @@ import {
   type ConfigStore,
 } from "@plataforma/config/schema";
 import { PAISES_EMBUDO } from "@/lib/embudo/paises";
-import { ConfigTutorialNumero } from "./ConfigTutorialNumero";
 
-type TabConfig = "instrucciones" | "precios" | "tutorial";
+type TabConfig = "instrucciones" | "precios";
 
 // Instrucciones maestras que guían a la IA. Se guardan bajo la clave "instrucciones"
 // del mismo almacén de config (persiste en el volumen /data) y se inyectan en los
@@ -113,7 +112,6 @@ export function ConfigForm({ initial }: { initial: ConfigStore }) {
           [
             ["instrucciones", "Instrucciones IA"],
             ["precios", "Precios"],
-            ["tutorial", "Tutorial: nuevo número"],
           ] as [TabConfig, string][]
         ).map(([id, label]) => (
           <button
@@ -336,10 +334,6 @@ export function ConfigForm({ initial }: { initial: ConfigStore }) {
         </div>
       ))}
 
-      {/* Tutorial técnico: dar de alta un número nuevo (plomería fuera de la app) */}
-      {tab === "tutorial" && <ConfigTutorialNumero />}
-
-      {tab !== "tutorial" && (
       <div className="sticky bottom-0 flex items-center gap-3 border-t border-[var(--hairline)] bg-bg/80 py-4 backdrop-blur">
         <button
           onClick={save}
@@ -357,7 +351,6 @@ export function ConfigForm({ initial }: { initial: ConfigStore }) {
           <span className="text-sm text-red-400">Error al guardar.</span>
         )}
       </div>
-      )}
     </div>
   );
 }

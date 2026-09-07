@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { NOMBRE_PAIS, type NumeroBot } from "@/lib/embudos/types";
+import { type NumeroBot } from "@/lib/embudos/types";
 
 type ProductoLite = { id: string; nombre: string; productoId?: string };
 type MediaRow = Record<string, string | null>;
@@ -200,7 +200,7 @@ export function MediaManager() {
             <option value="">— elige un número —</option>
             {numeros.map((n) => (
               <option key={n.phone_id} value={n.phone_id}>
-                {n.numero_whatsapp || n.phone_id} · {NOMBRE_PAIS[n.pais] ?? n.pais}
+                {n.numero_whatsapp || n.phone_id}
               </option>
             ))}
           </select>

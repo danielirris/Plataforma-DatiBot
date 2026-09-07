@@ -61,17 +61,22 @@ export const NAV_ITEMS: NavItem[] = [
     description:
       "Configura los bots de WhatsApp: números, y por producto los mensajes, prompts, pasos y datos de pago (se guardan en Supabase, en vivo).",
   },
-  {
-    href: "/configuracion",
-    label: "Configuración",
-    icon: "⚙️",
-    description: "API keys y ajustes de toda la plataforma en un solo panel.",
-  },
+];
+
+// Items de utilidad que van ABAJO del sidebar (junto al tema), separados de las
+// herramientas principales.
+export const NAV_FOOTER: NavItem[] = [
   {
     href: "/tutorial",
     label: "Tutorial",
     icon: "📖",
     description:
-      "Guía completa paso a paso: cómo crear un producto y cómo montar el número y el bot de WhatsApp.",
+      "Guías: cómo crear un producto, cómo funcionan los Embudos y cómo dar de alta un número.",
+  },
+  {
+    href: "/configuracion",
+    label: "Configuración",
+    icon: "⚙️",
+    description: "Instrucciones para la IA y precios por país.",
   },
 ];

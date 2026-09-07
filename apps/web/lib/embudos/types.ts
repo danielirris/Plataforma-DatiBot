@@ -35,7 +35,7 @@ export function numeroBotVacio(): NumeroBot {
     capi_token: "",
     account_id: "",
     credencial_wa: "",
-    pais: "CO",
+    pais: "",
     producto_activo: "",
   };
 }

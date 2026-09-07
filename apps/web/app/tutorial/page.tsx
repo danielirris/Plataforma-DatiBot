@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { PlantillasN8n } from "./PlantillasN8n";
+import { ConfigTutorialNumero } from "../configuracion/ConfigTutorialNumero";
 
 export const dynamic = "force-dynamic";
 
@@ -54,6 +56,8 @@ export default function TutorialPage() {
           ["#mensajes", "2 · Mensajes y precios"],
           ["#videos", "3 · Videos y anuncios"],
           ["#embudo", "4 · Montar número + producto"],
+          ["#plantillas", "Plantillas n8n"],
+          ["#numero", "Dar de alta un número"],
           ["#reglas", "Reglas de oro"],
         ].map(([href, label]) => (
           <a
@@ -236,6 +240,21 @@ export default function TutorialPage() {
             campo <b className="text-text">“Producto que vende hoy”</b> en Números. Instantáneo.
           </div>
         </div>
+      </div>
+
+      {/* PLANTILLAS n8n */}
+      <div id="plantillas">
+        <Bloque
+          titulo="Plantillas de n8n (descargar)"
+          sub="Sube y descarga los workflows de n8n para importarlos (recibidor, motor, precarga de media)."
+        >
+          <PlantillasN8n />
+        </Bloque>
+      </div>
+
+      {/* DAR DE ALTA UN NÚMERO (técnico) */}
+      <div id="numero" className="mt-10">
+        <ConfigTutorialNumero />
       </div>
 
       {/* REGLAS */}

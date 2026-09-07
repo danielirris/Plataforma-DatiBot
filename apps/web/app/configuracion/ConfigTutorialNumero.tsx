@@ -161,7 +161,7 @@ export function ConfigTutorialNumero() {
         <ul className="space-y-1 text-sm text-muted [&_b]:text-text">
           <li>• Número de WhatsApp (marcable) · <b>Phone ID</b> (clave) · WABA · Chatwoot account_id</li>
           <li>• Credencial WA en n8n (el nombre, ej. <code className={code}>Carolina1 [4838]</code>) · CAPI token (oculto)</li>
-          <li>• País · <b>Producto que vende hoy</b> (<code className={code}>producto_activo</code>)</li>
+          <li>• <b>Producto que vende hoy</b> (<code className={code}>producto_activo</code>) — un número puede atender varios países; el país lo resuelve el motor, no se fija aquí.</li>
         </ul>
         <p className="mt-2 text-sm text-muted">Guardar crea la fila en <code className={code}>numeros</code>. Cambiar <code className={code}>producto_activo</code> cambia lo que vende, al instante.</p>
         <Warn>Para que el motor <b>lea</b> de <code className={code}>numeros</code> (phone_id → producto_activo) hace falta el ajuste del recibidor (trabajo de n8n). Mientras no esté, la fila se guarda pero el motor usa el modelo viejo.</Warn>

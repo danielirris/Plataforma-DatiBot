@@ -40,3 +40,6 @@ apps/extractor-service/storage/outputs/
 # misc
 .DS_Store
 *.log
+
+# Plantillas de n8n subidas desde la app (viven en el volumen DATA_DIR)
+.plantillas-n8n/

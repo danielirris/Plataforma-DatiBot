@@ -1,12 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import {
-  PAISES_EMBUDO_BOT,
-  NOMBRE_PAIS,
-  numeroBotVacio,
-  type NumeroBot,
-} from "@/lib/embudos/types";
+import { numeroBotVacio, type NumeroBot } from "@/lib/embudos/types";
 
 type ProductoLite = { id: string; nombre: string; productoId?: string };
 
@@ -32,6 +27,7 @@ export function NumerosManager() {
   const [editandoId, setEditandoId] = useState<string | null>(null);
   const [otroProducto, setOtroProducto] = useState(false);
   const [estado, setEstado] = useState("");
+  const [recibidorOk, setRecibidorOk] = useState(false);
 
   async function cargar() {
     setCargando(true);
@@ -49,6 +45,11 @@ export function NumerosManager() {
         const lista = (await rp.json()) as ProductoLite[];
         setProductos(Array.isArray(lista) ? lista : []);
       }
+      // ¿Hay recibidor plantilla para descargar? (se sube en Tutorial → Plantillas)
+      fetch("/api/plantillas", { cache: "no-store" })
+        .then((r) => r.json())
+        .then((d) => setRecibidorOk(Boolean(d?.disponibles?.recibidor)))
+        .catch(() => {});
     } catch (e) {
       setErrorCarga(e instanceof Error ? e.message : "Error de red");
     } finally {
@@ -179,9 +180,6 @@ EMBUDOS_SUPABASE_SERVICE_KEY=<tu service key>`}
                 key={n.phone_id}
                 className="flex flex-wrap items-center gap-3 rounded-xl border border-[var(--hairline)] glass p-4"
               >
-                <span className="rounded-full bg-[var(--field)] px-2 py-0.5 text-xs font-medium text-muted">
-                  {NOMBRE_PAIS[n.pais] ?? n.pais}
-                </span>
                 <span className="font-medium text-text">{n.numero_whatsapp || n.phone_id}</span>
                 <span className="text-xs text-muted">
                   vende:{" "}
@@ -230,6 +228,26 @@ EMBUDOS_SUPABASE_SERVICE_KEY=<tu service key>`}
             </button>
           </div>
 
+          {/* Recibidor plantilla para importar/duplicar en n8n al montar el número */}
+          <div className="rounded-lg border border-[var(--hairline)] bg-[var(--field)] p-3 text-xs text-muted">
+            🧩 Para montar este número en n8n necesitas el <b className="text-text">recibidor
+            plantilla</b>.{" "}
+            {recibidorOk ? (
+              <a
+                href="/api/plantillas/recibidor"
+                download="recibidor.json"
+                className="font-medium text-accent-2 underline"
+              >
+                ⬇️ Descargar recibidor plantilla
+              </a>
+            ) : (
+              <>
+                Súbelo primero en <b className="text-text">Tutorial → Plantillas de n8n</b> para
+                poder descargarlo aquí.
+              </>
+            )}
+          </div>
+
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             {CAMPOS.map(({ k, label, sensible, hint }) => (
               <label key={k} className="flex flex-col gap-1 text-sm">
@@ -245,22 +263,6 @@ EMBUDOS_SUPABASE_SERVICE_KEY=<tu service key>`}
                 {hint && <span className="text-xs text-muted">{hint}</span>}
               </label>
             ))}
-
-            {/* País */}
-            <label className="flex flex-col gap-1 text-sm">
-              <span className="text-muted">País que atiende</span>
-              <select
-                value={form.pais}
-                onChange={(e) => setCampo("pais", e.target.value)}
-                className="rounded-lg border border-[var(--hairline)] bg-[var(--field)] px-3 py-2 text-text outline-none focus:border-accent"
-              >
-                {PAISES_EMBUDO_BOT.map((p) => (
-                  <option key={p} value={p}>
-                    {NOMBRE_PAIS[p]} ({p})
-                  </option>
-                ))}
-              </select>
-            </label>
 
             {/* Producto activo (apuntador) */}
             <label className="flex flex-col gap-1 text-sm">

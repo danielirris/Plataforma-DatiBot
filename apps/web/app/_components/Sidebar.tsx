@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { NAV_ITEMS, cn } from "@plataforma/ui";
+import { NAV_ITEMS, NAV_FOOTER, cn } from "@plataforma/ui";
 import { ThemeToggle } from "./ThemeToggle";
 import { Logo } from "./Logo";
 
@@ -70,7 +70,30 @@ export function Sidebar() {
         })}
       </nav>
 
-      <div className="flex flex-col gap-3 px-3 py-4">
+      <div className="flex flex-col gap-3 border-t border-[var(--border)] px-3 py-4">
+        {!soloEditor && (
+          <nav className="flex flex-col gap-0.5">
+            {NAV_FOOTER.map((item) => {
+              const active = pathname.startsWith(item.href);
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  title={item.description}
+                  className={cn(
+                    "flex items-center gap-3 rounded-full px-3 py-2 text-sm transition-all",
+                    active
+                      ? "bg-[var(--hover)] font-semibold text-text ring-1 ring-[var(--border)]"
+                      : "text-muted hover:bg-[var(--hover)] hover:text-text",
+                  )}
+                >
+                  <span className="text-base">{item.icon}</span>
+                  <span className="flex-1">{item.label}</span>
+                </Link>
+              );
+            })}
+          </nav>
+        )}
         <ThemeToggle />
         <span className="px-2 text-xs text-muted/70">Datibot · versión #1</span>
       </div>
