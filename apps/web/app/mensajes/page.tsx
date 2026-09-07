@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { embudoVacio, type Producto, type EmbudoWhatsApp } from "@plataforma/products/schema";
-import { PAISES_EMBUDO, paisEmbudo, fmtMonto, RANURAS_EMBUDO } from "@/lib/embudo/paises";
+import { PAISES_EMBUDO, paisEmbudo, RANURAS_EMBUDO } from "@/lib/embudo/paises";
 
 type ProdLite = { id: string; nombre: string };
 
@@ -50,6 +50,22 @@ export default function MensajesPage() {
         [codigo]: { ...(prev.mensajesPorPais[codigo] ?? {}), [clave]: valor },
       },
     }));
+    setOkMsg("");
+  }
+
+  // Montos de la escalera (7 "fases") por país. Editables; por defecto los de PAISES_EMBUDO.
+  function montosDe(codigo: string): number[] {
+    const def = paisEmbudo(codigo)?.montos ?? [];
+    return def.map((d, i) => emb.montosPorPais?.[codigo]?.[i] ?? d);
+  }
+  function setMonto(codigo: string, i: number, valor: string) {
+    const n = Number(valor);
+    setEmb((prev) => {
+      const def = paisEmbudo(codigo)?.montos ?? [];
+      const arr = def.map((d, k) => prev.montosPorPais?.[codigo]?.[k] ?? d);
+      arr[i] = Number.isFinite(n) ? n : 0;
+      return { ...prev, montosPorPais: { ...(prev.montosPorPais ?? {}), [codigo]: arr } };
+    });
     setOkMsg("");
   }
 
@@ -148,13 +164,36 @@ export default function MensajesPage() {
             </button>
           </div>
 
-          {/* Referencia de montos del país (por si los usas en msg_cobro/datos_pago) */}
+          {/* Montos de la escalera (7 fases), editables por país. Se usan como referencia
+              al escribir los mensajes (msg_cobro / datos de pago). */}
           {paisActivo && (
-            <p className="mt-3 text-xs text-muted">
-              Montos {paisActivo.moneda}:{" "}
-              {paisActivo.montos.map((m) => `${paisActivo.simbolo}${fmtMonto(m)}`).join(" · ")}
-              {paisActivo.identificacion ? ` · ${paisActivo.identificacion}` : ""}
-            </p>
+            <div className="mt-3 space-y-2 rounded-xl border border-[var(--hairline)] glass p-3">
+              <div className="flex flex-wrap items-baseline justify-between gap-2">
+                <span className="text-xs font-medium text-text">
+                  Montos de la escalera — {paisActivo.moneda} ({paisActivo.simbolo})
+                </span>
+                <span className="text-[11px] text-muted">Fase 1 = base · Fase 7 = tope</span>
+              </div>
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-7">
+                {montosDe(pais).map((m, i) => (
+                  <label key={i} className="flex flex-col gap-0.5 text-[11px] text-muted">
+                    <span>Fase {i + 1}</span>
+                    <div className="flex items-center gap-1">
+                      <span>{paisActivo.simbolo}</span>
+                      <input
+                        type="number"
+                        value={m}
+                        onChange={(e) => setMonto(pais, i, e.target.value)}
+                        className="w-full rounded border border-[var(--hairline)] bg-[var(--field)] px-2 py-1 text-sm text-text outline-none focus:border-accent"
+                      />
+                    </div>
+                  </label>
+                ))}
+              </div>
+              {paisActivo.identificacion && (
+                <p className="text-[11px] text-muted">{paisActivo.identificacion}</p>
+              )}
+            </div>
           )}
 
           {/* Los espacios de mensajes (siempre visibles, para pegar) */}

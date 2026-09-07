@@ -251,6 +251,11 @@ export interface EmbudoWhatsApp {
   orderbumps: Orderbump[];
   /** los 10 mensajes generados por país: { CO: { msg_bienvenida: "...", … }, … } */
   mensajesPorPais: Record<string, Record<string, string>>;
+  /**
+   * Montos de la escalera (7 niveles/"fases") por país, editables. Si un país no está
+   * aquí, se usan los montos por defecto de PAISES_EMBUDO. { CO: [12000, 16000, …], … }
+   */
+  montosPorPais?: Record<string, number[]>;
 }
 export function embudoVacio(): EmbudoWhatsApp {
   return {
