@@ -6,7 +6,6 @@ import {
   NOMBRE_PAIS,
   type ProductoBot,
 } from "@/lib/embudos/types";
-import { RotadorEditor } from "./RotadorEditor";
 import { PAISES_EMBUDO } from "@/lib/embudo/paises";
 
 type ProductoLite = { id: string; nombre: string; productoId?: string };
@@ -332,8 +331,8 @@ export function ProductosBotManager() {
             </div>
           </div>
 
-          {/* Mensajes con variantes (rotador), por producto. Tiene su propio guardado. */}
-          <RotadorEditor producto={productoKey} />
+          {/* Las variaciones de mensajes (rotador) ahora se editan en el constructor
+              del Embudo (pestaña "Embudo (pasos)"), inline en cada bloque. */}
 
           {/* Guardar (mensajes fijos + prompts + pixel + pago) */}
           <div className="flex flex-wrap items-center gap-3 rounded-xl border border-[var(--hairline)] glass p-4">
