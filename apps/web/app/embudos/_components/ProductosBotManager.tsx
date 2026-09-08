@@ -7,11 +7,32 @@ import {
   type ProductoBot,
 } from "@/lib/embudos/types";
 import { RotadorEditor } from "./RotadorEditor";
+import { PAISES_EMBUDO } from "@/lib/embudo/paises";
 
 type ProductoLite = { id: string; nombre: string; productoId?: string };
 type Fila = Record<string, string>; // producto, pais + campos (todos como string)
 
 const keyProducto = (p: ProductoLite) => (p.productoId?.trim() || p.id);
+
+// Datos de pago FIJOS por país (siempre los mismos). Se usan para PRECARGAR los campos
+// vacíos; lo que guarde el usuario manda.
+function defaultsPago(pais: string): Record<string, string> {
+  const p = PAISES_EMBUDO.find((x) => x.codigo === pais);
+  if (!p) return {};
+  return {
+    titular_cuenta: p.titular,
+    numero_cuenta: p.cuenta,
+    metodo_pago: p.metodos,
+    metodos_pago_texto: p.metodos,
+    brec_alias: p.alias,
+    moneda: p.moneda,
+    moneda_simbolo: p.simbolo,
+    precio_base: String(p.montos[0] ?? ""),
+    validacion_titular: p.titular,
+    validacion_cuenta_hint: p.hint,
+    validacion_alias: p.alias,
+  };
+}
 
 // Campos COMPARTIDOS entre países (se escriben en las 5 filas).
 const MENSAJES: { k: string; label: string }[] = [
@@ -94,6 +115,12 @@ export function ProductosBotManager() {
             fila[k] = v === null || v === undefined ? "" : String(v);
           }
           porPais[f.pais] = fila;
+        }
+      }
+      // Precarga de datos de pago: rellena SOLO los campos vacíos con los fijos del país.
+      for (const pa of PAISES_EMBUDO_BOT) {
+        for (const [k, v] of Object.entries(defaultsPago(pa))) {
+          if (!String(porPais[pa][k] ?? "").trim()) porPais[pa][k] = v;
         }
       }
       setFilas(porPais);
