@@ -9,6 +9,7 @@ const keyProducto = (p: ProductoLite) => (p.productoId?.trim() || p.id);
 
 // Campos de texto simple del formulario (label + si es sensible/password).
 const CAMPOS: { k: keyof NumeroBot; label: string; sensible?: boolean; hint?: string }[] = [
+  { k: "nombre", label: "Nombre (identifica la cuenta publicitaria)", hint: 'ej. "Fitness CO — cuenta Meta 1"' },
   { k: "numero_whatsapp", label: "Número de WhatsApp", hint: "El número marcable, ej. 573227784838" },
   { k: "phone_id", label: "Phone ID (Meta)", hint: "phone_number_id — es la clave del número" },
   { k: "waba_id", label: "WABA ID" },
@@ -180,7 +181,14 @@ EMBUDOS_SUPABASE_SERVICE_KEY=<tu service key>`}
                 key={n.phone_id}
                 className="flex flex-wrap items-center gap-3 rounded-xl border border-[var(--hairline)] glass p-4"
               >
-                <span className="font-medium text-text">{n.numero_whatsapp || n.phone_id}</span>
+                <div className="min-w-0">
+                  <div className="font-medium text-text">
+                    {n.nombre || n.numero_whatsapp || n.phone_id}
+                  </div>
+                  {n.nombre && (
+                    <div className="text-xs text-muted">{n.numero_whatsapp || n.phone_id}</div>
+                  )}
+                </div>
                 <span className="text-xs text-muted">
                   vende:{" "}
                   {n.producto_activo ? (

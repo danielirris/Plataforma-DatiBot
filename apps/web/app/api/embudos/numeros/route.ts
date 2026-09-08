@@ -31,6 +31,7 @@ export async function GET() {
 
 const CAMPOS: (keyof NumeroBot)[] = [
   "phone_id",
+  "nombre",
   "numero_whatsapp",
   "waba_id",
   "capi_token",

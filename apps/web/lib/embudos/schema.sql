@@ -13,6 +13,7 @@
 -- 1) NÚMEROS — lo ESTÁTICO de cada número de WhatsApp (una fila por número).
 create table if not exists public.numeros (
   phone_id         text primary key,            -- phone_number_id de Meta
+  nombre           text,                         -- nombre para identificar la cuenta publicitaria
   numero_whatsapp  text not null,               -- número marcable, ej. 573227784838
   waba_id          text,                        -- WhatsApp Business Account id
   capi_token       text,                        -- token System User (CAPI / envíos)  [SENSIBLE]
@@ -22,6 +23,9 @@ create table if not exists public.numeros (
   producto_activo  text,                        -- ⭐ apuntador: qué producto vende HOY
   actualizado_at   timestamptz default now()
 );
+-- Si la tabla `numeros` YA existe (no es la primera vez), corre solo esto para el
+-- nombre de la cuenta publicitaria:
+--   alter table public.numeros add column if not exists nombre text;
 
 -- 2) PRODUCTOS — lo VARIABLE por producto + país (reemplaza el negocio de config_bots).
 create table if not exists public.productos (

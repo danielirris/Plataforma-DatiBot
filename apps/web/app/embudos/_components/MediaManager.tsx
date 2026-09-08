@@ -201,7 +201,8 @@ export function MediaManager() {
             <option value="">— elige un número —</option>
             {numeros.map((n) => (
               <option key={n.phone_id} value={n.phone_id}>
-                {n.numero_whatsapp || n.phone_id}
+                {n.nombre || n.numero_whatsapp || n.phone_id}
+                {n.nombre ? ` · ${n.numero_whatsapp || n.phone_id}` : ""}
               </option>
             ))}
           </select>

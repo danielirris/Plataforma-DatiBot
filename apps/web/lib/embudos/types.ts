@@ -16,6 +16,8 @@ export const NOMBRE_PAIS: Record<string, string> = {
 /** `numeros` — lo estático de un número de WhatsApp. Una fila por número. */
 export interface NumeroBot {
   phone_id: string;
+  /** nombre para identificar la cuenta publicitaria (solo para la app) */
+  nombre: string;
   numero_whatsapp: string;
   waba_id: string;
   capi_token: string;
@@ -30,6 +32,7 @@ export interface NumeroBot {
 export function numeroBotVacio(): NumeroBot {
   return {
     phone_id: "",
+    nombre: "",
     numero_whatsapp: "",
     waba_id: "",
     capi_token: "",
