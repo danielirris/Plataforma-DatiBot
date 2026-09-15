@@ -80,13 +80,13 @@ body {
   background: var(--bg);
 }
 
-/* Títulos: Source Sans, semibold (no bold) en mayúsculas suaves. Jerarquía por tamaño,
-   no por peso — se ve más limpio y menos "gritado". */
+/* Títulos: Source Sans, semibold, en MINÚSCULA (sentence case). Jerarquía por tamaño,
+   no por peso ni mayúsculas — se ve más limpio y moderno. Las mayúsculas se reservan
+   para el wordmark y micro-etiquetas (que llevan su propia clase `uppercase`). */
 h1 {
   font-family: "Source Sans 3", "Source Sans Pro", ui-sans-serif, sans-serif;
-  text-transform: uppercase;
-  letter-spacing: 0.01em;
-  line-height: 1.05;
+  letter-spacing: -0.01em;
+  line-height: 1.1;
   font-weight: 600;
 }
 
@@ -112,38 +112,41 @@ code {
   -webkit-backdrop-filter: none;
 }
 
-/* ── Botones/enlaces de ACENTO = píldora neón, texto oscuro ─── */
+/* ── Botón PRIMARIO (acento lima): píldora suave, texto en Source Sans (ni mayúsculas ni
+   Space Mono ni bold agresivo). Menos "gritado". ─────────────── */
 button[class~="bg-accent"],
 a[class~="bg-accent"],
+label[class~="bg-accent"],
 button[class~="bg-accent/90"] {
   color: #111 !important;
   border-radius: 9999px;
-  border: 1px solid #111;
-  font-family: "Space Mono", ui-monospace, monospace;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  font-weight: 700;
-  transition: all 0.3s ease-out;
+  font-weight: 600;
+  transition: all 0.2s ease-out;
 }
 button[class~="bg-accent"]:hover:not(:disabled),
-a[class~="bg-accent"]:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 10px 22px -10px rgba(17, 17, 17, 0.45);
+a[class~="bg-accent"]:hover,
+label[class~="bg-accent"]:hover {
+  filter: brightness(1.04);
+  box-shadow: 0 8px 20px -12px rgba(17, 17, 17, 0.4);
 }
 
-/* Botones "outline" (bg-accent/10): píldora también, texto oliva legible. */
+/* Botón SECUNDARIO (bg-accent/10): NEUTRO (contorno gris, sin lima) → el lima queda solo
+   para la acción principal (un acento por pantalla). Incluye <label> (subir archivo). */
 button[class~="bg-accent/10"],
-a[class~="bg-accent/10"] {
+a[class~="bg-accent/10"],
+label[class~="bg-accent/10"] {
+  background: transparent !important;
+  border: 1px solid var(--border);
   border-radius: 9999px;
-  font-family: "Space Mono", ui-monospace, monospace;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  font-weight: 700;
-  transition: all 0.3s ease-out;
+  color: var(--text) !important;
+  font-weight: 600;
+  transition: all 0.2s ease-out;
 }
 button[class~="bg-accent/10"]:hover,
-a[class~="bg-accent/10"]:hover {
-  transform: translateY(-2px);
+a[class~="bg-accent/10"]:hover,
+label[class~="bg-accent/10"]:hover {
+  background: var(--hover) !important;
+  border-color: var(--input-border);
 }
 
 /* Badges (span) con fondo de acento: solo texto oscuro (el neón no se lee blanco). */

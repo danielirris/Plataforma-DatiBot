@@ -21,7 +21,7 @@ export default function HomePage() {
             <span className="h-1.5 w-1.5 rounded-full bg-accent-2 shadow-[0_0_8px] shadow-accent-2" />
             Centro de mando
           </span>
-          <h1 className="mt-5 text-6xl tracking-tight text-text sm:text-7xl">
+          <h1 className="mt-5 text-6xl uppercase tracking-tight text-text sm:text-7xl">
             Datibot<span className="text-accent-2">.</span>
           </h1>
           <p className="mt-4 max-w-xl text-lg leading-relaxed text-muted">
