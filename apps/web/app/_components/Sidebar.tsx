@@ -52,14 +52,14 @@ export function Sidebar() {
   const items = soloEditor ? NAV_ITEMS.filter((i) => i.href === "/extractor") : NAV_ITEMS;
   const inicio = soloEditor ? "/extractor" : "/";
 
-  // Pill de navegación: verde neón relleno, texto negro (misma vibra que anuncios).
+  // Navegación limpia: el verde (acento) es SOLO para el ítem activo; el resto es texto
+  // sobrio con hover sutil. Menos "muro verde", mejor jerarquía y lectura.
   const pill = (active: boolean) =>
     cn(
-      "flex items-center gap-2.5 rounded-full border px-3 py-2.5 text-xs font-bold uppercase tracking-tight text-[#111] transition-all",
-      "bg-[var(--accent)] border-[#111]/80 hover:-translate-y-[1px]",
+      "flex items-center gap-3 rounded-full px-3 py-2.5 text-sm transition-colors",
       active
-        ? "ring-2 ring-[#111] shadow-[0_6px_16px_-9px_rgba(17,17,17,0.55)]"
-        : "opacity-90 hover:opacity-100",
+        ? "bg-[var(--accent)] font-semibold text-[#111]"
+        : "text-muted hover:bg-[var(--hover)] hover:text-text",
     );
 
   // Colapsado: solo un botón flotante para volver a mostrar el menú.
@@ -90,7 +90,7 @@ export function Sidebar() {
       <div className="flex items-center justify-between gap-2 px-5 py-6">
         <Link href={inicio} className="flex items-center gap-2.5">
           <Logo size={34} />
-          <span className="text-xl font-bold uppercase tracking-tight text-text">Datibot</span>
+          <span className="text-xl font-semibold uppercase tracking-tight text-text">Datibot</span>
         </Link>
         <button
           onClick={() => setColapso(true)}

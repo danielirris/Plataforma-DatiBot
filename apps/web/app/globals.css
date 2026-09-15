@@ -80,13 +80,14 @@ body {
   background: var(--bg);
 }
 
-/* Títulos: Source Sans en bold mayúsculas (mismo look que la app de anuncios). */
+/* Títulos: Source Sans, semibold (no bold) en mayúsculas suaves. Jerarquía por tamaño,
+   no por peso — se ve más limpio y menos "gritado". */
 h1 {
   font-family: "Source Sans 3", "Source Sans Pro", ui-sans-serif, sans-serif;
   text-transform: uppercase;
-  letter-spacing: -0.01em;
-  line-height: 1;
-  font-weight: 700;
+  letter-spacing: 0.01em;
+  line-height: 1.05;
+  font-weight: 600;
 }
 
 /* Etiquetas/monoespaciadas. */

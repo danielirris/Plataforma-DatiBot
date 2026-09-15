@@ -22,9 +22,7 @@ export default function HomePage() {
             Centro de mando
           </span>
           <h1 className="mt-5 text-6xl tracking-tight text-text sm:text-7xl">
-            <span className="bg-[var(--accent)] box-decoration-clone px-2 py-0.5 text-[#111]">
-              Datibot
-            </span>
+            Datibot<span className="text-accent-2">.</span>
           </h1>
           <p className="mt-4 max-w-xl text-lg leading-relaxed text-muted">
             Todas tus herramientas en un solo lugar: crea productos, genera
