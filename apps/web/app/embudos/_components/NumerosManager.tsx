@@ -257,20 +257,37 @@ EMBUDOS_SUPABASE_SERVICE_KEY=<tu service key>`}
           </div>
 
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            {CAMPOS.map(({ k, label, sensible, hint }) => (
-              <label key={k} className="flex flex-col gap-1 text-sm">
-                <span className="text-muted">{label}</span>
-                <input
-                  type={sensible ? "password" : "text"}
-                  value={String(form[k] ?? "")}
-                  disabled={k === "phone_id" && editandoId !== null}
-                  onChange={(e) => setCampo(k, e.target.value)}
-                  autoComplete={sensible ? "new-password" : "off"}
-                  className="rounded-lg border border-[var(--hairline)] bg-[var(--field)] px-3 py-2 text-text outline-none focus:border-accent disabled:opacity-50"
-                />
-                {hint && <span className="text-xs text-muted">{hint}</span>}
-              </label>
-            ))}
+            {CAMPOS.map(({ k, label, sensible, hint }) => {
+              // El capi_token nunca llega del servidor (S2). Si ya está guardado, lo
+              // indicamos con placeholder y dejamos el campo vacío: escribir uno lo
+              // reemplaza; dejarlo vacío conserva el guardado.
+              const tokenGuardado = k === "capi_token" && Boolean(form.capi_token_set);
+              const placeholder =
+                k === "capi_token"
+                  ? tokenGuardado
+                    ? "•••••••• guardado — escribe para reemplazar"
+                    : "pega el token"
+                  : undefined;
+              const hintFinal =
+                tokenGuardado && !String(form.capi_token ?? "")
+                  ? "Ya hay un token guardado. Déjalo vacío para conservarlo."
+                  : hint;
+              return (
+                <label key={k} className="flex flex-col gap-1 text-sm">
+                  <span className="text-muted">{label}</span>
+                  <input
+                    type={sensible ? "password" : "text"}
+                    value={String(form[k] ?? "")}
+                    placeholder={placeholder}
+                    disabled={k === "phone_id" && editandoId !== null}
+                    onChange={(e) => setCampo(k, e.target.value)}
+                    autoComplete={sensible ? "new-password" : "off"}
+                    className="rounded-lg border border-[var(--hairline)] bg-[var(--field)] px-3 py-2 text-text outline-none focus:border-accent disabled:opacity-50"
+                  />
+                  {hintFinal && <span className="text-xs text-muted">{hintFinal}</span>}
+                </label>
+              );
+            })}
 
             {/* Producto activo (apuntador) */}
             <label className="flex flex-col gap-1 text-sm">

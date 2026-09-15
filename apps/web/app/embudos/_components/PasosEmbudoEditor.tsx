@@ -188,6 +188,31 @@ export function PasosEmbudoEditor() {
         fetch(`/api/embudos/rotador?producto=${encodeURIComponent(key)}`, { cache: "no-store" }),
         fetch(`/api/embudos/media?producto=${encodeURIComponent(key)}`, { cache: "no-store" }),
       ]);
+
+      // ⛔ SEGURIDAD DE DATOS: si CUALQUIER lectura falla (Supabase caído un instante,
+      // timeout…), NO entramos en modo edición. Si lo hiciéramos, el editor se vería
+      // vacío y al Guardar el borrado-por-diff arrasaría todos los pasos y variantes
+      // del producto. Mejor mostrar el error y pedir reintento (regla: NADA se borra).
+      if (!rp.ok || !rr.ok || !rm.ok) {
+        const fallo = !rp.ok ? rp : !rr.ok ? rr : rm;
+        const cual = !rp.ok ? "los pasos" : !rr.ok ? "el rotador" : "la media";
+        let detalle = `Error ${fallo.status}`;
+        try {
+          const d = await fallo.json();
+          if (d?.error) detalle = String(d.error);
+        } catch {
+          /* sin cuerpo JSON */
+        }
+        setBloques(vacio());
+        setCargado(false);
+        setEstado(
+          `⚠️ No se pudo leer ${cual} del embudo (${detalle}). NO edites ni guardes: ` +
+            `vuelve a elegir el producto para reintentar. No se ha tocado nada en la base.`,
+        );
+        setCargando(false);
+        return;
+      }
+
       const dp = await rp.json();
       const dr = await rr.json();
       const dm = await rm.json();
@@ -207,8 +232,12 @@ export function PasosEmbudoEditor() {
       }
       setBloques(porEstado);
       setCargado(true);
-      if (dp.error) setEstado("⚠️ " + dp.error);
+      const err = dp.error || dr.error || dm.error;
+      if (err) setEstado("⚠️ " + err);
     } catch (e) {
+      // Fallo de red/parse: no dejamos el editor "cargado" con datos a medias.
+      setBloques(vacio());
+      setCargado(false);
       setEstado("⚠️ " + (e instanceof Error ? e.message : "Error de red"));
     }
     setCargando(false);
@@ -297,7 +326,10 @@ export function PasosEmbudoEditor() {
 
   // ── guardado: reparte en pasos_embudo + mensajes_rotador + media_bots ──
   async function guardar() {
-    if (!productoKey) return;
+    // Solo se guarda si el embudo se cargó BIEN (cargado=true). Así un guardado nunca
+    // parte de un estado a medias por un fallo de lectura. El botón ya solo aparece con
+    // `cargado`, pero lo reforzamos aquí.
+    if (!productoKey || !cargado) return;
     setGuardando(true);
     setEstado("Guardando…");
 
@@ -347,12 +379,13 @@ export function PasosEmbudoEditor() {
         fetch("/api/embudos/pasos", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ producto: productoKey, filas: pasos }),
+          // vaciar:true = guardado intencional del estado completo (aunque quede vacío).
+          body: JSON.stringify({ producto: productoKey, filas: pasos, vaciar: true }),
         }),
         fetch("/api/embudos/rotador", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ producto: productoKey, filas: rotador }),
+          body: JSON.stringify({ producto: productoKey, filas: rotador, vaciar: true }),
         }),
       ];
       if (Object.keys(captions).length)

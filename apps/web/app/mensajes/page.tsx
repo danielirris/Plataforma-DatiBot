@@ -119,9 +119,25 @@ export default function MensajesPage() {
     <div className="mx-auto max-w-3xl px-6 py-10">
       <h1 className="text-2xl font-semibold text-text">💬 Mensajes del embudo (COD)</h1>
       <p className="mt-2 text-sm text-muted">
-        Pega aquí tus mensajes del embudo de WhatsApp, por país. Elige un producto, pega los
-        mensajes en cada espacio y guarda. Puedes escribir uno y copiarlo a los 5 países.
+        Redacta y guarda aquí tus mensajes del embudo de WhatsApp por país (borrador). Elige un
+        producto, pega los mensajes en cada espacio y guarda. Puedes escribir uno y copiarlo a
+        los 5 países.
       </p>
+
+      {/* ⚠️ Fuente de verdad: el bot lee Supabase (Embudos), NO este almacén. */}
+      <div className="mt-4 rounded-lg border-l-2 border-amber-400 bg-amber-400/10 p-3 text-xs text-muted">
+        <b className="text-text">Importante — qué usa el bot:</b> lo que escribes aquí es un{" "}
+        <b>borrador / redacción</b> y <b>no lo lee el bot</b>. El bot en n8n lee de{" "}
+        <b>Supabase</b>. Para que un mensaje llegue al bot, cópialo en{" "}
+        <a href="/embudos" className="text-accent-2 underline">
+          Embudos → «Bot por producto»
+        </a>{" "}
+        (mensajes fijos y datos de pago) y arma la secuencia en el{" "}
+        <a href="/embudos" className="text-accent-2 underline">
+          constructor del Embudo
+        </a>
+        . Editar ahí = cambiar el bot al instante.
+      </div>
 
       {/* Selector de producto */}
       <div className="mt-6">

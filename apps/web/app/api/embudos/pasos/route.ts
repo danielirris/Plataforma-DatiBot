@@ -44,7 +44,7 @@ export async function POST(req: Request) {
   if (!supabaseConfigurado())
     return NextResponse.json({ error: "Supabase no configurado." }, { status: 503 });
 
-  let body: { producto?: string; filas?: Partial<PasoEmbudo>[] } = {};
+  let body: { producto?: string; filas?: Partial<PasoEmbudo>[]; vaciar?: boolean } = {};
   try {
     body = ((await req.json()) as typeof body) ?? {};
   } catch {
@@ -54,6 +54,17 @@ export async function POST(req: Request) {
   const producto = String(body.producto ?? "").trim();
   if (!producto)
     return NextResponse.json({ error: "Falta el producto." }, { status: 400 });
+
+  // ⛔ Salvaguarda anti-borrado: como este POST borra por diff, un cuerpo SIN filas
+  // arrasaría todos los pasos del producto. Solo se permite ese borrado total si viene
+  // `vaciar:true` explícito (lo envía el constructor en un guardado intencional). Así,
+  // un POST accidental/incompleto nunca destruye el embudo.
+  const filasAusentes = !Array.isArray(body.filas) || body.filas.length === 0;
+  if (filasAusentes && body.vaciar !== true)
+    return NextResponse.json(
+      { error: "No llegaron pasos. Para vaciar el embudo a propósito envía vaciar:true." },
+      { status: 400 },
+    );
 
   const deseadas: PasoEmbudo[] = [];
   for (const f of body.filas ?? []) {

@@ -56,14 +56,71 @@ function superponerEntorno(store: ConfigStore): ConfigStore {
 }
 
 export async function readConfig(): Promise<ConfigStore> {
-  let store: ConfigStore = {};
+  return superponerEntorno(await readConfigRaw());
+}
+
+/** Lee el almacén tal cual está en disco, SIN superponer el entorno. Es la base
+ * correcta para fusionar al guardar (no debe hornear los secretos que vienen del
+ * Environment de EasyPanel dentro del archivo). */
+export async function readConfigRaw(): Promise<ConfigStore> {
   try {
     const raw = await fs.readFile(STORE_PATH, "utf8");
-    store = JSON.parse(raw) as ConfigStore;
+    return JSON.parse(raw) as ConfigStore;
   } catch {
     /* el almacén es opcional: puede venir todo del entorno */
+    return {};
   }
-  return superponerEntorno(store);
+}
+
+/** Claves de campos secretos (type "password") por grupo, según el esquema. */
+function camposSecretos(): { group: string; key: string }[] {
+  const out: { group: string; key: string }[] = [];
+  for (const g of CONFIG_GROUPS)
+    for (const f of g.fields) if (f.type === "password") out.push({ group: g.id, key: f.key });
+  return out;
+}
+
+/**
+ * Copia del store con los campos secretos VACIADOS. Los valores de API keys, tokens,
+ * service keys y credenciales del VPS NUNCA deben salir del servidor (ni en el JSON de
+ * /api/config ni en el payload RSC de la página de Configuración).
+ */
+export function redactSecrets(store: ConfigStore): ConfigStore {
+  const out: ConfigStore = {};
+  for (const [gid, group] of Object.entries(store)) {
+    out[gid] = { ...(group as Record<string, string>) };
+  }
+  for (const { group, key } of camposSecretos()) {
+    const g = out[group] as Record<string, string> | undefined;
+    if (g && g[key] !== undefined && String(g[key]) !== "") g[key] = "";
+  }
+  return out;
+}
+
+/**
+ * Fusiona un store entrante (posiblemente redactado por el cliente) sobre el guardado,
+ * CONSERVANDO los secretos existentes cuando el entrante los trae vacíos. Así, guardar
+ * desde el formulario (que nunca recibió los secretos) no los borra.
+ */
+export function mergePreservingSecrets(
+  incoming: ConfigStore,
+  current: ConfigStore,
+): ConfigStore {
+  const out: ConfigStore = {};
+  for (const [gid, group] of Object.entries(incoming)) {
+    out[gid] = { ...(group as Record<string, string>) };
+  }
+  for (const { group, key } of camposSecretos()) {
+    const inG = out[group] as Record<string, string> | undefined;
+    const entrante = inG ? inG[key] : undefined;
+    if (entrante === undefined || String(entrante) === "") {
+      const actual = (current[group] as Record<string, string> | undefined)?.[key];
+      if (actual !== undefined && String(actual) !== "") {
+        (out[group] ??= {} as Record<string, string>)[key] = actual;
+      }
+    }
+  }
+  return out;
 }
 
 export async function writeConfig(store: ConfigStore): Promise<void> {

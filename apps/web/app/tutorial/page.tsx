@@ -118,8 +118,11 @@ export default function TutorialPage() {
         >
           <ol className="space-y-3">
             <Paso n={1}>
-              En <b>Mensajes</b>, elige el producto y <b>pega</b> tus mensajes en cada
-              espacio, por país. Usa <b>Copiar a los 5 países</b> si son iguales.
+              En <b>Mensajes</b>, elige el producto y <b>redacta</b> tus mensajes por país
+              (es un <b>borrador</b>). Usa <b>Copiar a los 5 países</b> si son iguales.{" "}
+              <b className="text-text">Ojo:</b> el bot NO lee de <b>Mensajes</b>; los mensajes
+              que usa el bot se configuran en el <b>Paso 4</b> (Embudos → «Bot por producto» y
+              el constructor del Embudo, que leen de Supabase). Copia ahí lo que redactes aquí.
             </Paso>
             <Paso n={2}>
               Ajusta los <b>montos de la escalera</b> (7 fases) por país. Salen

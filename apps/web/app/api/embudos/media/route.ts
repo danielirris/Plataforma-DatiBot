@@ -33,7 +33,10 @@ export async function GET(req: Request) {
 
   try {
     const filas = await selectRows<MediaRow>("media_bots", { producto: `eq.${producto}` });
-    return NextResponse.json({ configurado: true, media: filas[0] ?? null });
+    const row = filas[0] ?? null;
+    // El capi_token no lo usa el cliente y es SENSIBLE: no debe salir del servidor.
+    if (row) delete (row as Record<string, unknown>).capi_token;
+    return NextResponse.json({ configurado: true, media: row });
   } catch (e) {
     const status = e instanceof SupabaseError ? e.status : 500;
     const msg = e instanceof Error ? e.message : "Error leyendo la media.";
@@ -64,6 +67,7 @@ export async function POST(req: Request) {
 
   try {
     const guardado = await upsertRow<MediaRow>("media_bots", fila, "producto");
+    if (guardado) delete (guardado as Record<string, unknown>).capi_token;
     return NextResponse.json({ media: guardado });
   } catch (e) {
     const status = e instanceof SupabaseError ? e.status : 500;

@@ -114,6 +114,8 @@ export async function POST(req: Request) {
 
   try {
     const guardado = await upsertRow("media_bots", fila, "producto");
+    // No devolvemos el capi_token al navegador (S2): el cliente no lo usa.
+    if (guardado) delete (guardado as Record<string, unknown>).capi_token;
     return NextResponse.json({ media: guardado, media_id: mediaId, url });
   } catch (e) {
     const status = e instanceof SupabaseError ? e.status : 500;

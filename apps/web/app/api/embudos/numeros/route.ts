@@ -21,7 +21,17 @@ export async function GET() {
     const numeros = await selectRows<NumeroBot>("numeros", {
       order: "numero_whatsapp.asc",
     });
-    return NextResponse.json({ configurado: true, numeros });
+    // El capi_token (System User de Meta) NUNCA viaja al navegador. Enviamos solo un
+    // flag de si está configurado; el form lo reescribe solo si el usuario teclea uno.
+    const safe = numeros.map((n) => {
+      const { capi_token, ...rest } = n;
+      return {
+        ...rest,
+        capi_token: "",
+        capi_token_set: Boolean(capi_token && String(capi_token).trim()),
+      };
+    });
+    return NextResponse.json({ configurado: true, numeros: safe });
   } catch (e) {
     const status = e instanceof SupabaseError ? e.status : 500;
     const msg = e instanceof Error ? e.message : "Error leyendo números.";
@@ -62,7 +72,17 @@ export async function POST(req: Request) {
 
   // Solo persistimos los campos conocidos (evita meter columnas extra por error).
   const fila: Record<string, unknown> = {};
-  for (const c of CAMPOS) fila[c] = String(body[c] ?? "").trim();
+  for (const c of CAMPOS) {
+    if (c === "capi_token") {
+      // El form no recibe el token guardado (S2): si llega vacío, NO lo pisamos —
+      // el upsert (merge-duplicates) conserva el valor de la base. Solo lo escribimos
+      // si el usuario tecleó uno nuevo.
+      const t = String(body.capi_token ?? "").trim();
+      if (t) fila.capi_token = t;
+      continue;
+    }
+    fila[c] = String(body[c] ?? "").trim();
+  }
 
   try {
     const guardado = await upsertRow<NumeroBot>("numeros", fila, "phone_id");

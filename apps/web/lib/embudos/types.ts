@@ -27,6 +27,8 @@ export interface NumeroBot {
   /** apuntador: qué producto vende HOY este número (clave `producto`) */
   producto_activo: string;
   actualizado_at?: string;
+  /** solo-cliente: indica si hay capi_token guardado (el valor NO viaja al navegador) */
+  capi_token_set?: boolean;
 }
 
 export function numeroBotVacio(): NumeroBot {

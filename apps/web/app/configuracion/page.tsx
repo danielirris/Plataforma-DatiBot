@@ -1,10 +1,13 @@
-import { readConfig } from "@plataforma/config";
+import { readConfig, redactSecrets } from "@plataforma/config";
 import { ConfigForm } from "./ConfigForm";
 
 export const dynamic = "force-dynamic";
 
 export default async function ConfiguracionPage() {
-  const initial = await readConfig();
+  // Redactamos los secretos ANTES de pasarlos al cliente: el formulario solo edita
+  // instrucciones y precios; las API keys/credenciales se gestionan en EasyPanel y
+  // no deben incrustarse en el HTML que llega al navegador.
+  const initial = redactSecrets(await readConfig());
 
   return (
     <div className="mx-auto max-w-4xl px-8 py-10">
