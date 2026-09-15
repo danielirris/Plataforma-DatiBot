@@ -1,27 +1,48 @@
-// Reporte de anuncios — embebe la app de atribución de Facebook Ads
-// (anuncios.datibot.lat) DENTRO de Datibot, como un panel más. La app trae TODAS
-// sus características (es la misma app, solo mostrada aquí). Tiene su propio login:
-// se inicia sesión dentro del panel. La URL se puede cambiar con la variable de
-// entorno NEXT_PUBLIC_ANUNCIOS_URL (por defecto, el subdominio conocido).
+// Reporte de anuncios — embebe la app de atribución (anuncios.datibot.lat) DENTRO de
+// Datibot, y entra con UN SOLO inicio de sesión: el panel NO muestra su propio login.
+//
+// Cómo: la app de anuncios se autentica por un token en la URL, ?s=sha256("usuario:
+// contraseña")[:24] (su propio login lo pone tras entrar). Como sus credenciales
+// (APP_USER/APP_PASSWORD) son las mismas de Datibot, calculamos ese token en el SERVIDOR
+// y embebemos anuncios.datibot.lat/?s=<token> → el panel abre directo. La contraseña
+// NUNCA sale al cliente: solo viaja el token (un hash), igual que el que la propia app
+// pone en su URL. Y la página ya está detrás del login de Datibot.
+import { createHash } from "node:crypto";
 
 export const metadata = { title: "Reporte de anuncios · Datibot" };
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic"; // token calculado con el entorno vigente
 
-const ANUNCIOS_URL =
-  process.env.NEXT_PUBLIC_ANUNCIOS_URL || "https://anuncios.datibot.lat";
+function anunciosSrc(): string {
+  const base = process.env.NEXT_PUBLIC_ANUNCIOS_URL || "https://anuncios.datibot.lat";
+  // Credenciales de anuncios = las de Datibot (ya igualadas). Se pueden sobreescribir con
+  // ANUNCIOS_APP_USER / ANUNCIOS_APP_PASSWORD si algún día difieren.
+  const user = process.env.ANUNCIOS_APP_USER || process.env.APP_AUTH_USER || "admin";
+  const pass = process.env.ANUNCIOS_APP_PASSWORD || process.env.APP_AUTH_PASSWORD || "";
+  if (!pass) return base; // sin contraseña, anuncios no tiene login: se embebe tal cual
+  const token = createHash("sha256").update(`${user}:${pass}`, "utf8").digest("hex").slice(0, 24);
+  try {
+    const u = new URL(base);
+    u.searchParams.set("s", token);
+    return u.toString();
+  } catch {
+    return `${base}${base.includes("?") ? "&" : "?"}s=${token}`;
+  }
+}
 
 export default function ReporteAnunciosPage() {
+  const src = anunciosSrc();
   return (
     <div className="flex h-full flex-col">
       <div className="flex items-center justify-between gap-3 border-b border-[var(--hairline)] px-6 py-3">
         <div className="min-w-0">
           <h1 className="text-lg font-medium text-text">📊 Reporte de anuncios</h1>
           <p className="text-xs text-muted">
-            Atribución de Facebook Ads. Inicia sesión dentro del panel con tu usuario y
-            contraseña.
+            Atribución de Facebook Ads — entra con tu misma sesión de Datibot.
           </p>
         </div>
         <a
-          href={ANUNCIOS_URL}
+          href={src}
           target="_blank"
           rel="noopener noreferrer"
           className="shrink-0 rounded-lg border border-[var(--hairline)] px-3 py-1.5 text-xs text-muted hover:text-text"
@@ -32,7 +53,7 @@ export default function ReporteAnunciosPage() {
       </div>
 
       <iframe
-        src={ANUNCIOS_URL}
+        src={src}
         title="Reporte de anuncios"
         className="w-full flex-1 border-0 bg-white"
         allow="clipboard-read; clipboard-write; fullscreen"
