@@ -418,7 +418,6 @@ export function PasosEmbudoEditor() {
 
     const pasos: PasoEmbudo[] = [];
     const rotador: { campo: string; variante: number; texto: string }[] = [];
-    const captions: Record<string, string> = {};
 
     for (const est of ESTADOS_EMBUDO) {
       (bloques[est] ?? []).forEach((b, idx) => {
@@ -438,8 +437,8 @@ export function PasosEmbudoEditor() {
           pasos.push({ ...base, tipo: "etiqueta", fuente: "directo", contenido: b.texto.trim() });
         } else if (b.tipo === "archivo") {
           const c = mediaCols(b.mediaSlot);
+          // El caption vive SOLO en Media (no lo escribe el constructor).
           pasos.push({ ...base, tipo: c.tipo, fuente: "media", contenido: c.media_id });
-          captions[c.caption] = b.caption;
         } else if (b.tipo === "producto") {
           pasos.push({ ...base, tipo: "mensaje", fuente: "config", contenido: b.productoMsg });
         } else if (b.usaVariaciones) {
@@ -462,10 +461,9 @@ export function PasosEmbudoEditor() {
     for (const p of pasosExtra) pasos.push(p);
     for (const r of rotadorExtra) rotador.push(r);
 
-    // M1 (orden seguro, atomicidad best-effort): escribimos PRIMERO el rotador (y los
-    // captions), porque los pasos con fuente:'rotador' los referencian. Si el rotador
-    // falla, abortamos ANTES de escribir los pasos: así nunca queda un paso apuntando a
-    // variantes que no existen.
+    // M1 (orden seguro, atomicidad best-effort): escribimos PRIMERO el rotador, porque
+    // los pasos con fuente:'rotador' lo referencian. Si el rotador falla, abortamos ANTES
+    // de escribir los pasos: así nunca queda un paso apuntando a variantes inexistentes.
     try {
       const rRot = await fetch("/api/embudos/rotador", {
         method: "POST",
@@ -483,22 +481,6 @@ export function PasosEmbudoEditor() {
         return;
       }
 
-      // Captions: cosméticos. Su fallo NO debe impedir guardar los pasos, así que va en
-      // su propio try/catch (un rechazo de red aquí no debe saltarse el POST de /pasos).
-      let avisoCaptions = "";
-      if (Object.keys(captions).length) {
-        try {
-          const rMed = await fetch("/api/embudos/media", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ producto: productoKey, campos: captions }),
-          });
-          if (!rMed.ok) avisoCaptions = " (los captions no se guardaron)";
-        } catch {
-          avisoCaptions = " (los captions no se guardaron)";
-        }
-      }
-
       const rPas = await fetch("/api/embudos/pasos", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -512,7 +494,7 @@ export function PasosEmbudoEditor() {
         // Aviso no bloqueante: bloques archivo cuyo media aún no se subió.
         const pend = slotsPendientes();
         const notaMedia = pend.length ? ` · falta subir en Media: ${pend.join(", ")}` : "";
-        setEstado("✓ Embudo guardado." + avisoCaptions + notaMedia);
+        setEstado("✓ Embudo guardado." + notaMedia);
       }
     } catch (e) {
       setEstado("⚠️ " + (e instanceof Error ? e.message : "Error de red"));
@@ -656,18 +638,15 @@ export function PasosEmbudoEditor() {
                     )}
 
                     {b.tipo === "archivo" && (
-                      <div className="grid gap-2 sm:grid-cols-[220px_1fr]">
-                        <label className="flex flex-col gap-1 text-xs text-muted">
-                          Archivo (se sube en Media)
-                          <select value={b.mediaSlot} onChange={(e) => upd(est, b.id, { mediaSlot: e.target.value })} className={inputCls}>
-                            {MEDIA_SLOTS.map((m) => (<option key={m.slot} value={m.slot}>{m.label}</option>))}
-                          </select>
-                        </label>
-                        <label className="flex flex-col gap-1 text-xs text-muted">
-                          Caption (texto que acompaña)
-                          <input value={b.caption} placeholder="opcional" onChange={(e) => upd(est, b.id, { caption: e.target.value })} className={inputCls} />
-                        </label>
-                      </div>
+                      <label className="flex max-w-xs flex-col gap-1 text-xs text-muted">
+                        Archivo (se sube en Media)
+                        <select value={b.mediaSlot} onChange={(e) => upd(est, b.id, { mediaSlot: e.target.value })} className={inputCls}>
+                          {MEDIA_SLOTS.map((m) => (<option key={m.slot} value={m.slot}>{m.label}</option>))}
+                        </select>
+                        <span className="text-[11px] text-muted">
+                          El texto que acompaña (caption) se edita en la pestaña <b>Media</b>.
+                        </span>
+                      </label>
                     )}
 
                     {b.tipo === "boton" && (

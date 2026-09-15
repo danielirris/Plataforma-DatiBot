@@ -14,10 +14,12 @@ type Fila = Record<string, string>; // producto, pais + campos (todos como strin
 const keyProducto = (p: ProductoLite) => (p.productoId?.trim() || p.id);
 
 // Datos de pago FIJOS por país (siempre los mismos). Se usan para PRECARGAR los campos
-// vacíos; lo que guarde el usuario manda.
-function defaultsPago(pais: string): Record<string, string> {
+// vacíos; lo que guarde el usuario manda. `precios` son los precios globales de
+// Configuración (por país); si hay uno, precarga el precio base con él.
+function defaultsPago(pais: string, precios: Record<string, number[]>): Record<string, string> {
   const p = PAISES_EMBUDO.find((x) => x.codigo === pais);
   if (!p) return {};
+  const base = precios[pais]?.[0] ?? p.montos[0];
   return {
     titular_cuenta: p.titular,
     numero_cuenta: p.cuenta,
@@ -26,7 +28,7 @@ function defaultsPago(pais: string): Record<string, string> {
     brec_alias: p.alias,
     moneda: p.moneda,
     moneda_simbolo: p.simbolo,
-    precio_base: String(p.montos[0] ?? ""),
+    precio_base: String(base ?? ""),
     validacion_titular: p.titular,
     validacion_cuenta_hint: p.hint,
     validacion_alias: p.alias,
@@ -77,6 +79,8 @@ export function ProductosBotManager() {
   const [otroText, setOtroText] = useState<string>(""); // texto del input "otro" (no dispara carga)
   const [filas, setFilas] = useState<Record<string, Fila>>({});
   const [pais, setPais] = useState<string>("CO");
+  // Precios globales (Configuración → Precios): precargan el precio base por país.
+  const [globalPrecios, setGlobalPrecios] = useState<Record<string, number[]>>({});
   const [cargando, setCargando] = useState<boolean>(false);
   const [guardando, setGuardando] = useState<boolean>(false);
   const [estado, setEstado] = useState<string>("");
@@ -88,6 +92,10 @@ export function ProductosBotManager() {
       .then((lista: ProductoLite[]) =>
         setProductosDatibot(Array.isArray(lista) ? lista : []),
       )
+      .catch(() => {});
+    fetch("/api/precios", { cache: "no-store" })
+      .then((r) => r.json())
+      .then((d) => setGlobalPrecios(d.precios ?? {}))
       .catch(() => {});
   }, []);
 
@@ -117,9 +125,10 @@ export function ProductosBotManager() {
           porPais[f.pais] = fila;
         }
       }
-      // Precarga de datos de pago: rellena SOLO los campos vacíos con los fijos del país.
+      // Precarga de datos de pago: rellena SOLO los campos vacíos con los fijos del país
+      // (el precio base sale de los precios globales de Configuración si están definidos).
       for (const pa of PAISES_EMBUDO_BOT) {
-        for (const [k, v] of Object.entries(defaultsPago(pa))) {
+        for (const [k, v] of Object.entries(defaultsPago(pa, globalPrecios))) {
           if (!String(porPais[pa][k] ?? "").trim()) porPais[pa][k] = v;
         }
       }

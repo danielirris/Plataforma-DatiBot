@@ -28,13 +28,6 @@ export const NAV_ITEMS: NavItem[] = [
       "Crea un producto: identidad, oferta, anuncios ganadores de referencia, guión de video de embudo, ebook y videos.",
   },
   {
-    href: "/mensajes",
-    label: "Mensajes",
-    icon: "💬",
-    description:
-      "Pega tus mensajes del embudo de WhatsApp (COD) por país y guárdalos.",
-  },
-  {
     href: "/ebooks",
     label: "Ebooks",
     icon: "📕",

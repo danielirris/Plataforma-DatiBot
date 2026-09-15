@@ -53,7 +53,7 @@ export default function TutorialPage() {
       <nav className="mt-6 flex flex-wrap gap-2 text-xs">
         {[
           ["#producto", "1 · Crear un producto"],
-          ["#mensajes", "2 · Mensajes y precios"],
+          ["#precios", "2 · Precios por país"],
           ["#videos", "3 · Videos y anuncios"],
           ["#embudo", "4 · Montar número + producto"],
           ["#plantillas", "Plantillas n8n"],
@@ -110,35 +110,28 @@ export default function TutorialPage() {
         </Bloque>
       </div>
 
-      {/* 2. MENSAJES */}
-      <div id="mensajes">
+      {/* 2. PRECIOS */}
+      <div id="precios">
         <Bloque
-          titulo="2 · Mensajes y precios"
-          sub="Los textos del embudo COD por país y los montos de la escalera."
+          titulo="2 · Precios por país"
+          sub="Los montos base por país, en un solo lugar."
         >
           <ol className="space-y-3">
             <Paso n={1}>
-              En <b>Mensajes</b>, elige el producto y <b>redacta</b> tus mensajes por país
-              (es un <b>borrador</b>). Usa <b>Copiar a los 5 países</b> si son iguales.{" "}
-              <b className="text-text">Ojo:</b> el bot NO lee de <b>Mensajes</b>; los mensajes
-              que usa el bot se configuran en el <b>Paso 4</b> (Embudos → «Bot por producto» y
-              el constructor del Embudo, que leen de Supabase). Copia ahí lo que redactes aquí.
+              En{" "}
+              <Link href="/configuracion" className="text-accent-2 underline">
+                Configuración → Precios por país
+              </Link>{" "}
+              define el <b>monto base</b> de cada país. Es el valor por defecto que se
+              precarga en cada producto.
             </Paso>
             <Paso n={2}>
-              Ajusta los <b>montos de la escalera</b> (7 fases) por país. Salen
-              predeterminados de los <b>precios globales</b> (ver abajo) y puedes cambiarlos
-              por producto.
+              Los <b>mensajes del bot</b> ya no se escriben aquí: se configuran en el{" "}
+              <b>Paso 4</b> — <b>Embudos → «Bot por producto»</b> (mensajes fijos y datos de
+              pago) y el <b>constructor del Embudo</b> (la secuencia), que son lo que el bot
+              lee en vivo desde Supabase.
             </Paso>
-            <Paso n={3}>Guarda.</Paso>
           </ol>
-          <div className="mt-4 rounded-lg border-l-2 border-accent bg-[var(--field)] p-3 text-xs text-muted">
-            <b className="text-text">Precios globales:</b> en{" "}
-            <Link href="/configuracion" className="text-accent-2 underline">
-              Configuración → Precios por país
-            </Link>{" "}
-            defines los montos por defecto. Lo que pongas ahí sale predeterminado al editar
-            los montos de cualquier producto.
-          </div>
         </Bloque>
       </div>
 
