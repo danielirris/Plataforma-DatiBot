@@ -379,7 +379,7 @@ export function EbooksCreator({ productos }: { productos: Producto[] }) {
   if (!productos.length) {
     return (
       <div className="mx-auto max-w-3xl px-8 py-16 text-center">
-        <h1 className="text-2xl font-semibold">📕 Ebooks</h1>
+        <h1 className="text-2xl font-semibold">Ebooks</h1>
         <p className="mt-3 text-muted">
           El ebook nace de un <b>producto</b> y su oferta. Primero crea un producto en{" "}
           <Link href="/productos" className="text-accent-2 hover:underline">
@@ -393,7 +393,7 @@ export function EbooksCreator({ productos }: { productos: Producto[] }) {
 
   return (
     <div className="mx-auto max-w-[1500px] px-6 py-10">
-      <h1 className="text-2xl font-semibold">📕 Ebooks</h1>
+      <h1 className="text-2xl font-semibold">Ebooks</h1>
       <p className="mt-2 mb-8 text-sm text-muted">
         Convierte un producto en un ebook para vender. El libro nace de la{" "}
         <b>oferta</b> del producto y se crea en tres fases: idea → índice → redacción

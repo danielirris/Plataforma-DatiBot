@@ -78,7 +78,7 @@ export function MisAnuncios() {
   return (
     <div className="mx-auto max-w-5xl px-8 py-10">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-2xl font-semibold">🎞️ Mis anuncios</h1>
+        <h1 className="text-2xl font-semibold">Mis anuncios</h1>
         <button
           onClick={cargar}
           className="rounded border border-[var(--hairline)] px-3 py-1.5 text-xs text-muted hover:text-text"

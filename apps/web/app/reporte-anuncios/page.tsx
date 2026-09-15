@@ -36,7 +36,7 @@ export default function ReporteAnunciosPage() {
     <div className="flex h-full flex-col">
       <div className="flex items-center justify-between gap-3 border-b border-[var(--hairline)] px-6 py-3">
         <div className="min-w-0">
-          <h1 className="text-lg font-medium text-text">📊 Reporte de anuncios</h1>
+          <h1 className="text-lg font-medium text-text">Reporte de anuncios</h1>
           <p className="text-xs text-muted">
             Atribución de Facebook Ads — entra con tu misma sesión de Datibot.
           </p>

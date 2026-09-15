@@ -657,7 +657,7 @@ export function EditorVideos({
 
   return (
     <div className="mx-auto max-w-3xl px-8 py-10">
-      <h1 className="text-2xl font-semibold">🎬 Editor de videos</h1>
+      <h1 className="text-2xl font-semibold">Editor de videos</h1>
       <p className="mt-2 mb-8 text-sm text-muted">
         {soloEditor ? (
           <>
