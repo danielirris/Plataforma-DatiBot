@@ -102,6 +102,19 @@ function Cod({ children }: { children: React.ReactNode }) {
   );
 }
 
+// Sub-guía plegable dentro de una sección (para pasos de configuración opcionales).
+function SubGuia({ titulo, children }: { titulo: string; children: React.ReactNode }) {
+  return (
+    <details className="group/sub mt-2 rounded-xl border border-[var(--hairline)] bg-[var(--field)] px-4 py-3">
+      <summary className="flex cursor-pointer list-none items-center gap-2 text-sm font-medium text-text [&::-webkit-details-marker]:hidden">
+        <span className="text-muted transition-transform group-open/sub:rotate-45">+</span>
+        {titulo}
+      </summary>
+      <div className="mt-3 border-t border-[var(--hairline)] pt-3">{children}</div>
+    </details>
+  );
+}
+
 // ── Página ───────────────────────────────────────────────────────────────────
 
 export default function TutorialPage() {
@@ -473,23 +486,165 @@ export default function TutorialPage() {
         id="reporte"
         num="6"
         titulo="Reporte de anuncios"
-        sub="La atribución de Facebook Ads embebida dentro de Datibot: qué anuncio trae cada venta y cuánto gastas."
+        sub="Atribución de Facebook Ads dentro de Datibot: qué anuncio trae cada venta, cuánto gastas y cómo dejarlo conectado."
       >
         <ol className="space-y-3">
           <Paso n={1}>
             <b>Entra sin otro login.</b> Abre <b>Reporte de anuncios</b> desde el menú: usa
-            tu misma sesión de Datibot, no pide otro usuario ni contraseña.
+            tu misma sesión de Datibot, sin pedir otro usuario ni contraseña.
           </Paso>
           <Paso n={2}>
-            <b>Qué muestra.</b> El panel de atribución: qué anuncio generó cada venta,
-            cuánto has gastado y los presupuestos por anuncio, para decidir dónde invertir.
-          </Paso>
-          <Paso n={3}>
-            <b>Si sale en blanco.</b> Pulsa <b>↗ Abrir en pestaña nueva</b> arriba a la
-            derecha; funcionará en su propia pestaña (no es un fallo de tu sesión, es solo
-            cómo se muestra embebido).
+            <b>Qué muestra.</b> Qué anuncio generó cada venta (cruzado por <Cod>ad_id</Cod>),
+            el gasto y los presupuestos por anuncio, y el rendimiento por país. Los importes
+            van en <b>USD</b>, con su equivalente en pesos debajo de tus ventas propias.
           </Paso>
         </ol>
+
+        <p className="mt-5 text-xs font-semibold uppercase tracking-wide text-muted">
+          Puesta a punto (una vez)
+        </p>
+
+        <SubGuia titulo="Conectar un Business de Facebook (token de Usuario del Sistema)">
+          <p className="mb-3 text-sm text-muted">
+            Es la forma segura y permanente (no caduca como los tokens normales).
+          </p>
+          <ol className="space-y-2">
+            <Paso n={1}>
+              Entra a <b>business.facebook.com</b> con el perfil dueño del Business →{" "}
+              <b>Configuración del negocio</b> (⚙️).
+            </Paso>
+            <Paso n={2}>
+              <b>Usuarios → Usuarios del sistema → Agregar</b>: ponle nombre (ej. «Reporte
+              Ads») y rol <b>Administrador</b>.
+            </Paso>
+            <Paso n={3}>
+              <b>Asignar activos → Cuentas publicitarias</b> → marca <b>todas</b> las que
+              quieras ver → permiso <b>Administrar campañas</b>.
+            </Paso>
+            <Paso n={4}>
+              <b>Generar nuevo token</b> → elige tu App → permisos <Cod>ads_read</Cod> y{" "}
+              <Cod>ads_management</Cod> (y <Cod>business_management</Cod> si aparece) →{" "}
+              <b>copia el token</b>.
+            </Paso>
+            <Paso n={5}>
+              En el panel → <b>Configuración → Conexiones → Agregar conexión</b>, pega el
+              token y guarda. Vuelve al Dashboard y <b>Recargar</b>.
+            </Paso>
+          </ol>
+          <p className="mt-2 text-xs text-muted">
+            Repite por cada Business que tengas: cada Business = una conexión.
+          </p>
+        </SubGuia>
+
+        <SubGuia titulo="Conectar un 2º Business u otro perfil (una sola app central)">
+          <p className="mb-3 text-sm text-muted">
+            Si administras otro perfil con su propio Business, <b className="text-text">no
+            uses «Socios»</b>. Lo mejor es reusar <b className="text-text">una sola app
+            central</b> (la de tu perfil principal) para todos.
+          </p>
+          <ol className="space-y-2">
+            <Paso n={1}>
+              Haz que tu <b>app central</b> esté disponible en el Business del 2º perfil: en
+              ese Business → <b>Configuración del negocio → Cuentas → Apps → Agregar →
+              Conectar un identificador de app (App ID)</b> y pega el <b>App ID</b> de tu app
+              central.
+            </Paso>
+            <Paso n={2}>
+              En ese Business crea un <b>Usuario del sistema</b> Administrador, asígnale sus
+              cuentas y <b>genera el token</b> eligiendo la <b>app central</b> (ya aparece en
+              la lista).
+            </Paso>
+            <Paso n={3}>
+              Pega ese token en <b>Configuración → Conexiones</b>. Ahora ves los dos Business
+              juntos y puedes filtrar por Business.
+            </Paso>
+          </ol>
+        </SubGuia>
+
+        <SubGuia titulo="¿No tienes App de Facebook? Créala una vez">
+          <ol className="space-y-2">
+            <Paso n={1}>
+              Entra a <b>developers.facebook.com/apps → Crear app → tipo Negocio</b>.
+            </Paso>
+            <Paso n={2}>
+              En <b>Configuración → Información básica</b> copia el <b>App ID</b> y la{" "}
+              <b>Clave secreta</b>.
+            </Paso>
+            <Paso n={3}>
+              Agrega el producto <b>Marketing API</b>. En <b>modo de desarrollo</b> basta
+              para leer TUS propias cuentas (no necesitas revisión de Facebook).
+            </Paso>
+          </ol>
+        </SubGuia>
+
+        <SubGuia titulo="Conectar Supabase (2ª fuente de ventas)">
+          <ol className="space-y-2">
+            <Paso n={1}>
+              En <b>supabase.com → Project Settings → API</b> copia el <b>Project URL</b> y
+              una <b>API key</b> (la <Cod>service_role</Cod>, o una con lectura de tu tabla).
+            </Paso>
+            <Paso n={2}>
+              Ponlas como env en EasyPanel del servicio de anuncios: <Cod>SUPABASE_URL</Cod>{" "}
+              y <Cod>SUPABASE_KEY</Cod>. Guarda y redespliega.
+            </Paso>
+            <Paso n={3}>
+              En el panel → <b>Configuración → Supabase</b>: escribe el nombre de la tabla y{" "}
+              <b>mapea las columnas</b> (id del anuncio, valor, fecha/hora, y opcional
+              producto/país e id único). <b>Probar conexión</b> → <b>Sincronizar</b>.
+            </Paso>
+          </ol>
+          <p className="mt-2 text-xs text-muted">
+            Las ventas de Supabase se deduplican por su id de fila. En <b>Configuración →
+            Moneda → Fuente de las ventas</b> eliges contar todas las fuentes o solo una
+            (para no contar doble).
+          </p>
+        </SubGuia>
+
+        <SubGuia titulo="Atribución con CAPI y el ctwa_clid (importante)">
+          <p className="mb-3 text-sm text-muted">
+            Facebook ya <b className="text-text">no atribuye por el número</b> del cliente:
+            manda un <Cod>ctwa_clid</Cod> (el ID del clic en el anuncio, distinto en cada
+            clic). Es lo que hay que devolverle.
+          </p>
+          <ol className="space-y-2">
+            <Paso n={1}>
+              En <b>n8n</b>, en el primer mensaje del lead, guarda{" "}
+              <Cod>referral.ctwa_clid</Cod> (y <Cod>referral.source_id</Cod> = el ad_id)
+              junto a la venta en Supabase.
+            </Paso>
+            <Paso n={2}>
+              En el panel → <b>Configuración → Pixel / CAPI</b>: pon el <b>Pixel ID</b> y el{" "}
+              <b>token CAPI</b>, y <b>mapea la columna</b> del <Cod>ctwa_clid</Cod>.
+            </Paso>
+            <Paso n={3}>
+              La app envía cada venta a Facebook como conversión (Purchase) con ese ID: así
+              Facebook optimiza y arma públicos aunque la venta ocurra en WhatsApp.
+            </Paso>
+          </ol>
+          <p className="mt-2 text-xs text-muted">
+            El teléfono/email (hasheados) siguen de respaldo, pero la llave principal ahora
+            es el <Cod>ctwa_clid</Cod>.
+          </p>
+        </SubGuia>
+
+        <SubGuia titulo="Ver la facturación por país">
+          <p className="text-sm text-muted">
+            La app saca el país de cada anuncio del <b className="text-text">targeting</b> del
+            conjunto (a quién se lo muestras). El <b>gasto por país</b> sale con la conexión
+            de Facebook; la <b>facturación por país</b> sale si tus ventas traen el país
+            (columna <Cod>Pais</Cod> en Excel/Sheets, o la columna mapeada en Supabase).
+            Míralo en <b>Dashboard → Rendimiento por país</b>.
+          </p>
+        </SubGuia>
+
+        <Notas
+          tono="tip"
+          titulo="Bueno saber"
+          items={[
+            <>El tutorial de anuncios está <b>unificado aquí</b>: dentro del panel, la pestaña «Tutoriales» te trae a esta misma sección.</>,
+            <>Si el panel llegara a salir en blanco, ábrelo directo en <b>anuncios.datibot.lat</b>.</>,
+          ]}
+        />
       </Seccion>
 
       {/* ── 7 · EMBUDOS — número + producto (lo importante) ── */}
