@@ -228,47 +228,6 @@ export interface GuionEmbudo {
   generadoEn: string;
 }
 
-// ── EMBUDO DE WHATSAPP (mensajes COD por país) ─────────────────
-// La escalera es base (nivel 1) + 6 ORDERBUMPS (niveles 2-7). El MONTO de cada
-// nivel es fijo por país (lib/embudo/paises.ts); aquí solo se define QUÉ bono
-// agrega cada orderbump. Los 10 mensajes se generan con IA por país.
-export interface Orderbump {
-  /** nivel de la escalera: 2..7 (el 1 es el producto base de la oferta) */
-  nivel: number;
-  /** el bono que agrega este nivel */
-  nombre_bono: string;
-  /** por qué le sirve al cliente (el paréntesis del msg_cobro) */
-  descripcion: string;
-}
-export interface VendedorEmbudo {
-  nombre: string;
-  genero: "F" | "M" | "N";
-  oficio: string;
-}
-export interface EmbudoWhatsApp {
-  vendedor: VendedorEmbudo;
-  /** los 6 orderbumps (niveles 2..7); el nivel 1 es el producto base de la oferta */
-  orderbumps: Orderbump[];
-  /** los 10 mensajes generados por país: { CO: { msg_bienvenida: "...", … }, … } */
-  mensajesPorPais: Record<string, Record<string, string>>;
-  /**
-   * Montos de la escalera (7 niveles/"fases") por país, editables. Si un país no está
-   * aquí, se usan los montos por defecto de PAISES_EMBUDO. { CO: [12000, 16000, …], … }
-   */
-  montosPorPais?: Record<string, number[]>;
-}
-export function embudoVacio(): EmbudoWhatsApp {
-  return {
-    vendedor: { nombre: "", genero: "F", oficio: "" },
-    orderbumps: Array.from({ length: 6 }, (_, i) => ({
-      nivel: i + 2,
-      nombre_bono: "",
-      descripcion: "",
-    })),
-    mensajesPorPais: {},
-  };
-}
-
 export function bonoVacio(): BonoOferta {
   return {
     titulo: "",
@@ -328,8 +287,6 @@ export interface Producto {
   ebook: EbookProducto;
   /** videos largos adjuntos (materia prima para editar los anuncios) */
   videos: VideoProducto[];
-  /** embudo de WhatsApp (COD): vendedor, orderbumps y los 10 mensajes por país. Se llena en la sección Mensajes. */
-  embudo: EmbudoWhatsApp | null;
   creadoEn: string;
   actualizadoEn: string;
 }
@@ -349,7 +306,6 @@ export function crearProductoBorrador(parcial: Partial<Producto> = {}): Producto
     guionEmbudo: null,
     ebook: ebookVacio(),
     videos: [],
-    embudo: null,
     creadoEn: "",
     actualizadoEn: "",
     ...parcial,

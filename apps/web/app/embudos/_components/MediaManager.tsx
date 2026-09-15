@@ -36,7 +36,9 @@ export function MediaManager() {
   const [captions, setCaptions] = useState<Record<string, string>>({});
   const [cargando, setCargando] = useState<boolean>(false);
   const [subiendo, setSubiendo] = useState<Record<string, boolean>>({});
+  const [borrando, setBorrando] = useState<Record<string, boolean>>({});
   const [renovando, setRenovando] = useState<boolean>(false);
+  const [vaciando, setVaciando] = useState<boolean>(false);
   const [estado, setEstado] = useState<string>("");
   const cargado = productoKey !== "" && !cargando;
 
@@ -149,6 +151,56 @@ export function MediaManager() {
     setRenovando(false);
   }
 
+  async function borrarSlot(slot: string) {
+    const label = SLOTS.find((s) => s.slot === slot)?.label ?? slot;
+    if (!confirm(`¿Quitar «${label}»? Se borra el archivo y su media_id (podrás volver a subirlo).`))
+      return;
+    setBorrando((s) => ({ ...s, [slot]: true }));
+    setEstado("");
+    try {
+      const r = await fetch("/api/embudos/media/borrar", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ producto: productoKey, slot }),
+      });
+      const data = await r.json().catch(() => ({}));
+      if (r.ok) {
+        aplicarMedia((data.media ?? null) as MediaRow | null, productoKey);
+        setEstado(`✓ «${label}» quitado.`);
+      } else setEstado("⚠️ " + (data.error ?? `Error ${r.status}`));
+    } catch (e) {
+      setEstado("⚠️ " + (e instanceof Error ? e.message : "Error de red"));
+    }
+    setBorrando((s) => ({ ...s, [slot]: false }));
+  }
+
+  async function vaciarTodo() {
+    if (
+      !confirm(
+        "¿Vaciar TODA la media de este producto? Se borran todos los archivos y se suelta el " +
+          "número (para poder migrar el producto a otro número). Tendrás que volver a subir.",
+      )
+    )
+      return;
+    setVaciando(true);
+    setEstado("");
+    try {
+      const r = await fetch("/api/embudos/media/borrar", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ producto: productoKey, todo: true }),
+      });
+      const data = await r.json().catch(() => ({}));
+      if (r.ok) {
+        aplicarMedia((data.media ?? null) as MediaRow | null, productoKey);
+        setEstado("✓ Media vaciada. Ya puedes subirla en otro número.");
+      } else setEstado("⚠️ " + (data.error ?? `Error ${r.status}`));
+    } catch (e) {
+      setEstado("⚠️ " + (e instanceof Error ? e.message : "Error de red"));
+    }
+    setVaciando(false);
+  }
+
   const inputCls =
     "w-full rounded-lg border border-[var(--hairline)] bg-[var(--field)] px-3 py-2 text-sm text-text outline-none focus:border-accent";
 
@@ -257,20 +309,31 @@ export function MediaManager() {
                       {tieneId ? "media_id ✓" : "sin subir"}
                     </span>
                     {nombre && <span className="text-xs text-muted">{nombre}</span>}
-                    <label className="ml-auto cursor-pointer rounded-lg border border-accent/50 bg-accent/10 px-3 py-1.5 text-xs font-medium text-accent-2 hover:bg-accent/20">
-                      {subiendo[slot] ? "Subiendo…" : tieneId ? "Reemplazar" : "Subir"}
-                      <input
-                        type="file"
-                        accept={acepta}
-                        className="hidden"
-                        disabled={subiendo[slot]}
-                        onChange={(e) => {
-                          const f = e.target.files?.[0];
-                          e.target.value = "";
-                          if (f) subir(slot, f);
-                        }}
-                      />
-                    </label>
+                    <div className="ml-auto flex items-center gap-2">
+                      {tieneId && (
+                        <button
+                          onClick={() => borrarSlot(slot)}
+                          disabled={borrando[slot]}
+                          className="rounded-lg border border-[var(--hairline)] px-3 py-1.5 text-xs text-muted hover:text-red-400 disabled:opacity-50"
+                        >
+                          {borrando[slot] ? "Quitando…" : "Quitar"}
+                        </button>
+                      )}
+                      <label className="cursor-pointer rounded-lg border border-accent/50 bg-accent/10 px-3 py-1.5 text-xs font-medium text-accent-2 hover:bg-accent/20">
+                        {subiendo[slot] ? "Subiendo…" : tieneId ? "Reemplazar" : "Subir"}
+                        <input
+                          type="file"
+                          accept={acepta}
+                          className="hidden"
+                          disabled={subiendo[slot]}
+                          onChange={(e) => {
+                            const f = e.target.files?.[0];
+                            e.target.value = "";
+                            if (f) subir(slot, f);
+                          }}
+                        />
+                      </label>
+                    </div>
                   </div>
                   <input
                     value={captions[slot] ?? ""}
@@ -296,6 +359,14 @@ export function MediaManager() {
               className="rounded-lg border border-[var(--hairline)] px-3 py-2 text-sm text-muted hover:text-text disabled:opacity-50"
             >
               {renovando ? "Renovando…" : "🔄 Renovar media (re-subir a WhatsApp)"}
+            </button>
+            <button
+              onClick={vaciarTodo}
+              disabled={vaciando}
+              className="rounded-lg border border-[var(--hairline)] px-3 py-2 text-sm text-muted hover:text-red-400 disabled:opacity-50"
+              title="Borra toda la media y suelta el número, para migrar el producto a otro número"
+            >
+              {vaciando ? "Vaciando…" : "🗑️ Vaciar toda la media"}
             </button>
             {estado && (
               <span className={"text-sm " + (estado.startsWith("✓") ? "text-accent-2" : "text-muted")}>

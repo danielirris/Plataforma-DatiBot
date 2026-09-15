@@ -117,17 +117,3 @@ export function paisEmbudo(codigo: string): PaisEmbudo | undefined {
 export function fmtMonto(n: number): string {
   return n.toLocaleString("es-CO");
 }
-
-// Los 10 mensajes del embudo COD, en el orden canónico de la spec §1.
-export const RANURAS_EMBUDO: { key: string; label: string; descripcion: string }[] = [
-  { key: "msg_bienvenida", label: "1 · Bienvenida", descripcion: "Presenta un humano con nombre y oficio + espejo del deseo + neutraliza la objeción #1. Sin botón." },
-  { key: "msg_imagen_caption", label: "2 · Caption del pack", descripcion: "Muestra el tamaño del regalo: 5-6 bullets ✅ de lo que se lleva (los bonos van marcados como BONO al final). Sin botón." },
-  { key: "msg_compromiso_1", label: "3 · Compromiso 1", descripcion: "Promete un resultado con plazo corto y baja fricción. Termina en la instrucción del botón «Recibir material»." },
-  { key: "msg_compromiso_2", label: "4 · Compromiso 2 (el clave)", descripcion: "El trato de confianza: «transparente», «Primero te envío TODO… después tú decides», «contar con tu palabra». Termina en «Quiero recibirlo»." },
-  { key: "msg_felicitacion", label: "5 · Felicitación", descripcion: "Tras los PDFs: cierra el ciclo, da el primer micro-paso. NO menciona pago." },
-  { key: "msg_cobro", label: "6 · Cobro (escalera 7 niveles)", descripcion: "La escalera acumulativa de 7 niveles con los montos fijos del país. Cada nivel «Todo lo anterior + un bono»." },
-  { key: "msg_datos_pago", label: "7 · Datos de pago", descripcion: "Cuentas + comprobante. Único mensaje con datos duros. Incluye RUT/cédula si el país lo exige." },
-  { key: "msg_bonos_intro", label: "8 · Bonos intro", descripcion: "Cuando se valida el comprobante: gracias + «esto es lo que desbloqueaste»." },
-  { key: "msg_bonos_outro", label: "9 · Bonos outro", descripcion: "Cierre tras los links de bonos: recordatorio de la lógica de valor." },
-  { key: "msg_recordatorio", label: "10 · Recordatorio (+25 min)", descripcion: "Cobrar sin cobrar: cálido, cero amenaza, cero urgencia falsa. Prohibido «última oportunidad», «retirar», contadores." },
-];
