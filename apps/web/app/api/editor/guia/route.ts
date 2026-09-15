@@ -27,6 +27,11 @@ export async function POST(req: Request) {
       { status: 400 },
     );
 
+  // Rechaza por Content-Length ANTES de bufferizar (evita el pico de RAM / OOM).
+  const declarado = Number(req.headers.get("content-length") || 0);
+  if (declarado > MAX)
+    return NextResponse.json({ error: "El video supera el máximo (120 MB)." }, { status: 413 });
+
   const buf = Buffer.from(await req.arrayBuffer());
   if (!buf.length)
     return NextResponse.json({ error: "El video llegó vacío." }, { status: 400 });

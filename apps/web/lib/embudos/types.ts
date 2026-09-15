@@ -1,17 +1,16 @@
 // Tipos del editor de Embudos (CRUD sobre Supabase). Reflejan el esquema de
 // apps/web/lib/embudos/schema.sql (modelo Número vs Producto).
+import { PAISES_EMBUDO } from "@/lib/embudo/paises";
 
 /** Países que maneja un producto/embudo. */
 export const PAISES_EMBUDO_BOT = ["CO", "PE", "EC", "CL", "VE"] as const;
 export type PaisBot = (typeof PAISES_EMBUDO_BOT)[number];
 
-export const NOMBRE_PAIS: Record<string, string> = {
-  CO: "Colombia",
-  PE: "Perú",
-  EC: "Ecuador",
-  CL: "Chile",
-  VE: "Venezuela",
-};
+/** Mapa código→nombre, DERIVADO del único catálogo con datos (PAISES_EMBUDO), para no
+ * duplicar los nombres de país en dos sitios. */
+export const NOMBRE_PAIS: Record<string, string> = Object.fromEntries(
+  PAISES_EMBUDO.map((p) => [p.codigo, p.nombre]),
+);
 
 /** `numeros` — lo estático de un número de WhatsApp. Una fila por número. */
 export interface NumeroBot {

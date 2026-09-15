@@ -27,6 +27,12 @@ export async function POST(req: Request) {
       { status: 400 },
     );
 
+  // Rechaza por Content-Length ANTES de bufferizar el cuerpo en RAM (evita el pico de
+  // memoria de leer un archivo enorme solo para descartarlo — riesgo de OOM en la VPS).
+  const declarado = Number(req.headers.get("content-length") || 0);
+  if (declarado > MAX)
+    return NextResponse.json({ error: "El audio supera el máximo (60 MB)." }, { status: 413 });
+
   const buf = Buffer.from(await req.arrayBuffer());
   if (!buf.length)
     return NextResponse.json({ error: "El archivo de audio llegó vacío." }, { status: 400 });

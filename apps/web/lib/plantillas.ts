@@ -1,8 +1,8 @@
 // Almacén de las PLANTILLAS de n8n (JSON de los workflows) para descargarlas desde la
 // app. Se guardan en el volumen persistente (DATA_DIR/.plantillas-n8n/<slot>.json), así
 // que sobreviven a los redeploys. SOLO servidor.
-import { existsSync } from "node:fs";
 import path from "node:path";
+import { dataDir } from "@plataforma/config";
 
 export const PLANTILLAS: { slot: string; nombre: string; desc: string }[] = [
   { slot: "recibidor", nombre: "Recibidor (plantilla)", desc: "El workflow que recibe el webhook de Meta y puentea a Chatwoot. Se duplica por número." },
@@ -12,19 +12,9 @@ export const PLANTILLAS: { slot: string; nombre: string; desc: string }[] = [
 
 const SLOTS = new Set(PLANTILLAS.map((p) => p.slot));
 
-function repoRoot(): string {
-  let d = process.cwd();
-  for (let i = 0; i < 8; i++) {
-    if (existsSync(path.join(d, "pnpm-workspace.yaml"))) return d;
-    const p = path.dirname(d);
-    if (p === d) break;
-    d = p;
-  }
-  return process.cwd();
-}
-
 export function plantillasDir(): string {
-  return path.join(process.env.DATA_DIR || repoRoot(), ".plantillas-n8n");
+  // Usa el helper compartido de @plataforma/config (única fuente del directorio de datos).
+  return path.join(dataDir(), ".plantillas-n8n");
 }
 
 export function esSlotValido(s: string): boolean {

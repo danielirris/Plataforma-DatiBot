@@ -7,17 +7,6 @@
 // (modelo COD) viven en su propia sección y se guardan en `mensajes`.
 // ─────────────────────────────────────────────────────────────
 
-/** Países con los que se puede trabajar. */
-export const PAISES: { codigo: string; nombre: string }[] = [
-  { codigo: "CO", nombre: "Colombia" },
-  { codigo: "MX", nombre: "México" },
-  { codigo: "EC", nombre: "Ecuador" },
-  { codigo: "CL", nombre: "Chile" },
-  { codigo: "VE", nombre: "Venezuela" },
-  { codigo: "PE", nombre: "Perú" },
-  { codigo: "AR", nombre: "Argentina" },
-];
-
 export interface IdentidadProducto {
   promesa: string;
   posicionamiento: string;

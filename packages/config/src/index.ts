@@ -27,6 +27,20 @@ const DATA_DIR = process.env.DATA_DIR || findRepoRoot();
 const REPO_ROOT = findRepoRoot();
 const STORE_PATH = path.join(DATA_DIR, ".config-store.json");
 
+/** Raíz del monorepo (sube buscando pnpm-workspace.yaml). */
+export function repoRoot(): string {
+  return findRepoRoot();
+}
+
+/**
+ * Directorio de datos persistente: `DATA_DIR` (volumen montado en producción) o la raíz
+ * del monorepo (local). Fuente ÚNICA para ubicar los stores del proyecto; importa esto en
+ * vez de recalcular la raíz en cada módulo.
+ */
+export function dataDir(): string {
+  return process.env.DATA_DIR || findRepoRoot();
+}
+
 /**
  * Nombre de la variable de entorno para un campo: `<GRUPO>_<CAMPO>` en mayúsculas.
  * Ej.: grupo "ia" + campo "gemini_api_key"  ->  IA_GEMINI_API_KEY.

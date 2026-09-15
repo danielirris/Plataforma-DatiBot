@@ -1,3 +1,12 @@
+// ── CONVENCIÓN DE RUTAS DE PRODUCTO (histórica, a propósito) ──────────────────
+//   /api/products         → CRUD del recurso: listar (GET), crear (POST); y
+//                            /api/products/[id] para leer/editar/borrar.
+//   /api/productos/[id]/*  → ACCIONES sobre un producto (ebook, videos, generar-*, …).
+// Se dejan separadas para NO mover rutas ya en uso (mover el CRUD implicaría tocar
+// ~9 llamadores + la whitelist de SOLO_EDITOR: riesgo de 404 en "guardar producto" por
+// poco beneficio). Si algún día se unifica: migrar el CRUD a /api/productos y dejar
+// /api/products como alias temporal.
+// ─────────────────────────────────────────────────────────────────────────────
 import { NextResponse } from "next/server";
 import { listProducts, saveProduct, type Producto } from "@plataforma/products";
 
