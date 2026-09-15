@@ -9,6 +9,10 @@ type Ctx = { params: Promise<{ id: string }> };
 // Proxy del estado del job en el extractor (para el polling del editor).
 export async function GET(_req: Request, { params }: Ctx) {
   const { id } = await params;
+  // Sanea el id ANTES de construir la URL interna: un id con "../galeria" normalizaría
+  // .../api/jobs/../galeria → .../api/galeria y saltaría el bloqueo de SOLO_EDITOR.
+  if (!/^[a-zA-Z0-9_-]{6,64}$/.test(id))
+    return NextResponse.json({ error: "id de job inválido." }, { status: 400 });
   let res: Response;
   try {
     // Timeout corto: durante un render pesado el extractor puede tardar en

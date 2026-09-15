@@ -53,6 +53,7 @@ export function EbooksCreator({ productos }: { productos: Producto[] }) {
   const [fotosEstado, setFotosEstado] = useState<Record<string, string>>({});
   const [renderEstado, setRenderEstado] = useState<string>("");
   const [guardando, setGuardando] = useState<"idle" | "guardando" | "ok" | "error">("idle");
+  const [errGuardar, setErrGuardar] = useState<string>("");
   // Buffer editable de la redacción por capítulo (texto legible ↔ bloques).
   const [redaccion, setRedaccion] = useState<Record<number, string>>(() => {
     const r: Record<number, string> = {};
@@ -322,17 +323,23 @@ export function EbooksCreator({ productos }: { productos: Producto[] }) {
   async function guardar() {
     if (!p) return;
     setGuardando("guardando");
+    setErrGuardar("");
     try {
       const res = await fetch(`/api/products/${p.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(p),
       });
-      if (!res.ok) throw new Error();
-      const guardado = (await res.json()) as Producto;
-      setP(conEbook(guardado));
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setErrGuardar(data?.error ?? `Error ${res.status}`);
+        setGuardando("error");
+        return;
+      }
+      setP(conEbook(data as Producto));
       setGuardando("ok");
-    } catch {
+    } catch (e) {
+      setErrGuardar(e instanceof Error ? e.message : "Error de red");
       setGuardando("error");
     }
   }
@@ -757,7 +764,9 @@ export function EbooksCreator({ productos }: { productos: Producto[] }) {
               {guardando === "guardando" ? "Guardando…" : "Guardar ebook"}
             </button>
             {guardando === "ok" && <span className="text-sm text-accent-2">✓ Guardado</span>}
-            {guardando === "error" && <span className="text-sm text-red-400">Error al guardar</span>}
+            {guardando === "error" && (
+              <span className="text-sm text-[var(--bad)]">⚠️ {errGuardar || "Error al guardar"}</span>
+            )}
           </div>
         </section>
       )}
@@ -799,6 +808,10 @@ export function EbooksCreator({ productos }: { productos: Producto[] }) {
               <iframe
                 title="visor-modulo"
                 srcDoc={previewHtml}
+                // sandbox="" = sin scripts ni same-origin: el HTML del ebook (generado por
+                // IA / campos que pueden venir de la web) NO puede ejecutar JS en el origen
+                // autenticado. La vista previa solo necesita renderizar HTML/CSS.
+                sandbox=""
                 className="flex-1 w-full bg-white"
               />
             )}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import type { VideoProducto } from "@plataforma/products";
 import { subirPorTrozos } from "@/lib/uploads/cliente";
@@ -573,23 +573,54 @@ export function EditorVideos({
     }
   }
 
+  // Timer del polling en un ref + limpieza al desmontar (si no, seguía haciendo fetch y
+  // setState sobre un componente ya desmontado tras salir de /extractor).
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  useEffect(
+    () => () => {
+      if (pollRef.current) clearInterval(pollRef.current);
+    },
+    [],
+  );
+
   function poll(jobId: string) {
     setEstado("En cola…");
+    if (pollRef.current) clearInterval(pollRef.current);
+    let fallos = 0;
+    const MAX_FALLOS = 8; // ~20s de fallos seguidos antes de rendirse
     const timer = setInterval(async () => {
       try {
         const r = await fetch(`/api/editor/jobs/${jobId}`, { cache: "no-store" });
-        if (!r.ok) return; // sigue intentando
+        if (!r.ok) {
+          // 503 = ocupado transitorio; 404 = el job se perdió (redeploy/worker reiniciado).
+          // Toleramos algunos, pero si persisten, nos rendimos con un error accionable.
+          if (++fallos >= MAX_FALLOS) {
+            clearInterval(timer);
+            pollRef.current = null;
+            setTrabajando(false);
+            setEstado("⚠️ Se perdió el trabajo de render (¿reinicio del editor?). Reintenta.");
+          }
+          return;
+        }
+        fallos = 0;
         const j = (await r.json()) as JobState;
         setJob(j);
         setEstado(ESTADO_TXT[j.status] ?? "Procesando…");
         if (j.status === "done" || j.status === "error") {
           clearInterval(timer);
+          pollRef.current = null;
           setTrabajando(false);
         }
       } catch {
-        /* corte de red: reintentar en el próximo tick */
+        if (++fallos >= MAX_FALLOS) {
+          clearInterval(timer);
+          pollRef.current = null;
+          setTrabajando(false);
+          setEstado("⚠️ Sin conexión con el editor. Reintenta.");
+        }
       }
     }, 2500);
+    pollRef.current = timer;
   }
 
   // En el subdominio del editor no hay productos y es lo esperado: los videos
@@ -667,7 +698,7 @@ export function EditorVideos({
                 subirVideos(e.target.files);
                 e.target.value = ""; // permite volver a elegir el mismo archivo
               }}
-              className="mt-3 block w-full text-sm text-muted file:mr-3 file:rounded-lg file:border-0 file:bg-accent file:px-4 file:py-2 file:text-sm file:font-medium file:text-white disabled:opacity-60"
+              className="mt-3 block w-full text-sm text-muted file:mr-3 file:rounded-lg file:border-0 file:bg-accent file:px-4 file:py-2 file:text-sm file:font-medium file:text-[#111] disabled:opacity-60"
             />
             {videoEstado && <p className="mt-2 text-xs text-muted">{videoEstado}</p>}
           </div>

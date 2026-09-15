@@ -38,6 +38,23 @@ function fileFor(id: string): string {
   return path.join(STORE_DIR, `${safeId(id)}.json`);
 }
 
+/**
+ * Escribe un archivo de forma ATÓMICA: a un temporal en el MISMO directorio, con
+ * fsync, y luego rename() sobre el destino. Un corte/OOM a mitad de escritura deja el
+ * temporal a medias, NUNCA el archivo bueno truncado (regla: NADA se pierde en redeploy).
+ */
+async function writeFileAtomic(dest: string, data: string): Promise<void> {
+  const tmp = `${dest}.tmp-${process.pid}-${Date.now()}`;
+  const fh = await fs.open(tmp, "w");
+  try {
+    await fh.writeFile(data, "utf8");
+    await fh.sync();
+  } finally {
+    await fh.close();
+  }
+  await fs.rename(tmp, dest);
+}
+
 // Los nombres de producto SIEMPRE van en mayúsculas (regla de negocio). Se aplica al
 // leer y al guardar, así los productos que ya existían también salen en mayúsculas sin
 // necesidad de migrar el volumen a mano.
@@ -63,7 +80,9 @@ export async function listProducts(): Promise<Producto[]> {
               await fs.readFile(path.join(STORE_DIR, f), "utf8"),
             ) as Producto,
           );
-        } catch {
+        } catch (e) {
+          // El archivo vino de readdir: si no parsea es corrupción, no ausencia.
+          console.error(`[products] ${f} no se pudo parsear:`, e instanceof Error ? e.message : e);
           return null;
         }
       }),
@@ -76,7 +95,14 @@ export async function listProducts(): Promise<Producto[]> {
 export async function getProduct(id: string): Promise<Producto | null> {
   try {
     return conNombreMayus(JSON.parse(await fs.readFile(fileFor(id), "utf8")) as Producto);
-  } catch {
+  } catch (e) {
+    // Si el archivo EXISTE pero no parsea, es CORRUPCIÓN (no ausencia): que quede en logs
+    // en vez de desaparecer en silencio de la UI.
+    if (existsSync(fileFor(id)))
+      console.error(
+        `[products] ${fileFor(id)} existe pero no se pudo leer/parsear:`,
+        e instanceof Error ? e.message : e,
+      );
     return null;
   }
 }
@@ -95,11 +121,7 @@ export async function saveProduct(p: Producto): Promise<Producto> {
     creadoEn: p.creadoEn || now,
     actualizadoEn: now,
   };
-  await fs.writeFile(
-    fileFor(producto.id),
-    JSON.stringify(producto, null, 2),
-    "utf8",
-  );
+  await writeFileAtomic(fileFor(producto.id), JSON.stringify(producto, null, 2));
   return producto;
 }
 

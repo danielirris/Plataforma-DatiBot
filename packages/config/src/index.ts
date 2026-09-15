@@ -123,10 +123,26 @@ export function mergePreservingSecrets(
   return out;
 }
 
+/**
+ * Escritura ATÓMICA (temporal en el mismo dir + fsync + rename) para no dejar el
+ * .config-store.json truncado si un OOM/kill corta la escritura a medias.
+ */
+async function writeFileAtomic(dest: string, data: string): Promise<void> {
+  const tmp = `${dest}.tmp-${process.pid}-${Date.now()}`;
+  const fh = await fs.open(tmp, "w");
+  try {
+    await fh.writeFile(data, "utf8");
+    await fh.sync();
+  } finally {
+    await fh.close();
+  }
+  await fs.rename(tmp, dest);
+}
+
 export async function writeConfig(store: ConfigStore): Promise<void> {
   // Asegura que el directorio de datos exista (volumen /data en producción).
   await fs.mkdir(path.dirname(STORE_PATH), { recursive: true });
-  await fs.writeFile(STORE_PATH, JSON.stringify(store, null, 2), "utf8");
+  await writeFileAtomic(STORE_PATH, JSON.stringify(store, null, 2));
 
   // La regeneración de .env solo sirve en despliegue de UN host (monorepo local).
   // En multi-contenedor esos .env se ignoran y el destino puede no ser escribible;

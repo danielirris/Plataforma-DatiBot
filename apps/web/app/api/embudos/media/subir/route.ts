@@ -170,6 +170,9 @@ export async function POST(req: Request) {
     if (guardado) delete (guardado as Record<string, unknown>).capi_token;
     return NextResponse.json({ media: guardado, media_id: mediaId, url });
   } catch (e) {
+    // #26: el upsert falló tras subir a img+WhatsApp → el archivo en img quedaría huérfano
+    // (no referenciado, ni renovable ni borrable desde la UI). Lo limpiamos.
+    await eliminarImagen(url, cfg).catch(() => {});
     const status = e instanceof SupabaseError ? e.status : 500;
     const msg = e instanceof Error ? e.message : "Error guardando en media_bots.";
     return NextResponse.json({ error: msg }, { status });

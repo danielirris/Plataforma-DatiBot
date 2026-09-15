@@ -67,7 +67,7 @@ function comprobarAuth(req: NextRequest): NextResponse | null {
 
   return new NextResponse("Autenticación requerida.", {
     status: 401,
-    headers: { "WWW-Authenticate": 'Basic realm="Mi Plataforma", charset="UTF-8"' },
+    headers: { "WWW-Authenticate": 'Basic realm="Datibot", charset="UTF-8"' },
   });
 }
 

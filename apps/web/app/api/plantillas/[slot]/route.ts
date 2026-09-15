@@ -69,7 +69,18 @@ export async function POST(req: Request, { params }: Ctx) {
 
   try {
     await fs.mkdir(plantillasDir(), { recursive: true });
-    await fs.writeFile(path.join(plantillasDir(), `${slot}.json`), texto, "utf8");
+    // Escritura ATÓMICA: temporal en el mismo dir + fsync + rename (no dejar el .json
+    // truncado si un corte/OOM interrumpe la escritura).
+    const dest = path.join(plantillasDir(), `${slot}.json`);
+    const tmp = `${dest}.tmp-${process.pid}-${Date.now()}`;
+    const fh = await fs.open(tmp, "w");
+    try {
+      await fh.writeFile(texto, "utf8");
+      await fh.sync();
+    } finally {
+      await fh.close();
+    }
+    await fs.rename(tmp, dest);
   } catch (e) {
     return NextResponse.json(
       { error: "No se pudo guardar: " + (e instanceof Error ? e.message : "?") },

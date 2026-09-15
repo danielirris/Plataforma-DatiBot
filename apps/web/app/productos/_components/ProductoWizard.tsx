@@ -60,6 +60,7 @@ export function ProductoWizard({ producto }: { producto?: Producto }) {
   });
   const [paso, setPaso] = useState<string>("identidad");
   const [estado, setEstado] = useState<"idle" | "guardando" | "ok" | "error">("idle");
+  const [errGuardar, setErrGuardar] = useState<string>("");
   const [ofertaEstado, setOfertaEstado] = useState<string>("");
   const [incluyeVideo, setIncluyeVideo] = useState<boolean>(
     producto?.oferta?.incluye_video ?? false,
@@ -334,6 +335,7 @@ export function ProductoWizard({ producto }: { producto?: Producto }) {
 
   async function guardar(): Promise<Producto | null> {
     setEstado("guardando");
+    setErrGuardar("");
     try {
       const res = await fetch(
         esNuevo ? "/api/products" : `/api/products/${p.id}`,
@@ -343,13 +345,21 @@ export function ProductoWizard({ producto }: { producto?: Producto }) {
           body: JSON.stringify(p),
         },
       );
-      if (!res.ok) throw new Error();
-      const guardado = (await res.json()) as Producto;
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        // Muestra la causa real (p. ej. el 409 de "cambió en otra pestaña") en vez de
+        // un "Error al guardar" genérico.
+        setErrGuardar(data?.error ?? `Error ${res.status}`);
+        setEstado("error");
+        return null;
+      }
+      const guardado = data as Producto;
       setP(guardado);
       setEstado("ok");
       if (esNuevo) router.replace(`/productos/${guardado.id}`);
       return guardado;
-    } catch {
+    } catch (e) {
+      setErrGuardar(e instanceof Error ? e.message : "Error de red");
       setEstado("error");
       return null;
     }
@@ -530,7 +540,9 @@ export function ProductoWizard({ producto }: { producto?: Producto }) {
               {estado === "guardando" ? "Guardando…" : "Guardar borrador"}
             </button>
             {estado === "ok" && <span className="text-sm text-accent-2">✓ Guardado</span>}
-            {estado === "error" && <span className="text-sm text-red-400">Error al guardar</span>}
+            {estado === "error" && (
+              <span className="text-sm text-[var(--bad)]">⚠️ {errGuardar || "Error al guardar"}</span>
+            )}
           </div>
         </section>
       )}
@@ -690,7 +702,9 @@ export function ProductoWizard({ producto }: { producto?: Producto }) {
               {estado === "guardando" ? "Guardando…" : "Guardar anuncios"}
             </button>
             {estado === "ok" && <span className="text-sm text-accent-2">✓ Guardado</span>}
-            {estado === "error" && <span className="text-sm text-red-400">Error al guardar</span>}
+            {estado === "error" && (
+              <span className="text-sm text-[var(--bad)]">⚠️ {errGuardar || "Error al guardar"}</span>
+            )}
           </div>
         </section>
       )}
@@ -1011,7 +1025,9 @@ export function ProductoWizard({ producto }: { producto?: Producto }) {
               {estado === "guardando" ? "Guardando…" : "Guardar oferta"}
             </button>
             {estado === "ok" && <span className="text-sm text-accent-2">✓ Guardado</span>}
-            {estado === "error" && <span className="text-sm text-red-400">Error al guardar</span>}
+            {estado === "error" && (
+              <span className="text-sm text-[var(--bad)]">⚠️ {errGuardar || "Error al guardar"}</span>
+            )}
           </div>
         </section>
       )}
@@ -1068,7 +1084,9 @@ export function ProductoWizard({ producto }: { producto?: Producto }) {
               {estado === "guardando" ? "Guardando…" : "Guardar guión"}
             </button>
             {estado === "ok" && <span className="text-sm text-accent-2">✓ Guardado</span>}
-            {estado === "error" && <span className="text-sm text-red-400">Error al guardar</span>}
+            {estado === "error" && (
+              <span className="text-sm text-[var(--bad)]">⚠️ {errGuardar || "Error al guardar"}</span>
+            )}
           </div>
         </section>
       )}
@@ -1161,7 +1179,9 @@ export function ProductoWizard({ producto }: { producto?: Producto }) {
               {estado === "guardando" ? "Guardando…" : "Guardar guiones"}
             </button>
             {estado === "ok" && <span className="text-sm text-accent-2">✓ Guardado</span>}
-            {estado === "error" && <span className="text-sm text-red-400">Error al guardar</span>}
+            {estado === "error" && (
+              <span className="text-sm text-[var(--bad)]">⚠️ {errGuardar || "Error al guardar"}</span>
+            )}
           </div>
         </section>
       )}
@@ -1175,7 +1195,7 @@ export function ProductoWizard({ producto }: { producto?: Producto }) {
           </p>
 
           <div className="flex flex-wrap items-center gap-3 rounded-xl border border-[var(--hairline)] glass p-4">
-            <label className="cursor-pointer rounded-lg bg-accent px-4 py-2 text-sm font-medium text-white">
+            <label className="cursor-pointer rounded-lg bg-accent px-4 py-2 text-sm font-medium text-[#111]">
               {subiendoVideo ? "Subiendo…" : "⬆️ Subir videos"}
               <input
                 type="file"
@@ -1243,7 +1263,9 @@ export function ProductoWizard({ producto }: { producto?: Producto }) {
               {estado === "guardando" ? "Guardando…" : "Guardar videos"}
             </button>
             {estado === "ok" && <span className="text-sm text-accent-2">✓ Guardado</span>}
-            {estado === "error" && <span className="text-sm text-red-400">Error al guardar</span>}
+            {estado === "error" && (
+              <span className="text-sm text-[var(--bad)]">⚠️ {errGuardar || "Error al guardar"}</span>
+            )}
           </div>
         </section>
       )}

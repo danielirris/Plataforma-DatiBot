@@ -24,11 +24,6 @@ const INSTRUCCIONES: { key: string; titulo: string; desc: string }[] = [
     titulo: "Video del embudo",
     desc: "La IA la seguirá al generar el guión del video de embudo de cada producto.",
   },
-  {
-    key: "mensajes",
-    titulo: "Flujo de mensajes (WhatsApp COD)",
-    desc: "La IA la seguirá al generar los 10 mensajes del flujo por país (sección «Mensajes»).",
-  },
 ];
 
 export function ConfigForm({ initial }: { initial: ConfigStore }) {
@@ -344,7 +339,7 @@ export function ConfigForm({ initial }: { initial: ConfigStore }) {
         </button>
         {status === "saved" && (
           <span className="text-sm text-accent-2">
-            ✓ Guardado. Reinicia los servicios (y recarga Flujos) para aplicar.
+            ✓ Guardado. Se aplica de inmediato en las próximas generaciones.
           </span>
         )}
         {status === "error" && (
