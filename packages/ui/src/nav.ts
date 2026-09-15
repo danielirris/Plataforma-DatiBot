@@ -48,6 +48,13 @@ export const NAV_ITEMS: NavItem[] = [
     description: "Los anuncios que ya creaste, listos para ver y descargar.",
   },
   {
+    href: "/reporte-anuncios",
+    label: "Reporte de anuncios",
+    icon: "📊",
+    description:
+      "Atribución de Facebook Ads: qué anuncio trae cada venta, presupuestos y decisiones (se abre dentro de Datibot).",
+  },
+  {
     href: "/embudos",
     label: "Embudos",
     icon: "🤖",
