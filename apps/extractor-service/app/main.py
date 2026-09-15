@@ -21,7 +21,7 @@ from starlette.concurrency import run_in_threadpool
 from app.config import BASE_DIR, get_settings
 from app.jobs import manager
 from app import library
-from app.pipeline import tts
+from app.pipeline import cleanup, tts
 from app.tts_routes import router as tts_router
 
 logging.basicConfig(
@@ -46,6 +46,10 @@ ALLOWED_GUIDE_EXT = {".mp4", ".mov", ".webm", ".m4v", ".mkv"}
 async def lifespan(app: FastAPI):
     """Arranca el JobManager al iniciar la app."""
     settings.ensure_dirs()
+    # Al arrancar no hay nada en vuelo: barre los temporales huérfanos y las
+    # miniaturas de ganchos viejas para que no se acumulen en el volumen.
+    cleanup.purge_dir_contents(settings.tmp_dir)
+    cleanup.purge_older_than(settings.hooks_dir, max_age_hours=6)
     manager.start()
     logger.info("Aplicación iniciada (puerto %d).", settings.port)
     yield
@@ -158,7 +162,7 @@ async def _save_upload(
             detail=f"Formato no soportado ({ext or 'sin extensión'}). "
                    f"Usa: {', '.join(sorted(allowed))}",
         )
-    tmp = Path(tempfile.mkstemp(suffix=ext, dir=str(settings.storage_dir))[1])
+    tmp = Path(tempfile.mkstemp(suffix=ext, dir=str(settings.tmp_dir))[1])
     size = 0
     try:
         with open(tmp, "wb") as out:
@@ -196,7 +200,7 @@ async def _download_url(url: str, max_bytes: int, allowed: set[str] = ALLOWED_EX
     if ext not in allowed:
         ext = ".mp4"
         name = f"{Path(name).stem or 'video'}.mp4"
-    tmp = Path(tempfile.mkstemp(suffix=ext, dir=str(settings.storage_dir))[1])
+    tmp = Path(tempfile.mkstemp(suffix=ext, dir=str(settings.tmp_dir))[1])
 
     def _do() -> int:
         size = 0
@@ -326,7 +330,7 @@ async def create_job_from_urls(payload: dict = Body(...)) -> JSONResponse:
             whoosh = _intro_sfx()
             if whoosh and whoosh.exists():
                 itmp = Path(tempfile.mkstemp(suffix=whoosh.suffix,
-                                             dir=str(settings.storage_dir))[1])
+                                             dir=str(settings.tmp_dir))[1])
                 shutil.copy(whoosh, itmp)
                 intro_saved = (itmp, f"intro{whoosh.suffix}")
     except HTTPException:
@@ -389,7 +393,7 @@ async def create_job_from_files(
         ext = Path(up.filename).suffix.lower() or ".mp4"
         if ext not in ALLOWED_EXT:
             ext = ".mp4"
-        tmp = Path(tempfile.mkstemp(suffix=ext, dir=str(settings.storage_dir))[1])
+        tmp = Path(tempfile.mkstemp(suffix=ext, dir=str(settings.tmp_dir))[1])
         with tmp.open("wb") as f:
             while chunk := await up.read(1 << 20):
                 f.write(chunk)
@@ -461,7 +465,7 @@ async def create_job_from_files(
     if use_intro in ("1", "true", "True"):
         whoosh = _intro_sfx()
         if whoosh and whoosh.exists():
-            itmp = Path(tempfile.mkstemp(suffix=whoosh.suffix, dir=str(settings.storage_dir))[1])
+            itmp = Path(tempfile.mkstemp(suffix=whoosh.suffix, dir=str(settings.tmp_dir))[1])
             shutil.copy(whoosh, itmp)
             intro_saved = (itmp, f"intro{whoosh.suffix}")
 
@@ -482,7 +486,7 @@ async def create_job_from_files(
                 detail=f"Audio no soportado ({vext or 'sin extensión'}). "
                        f"Usa: {', '.join(sorted(ALLOWED_AUDIO_EXT))}.",
             )
-        vtmp = Path(tempfile.mkstemp(suffix=vext, dir=str(settings.storage_dir))[1])
+        vtmp = Path(tempfile.mkstemp(suffix=vext, dir=str(settings.tmp_dir))[1])
         with vtmp.open("wb") as f:
             while chunk := await up.read(1 << 20):
                 f.write(chunk)
@@ -542,7 +546,7 @@ async def create_job_from_files(
             ad, secs = i, 2.0
         if not (0 <= ad < max(1, n)):
             continue  # gancho para un anuncio que no existe: se ignora
-        htmp = Path(tempfile.mkstemp(suffix=hext, dir=str(settings.storage_dir))[1])
+        htmp = Path(tempfile.mkstemp(suffix=hext, dir=str(settings.tmp_dir))[1])
         with htmp.open("wb") as f:
             while chunk := await up.read(1 << 20):
                 f.write(chunk)
@@ -559,7 +563,7 @@ async def create_job_from_files(
                 detail=f"Guía no soportada ({gext or 'sin extensión'}). "
                        f"Usa: {', '.join(sorted(ALLOWED_GUIDE_EXT))}.",
             )
-        gtmp = Path(tempfile.mkstemp(suffix=gext, dir=str(settings.storage_dir))[1])
+        gtmp = Path(tempfile.mkstemp(suffix=gext, dir=str(settings.tmp_dir))[1])
         with gtmp.open("wb") as f:
             while chunk := await up.read(1 << 20):
                 f.write(chunk)
@@ -664,9 +668,12 @@ async def hook_candidates(payload: dict = Body(...)) -> JSONResponse:
         raise HTTPException(status_code=400, detail="No se enviaron videos.")
 
     settings.ensure_dirs()
+    # Purga miniaturas de sesiones anteriores para que storage/hooks no crezca
+    # sin límite con cada "Buscar ganchos".
+    cleanup.purge_older_than(settings.hooks_dir, max_age_hours=6)
     max_bytes = settings.max_upload_mb * 1024 * 1024
     session = uuid.uuid4().hex[:12]
-    sess_dir = settings.storage_dir / "hooks" / session
+    sess_dir = settings.hooks_dir / session
     sess_dir.mkdir(parents=True, exist_ok=True)
 
     paths: list[Path] = []
@@ -764,7 +771,7 @@ async def hook_candidates(payload: dict = Body(...)) -> JSONResponse:
 @app.get("/api/hooks/{session}/thumb/{i}")
 async def hook_thumb(session: str, i: int) -> FileResponse:
     """Sirve la miniatura de un candidato de gancho."""
-    base = (settings.storage_dir / "hooks").resolve()
+    base = settings.hooks_dir.resolve()
     thumb = (base / session / f"t{i}.jpg").resolve()
     if not str(thumb).startswith(str(base)) or not thumb.is_file():
         raise HTTPException(status_code=404, detail="Miniatura no encontrada.")
@@ -828,7 +835,7 @@ async def crear_brolls_con_archivos(
         if not up.filename:
             continue
         dest = Path(tempfile.mkstemp(suffix=Path(up.filename).suffix or ".mp4",
-                                     dir=str(settings.storage_dir))[1])
+                                     dir=str(settings.tmp_dir))[1])
         with dest.open("wb") as f:
             while chunk := await up.read(1 << 20):
                 f.write(chunk)
@@ -924,7 +931,7 @@ async def create_job(
             whoosh = _intro_sfx()
             if whoosh and whoosh.exists():
                 itmp = Path(tempfile.mkstemp(suffix=whoosh.suffix,
-                                             dir=str(settings.storage_dir))[1])
+                                             dir=str(settings.tmp_dir))[1])
                 shutil.copy(whoosh, itmp)
                 intro_saved = (itmp, f"intro{whoosh.suffix}")
         if voz is not None and voz.filename:

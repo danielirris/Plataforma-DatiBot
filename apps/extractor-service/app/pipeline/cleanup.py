@@ -65,21 +65,45 @@ def purge_keep_recent(outputs_dir: Path, keep_n: int) -> int:
     return borrados
 
 
-def purge_old_outputs(outputs_dir: Path, retencion_horas: int) -> int:
-    """Elimina los outputs con antigüedad mayor a ``retencion_horas``.
+def purge_dir_contents(target: Path) -> int:
+    """Vacía por completo una carpeta.
 
-    Args:
-        outputs_dir: carpeta ``storage/outputs``.
-        retencion_horas: horas de retención.
+    Se usa al arrancar sobre ``storage/tmp``, cuando no hay ninguna subida en
+    curso: barre los temporales huérfanos que hayan quedado de un proceso
+    interrumpido (una fuga lenta de disco en el volumen persistente).
+    """
+    if not target.exists():
+        return 0
+    borrados = 0
+    for item in target.iterdir():
+        try:
+            if item.is_dir():
+                shutil.rmtree(item, ignore_errors=True)
+            else:
+                item.unlink()
+            borrados += 1
+        except OSError as exc:  # pragma: no cover - mejor esfuerzo
+            logger.warning("No se pudo borrar el temporal %s: %s", item, exc)
+    if borrados:
+        logger.info("Temporales huérfanos borrados: %d en %s", borrados, target)
+    return borrados
+
+
+def purge_older_than(base_dir: Path, max_age_hours: float) -> int:
+    """Borra las entradas de ``base_dir`` más antiguas que ``max_age_hours``.
+
+    Se usa para las miniaturas de ganchos (``storage/hooks/<sesión>``): solo
+    sirven durante la edición y, si no se purgan, se acumulan sin límite en el
+    volumen persistente.
 
     Returns:
-        Número de archivos borrados.
+        Número de entradas borradas.
     """
-    if not outputs_dir.exists():
+    if not base_dir.exists():
         return 0
-    limite = time.time() - retencion_horas * 3600
+    limite = time.time() - max_age_hours * 3600
     borrados = 0
-    for item in outputs_dir.iterdir():
+    for item in base_dir.iterdir():
         try:
             if item.stat().st_mtime >= limite:
                 continue
@@ -88,7 +112,8 @@ def purge_old_outputs(outputs_dir: Path, retencion_horas: int) -> int:
             else:
                 item.unlink()
             borrados += 1
-            logger.info("Output antiguo borrado: %s", item.name)
         except OSError as exc:  # pragma: no cover - mejor esfuerzo
             logger.warning("No se pudo borrar %s: %s", item, exc)
+    if borrados:
+        logger.info("Purga por antigüedad: %d entradas viejas en %s", borrados, base_dir)
     return borrados

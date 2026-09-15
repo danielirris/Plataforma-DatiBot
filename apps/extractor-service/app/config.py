@@ -98,7 +98,6 @@ class Settings(BaseSettings):
 
     # --- Límites / recursos ---
     max_upload_mb: int = 2048
-    retencion_horas: int = 24
     # Galería: nº de trabajos recientes que se conservan (y se muestran). En vez
     # de borrar por horas, mantenemos SIEMPRE los últimos N para poder verlos.
     galeria_max: int = 25
@@ -132,6 +131,19 @@ class Settings(BaseSettings):
         return self.storage_dir / "outputs"
 
     @property
+    def tmp_dir(self) -> Path:
+        """Temporales de subidas en curso. Aislados en su propia carpeta (no en
+        la raíz del volumen) para poder barrerlos al arrancar sin tocar
+        jobs/outputs/hooks: si un proceso muere a mitad de una subida, el
+        temporal queda aquí y se limpia solo en el siguiente arranque."""
+        return self.storage_dir / "tmp"
+
+    @property
+    def hooks_dir(self) -> Path:
+        """Miniaturas de los candidatos de gancho (una carpeta por sesión)."""
+        return self.storage_dir / "hooks"
+
+    @property
     def effective_ffmpeg_threads(self) -> int:
         """Hilos de FFmpeg a usar, dejando SIEMPRE 1 núcleo libre para el servidor.
 
@@ -149,6 +161,7 @@ class Settings(BaseSettings):
         """Crea las carpetas de almacenamiento si no existen."""
         self.jobs_dir.mkdir(parents=True, exist_ok=True)
         self.outputs_dir.mkdir(parents=True, exist_ok=True)
+        self.tmp_dir.mkdir(parents=True, exist_ok=True)
 
 
 @lru_cache
