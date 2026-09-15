@@ -4,6 +4,7 @@ from __future__ import annotations
 import io
 import json
 import logging
+import re
 import shutil
 import tempfile
 import uuid
@@ -996,16 +997,37 @@ async def get_job(job_id: str) -> JSONResponse:
     return JSONResponse(job.public_dict())
 
 
+def _slug_producto(s: str) -> str:
+    """Nombre de producto seguro para archivo (conserva mayúsculas, cambia lo raro por _)."""
+    s = re.sub(r"[^A-Za-z0-9]+", "_", (s or "").strip()).strip("_")
+    return s[:40] or "anuncio"
+
+
+def _nombre_producto(job_id: str) -> str:
+    """Nombre del producto del job (de params.producto), o 'anuncio' si no hay."""
+    prod = ""
+    try:
+        p = manager._params.get(job_id, {})  # noqa: SLF001
+        pr = p.get("producto") if isinstance(p, dict) else None
+        if isinstance(pr, dict):
+            prod = str(pr.get("nombre") or pr.get("productoId") or "")
+        elif isinstance(pr, str):
+            prod = pr
+    except Exception:  # noqa: BLE001
+        prod = ""
+    return _slug_producto(prod)
+
+
 @app.get("/api/jobs/{job_id}/download/{n}")
 async def download_clip(job_id: str, n: int) -> FileResponse:
-    """Descarga el clip ``n`` (1-indexado) del job."""
+    """Descarga el clip ``n`` (1-indexado) del job, nombrado <producto>_anuncio_N.mp4."""
     if not manager.get(job_id):
         raise HTTPException(status_code=404, detail="Job no encontrado")
     path = manager.clip_path(job_id, n)
     if not path:
         raise HTTPException(status_code=409, detail="El clip aún no está listo")
     return FileResponse(path=str(path), media_type="video/mp4",
-                        filename=f"clip_{job_id}_{n}.mp4")
+                        filename=f"{_nombre_producto(job_id)}_anuncio_{n}.mp4")
 
 
 @app.get("/preview/{job_id}", response_class=HTMLResponse)
@@ -1116,13 +1138,14 @@ async def download_all(job_id: str):
                                     filename=f"anuncio-remotion_{job_id}.zip")
         raise HTTPException(status_code=409, detail="El resultado aún no está listo")
 
+    prod = _nombre_producto(job_id)
     buffer = io.BytesIO()
     with zipfile.ZipFile(buffer, "w", zipfile.ZIP_STORED) as zf:
         for i, p in enumerate(paths, start=1):
-            zf.write(p, arcname=f"clip_{i}.mp4")
+            zf.write(p, arcname=f"{prod}_anuncio_{i}.mp4")
     buffer.seek(0)
     return StreamingResponse(
         buffer,
         media_type="application/zip",
-        headers={"Content-Disposition": f'attachment; filename="clips_{job_id}.zip"'},
+        headers={"Content-Disposition": f'attachment; filename="{prod}_anuncios.zip"'},
     )
