@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { NAV_ITEMS } from "@plataforma/ui";
+import { Icon } from "./_components/Icon";
 
 export default function HomePage() {
   const sections = NAV_ITEMS.filter((i) => i.href !== "/");
@@ -48,8 +49,8 @@ export default function HomePage() {
               className="pointer-events-none absolute -right-10 -top-10 h-24 w-24 rounded-full bg-accent/0 blur-2xl transition-colors group-hover:bg-accent/20"
             />
             <div className="relative flex items-start gap-4">
-              <span className="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-gradient-to-br from-[var(--field)] to-[var(--field)] text-2xl ring-1 ring-[var(--hairline)] transition-all group-hover:ring-accent/40">
-                {item.icon}
+              <span className="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-[var(--field)] text-text ring-1 ring-[var(--hairline)] transition-all group-hover:text-accent-2 group-hover:ring-accent/40">
+                <Icon name={item.icon} size={22} />
               </span>
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2">

@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import { NAV_ITEMS, NAV_FOOTER, cn } from "@plataforma/ui";
 import { ThemeToggle } from "./ThemeToggle";
 import { Logo } from "./Logo";
+import { Icon } from "./Icon";
 
 const LS_COLAPSADO = "datibot-sidebar-collapsed";
 
@@ -117,7 +118,7 @@ export function Sidebar() {
               onClick={cerrarSiMovil}
               className={pill(active)}
             >
-              <span className="text-base">{item.icon}</span>
+              <Icon name={item.icon} size={18} />
               <span className="flex-1 leading-tight">{item.label}</span>
               {item.comingSoon && (
                 <span className="rounded bg-[var(--field)] px-1.5 py-0.5 text-[10px] normal-case text-muted">
@@ -142,7 +143,7 @@ export function Sidebar() {
                   onClick={cerrarSiMovil}
                   className={pill(active)}
                 >
-                  <span className="text-base">{item.icon}</span>
+                  <Icon name={item.icon} size={18} />
                   <span className="flex-1 leading-tight">{item.label}</span>
                 </Link>
               );
@@ -154,7 +155,7 @@ export function Sidebar() {
           href="/api/logout"
           className="flex items-center gap-3 rounded-full px-3 py-2 text-sm text-muted transition-colors hover:bg-[var(--hover)] hover:text-text"
         >
-          <span className="text-base">🚪</span>
+          <Icon name="log-out" size={18} />
           <span className="flex-1">Salir</span>
         </a>
         <span className="px-2 text-xs text-muted/70">Datibot · versión #1</span>
