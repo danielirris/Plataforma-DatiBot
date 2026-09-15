@@ -31,3 +31,24 @@ export async function GET(_req: Request, { params }: Ctx) {
   const data = await res.json().catch(() => ({}));
   return NextResponse.json(data, { status: res.status });
 }
+
+// Borra un anuncio (job) — desde "Mis anuncios".
+export async function DELETE(_req: Request, { params }: Ctx) {
+  const { id } = await params;
+  if (!/^[a-zA-Z0-9_-]{6,64}$/.test(id))
+    return NextResponse.json({ error: "id de job inválido." }, { status: 400 });
+  try {
+    const res = await fetch(`${extractorUrl()}/api/jobs/${id}`, {
+      method: "DELETE",
+      cache: "no-store",
+      signal: AbortSignal.timeout(15_000),
+    });
+    const data = await res.json().catch(() => ({}));
+    return NextResponse.json(data, { status: res.status });
+  } catch {
+    return NextResponse.json(
+      { error: "Editor de video no disponible; reintenta." },
+      { status: 503 },
+    );
+  }
+}

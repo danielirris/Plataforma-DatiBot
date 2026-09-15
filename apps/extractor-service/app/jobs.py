@@ -450,7 +450,10 @@ class JobManager:
                 "created_at": job.created_at,
                 "mode": job.mode,
                 "n_clips": len(clips),
-                "title": (job.filenames[0] if job.filenames else job.id),
+                # Título = nombre del PRODUCTO del job (aplica también a los ya creados,
+                # porque la galería se recalcula); si no hay, el nombre del primer video.
+                "title": (self.producto_nombre(job.id)
+                          or (job.filenames[0] if job.filenames else job.id)),
                 "n_videos": len(job.filenames),
                 "clips": clips,
                 "thumb": f"/api/jobs/{job.id}/thumb/1" if clips else None,
@@ -458,6 +461,32 @@ class JobManager:
                 "preview_url": f"/preview/{job.id}" if has_proj else None,
             })
         return items
+
+    def producto_nombre(self, job_id: str) -> str:
+        """Nombre del producto del job (de params.producto), o "" si no hay."""
+        p = self._params.get(job_id) or {}
+        pr = p.get("producto") if isinstance(p, dict) else None
+        if isinstance(pr, dict):
+            return str(pr.get("nombre") or pr.get("productoId") or "").strip()
+        if isinstance(pr, str):
+            return pr.strip()
+        return ""
+
+    def delete(self, job_id: str) -> bool:
+        """Borra un job: su output en disco, su fila en la DB y el estado en memoria."""
+        job = self._jobs.get(job_id)
+        with self._lock:
+            if job and job.output_dir:
+                try:
+                    shutil.rmtree(job.output_dir, ignore_errors=True)
+                except Exception:  # noqa: BLE001
+                    pass
+            for d in (self._jobs, self._sources, self._music, self._guias, self._voz,
+                      self._hooks, self._req_clips, self._use_music, self._intro,
+                      self._style, self._params):
+                d.pop(job_id, None)
+        self._store.delete(job_id)
+        return True
 
     def ad_zip_path(self, job_id: str) -> Path | None:
         """Ruta del .zip del proyecto Remotion (modo anuncio) si está listo."""

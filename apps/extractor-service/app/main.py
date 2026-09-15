@@ -1004,18 +1004,17 @@ def _slug_producto(s: str) -> str:
 
 
 def _nombre_producto(job_id: str) -> str:
-    """Nombre del producto del job (de params.producto), o 'anuncio' si no hay."""
-    prod = ""
-    try:
-        p = manager._params.get(job_id, {})  # noqa: SLF001
-        pr = p.get("producto") if isinstance(p, dict) else None
-        if isinstance(pr, dict):
-            prod = str(pr.get("nombre") or pr.get("productoId") or "")
-        elif isinstance(pr, str):
-            prod = pr
-    except Exception:  # noqa: BLE001
-        prod = ""
-    return _slug_producto(prod)
+    """Nombre de producto del job, saneado para archivo ('anuncio' si no hay)."""
+    return _slug_producto(manager.producto_nombre(job_id))
+
+
+@app.delete("/api/jobs/{job_id}")
+async def delete_job(job_id: str) -> JSONResponse:
+    """Borra un anuncio (job): su output, su fila y su estado."""
+    if not manager.get(job_id):
+        raise HTTPException(status_code=404, detail="Job no encontrado")
+    manager.delete(job_id)
+    return JSONResponse({"ok": True})
 
 
 @app.get("/api/jobs/{job_id}/download/{n}")

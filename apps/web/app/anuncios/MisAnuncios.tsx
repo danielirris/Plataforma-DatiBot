@@ -59,6 +59,22 @@ export function MisAnuncios() {
 
   const abs = (u: string) => `${base}${u}`;
 
+  async function borrar(id: string, title: string) {
+    if (!confirm(`¿Borrar el anuncio "${title}"? Se elimina del servidor y no se puede deshacer.`))
+      return;
+    try {
+      const r = await fetch(`/api/editor/jobs/${id}`, { method: "DELETE" });
+      if (r.ok) {
+        setItems((prev) => prev.filter((x) => x.id !== id));
+      } else {
+        const d = await r.json().catch(() => ({}));
+        alert("No se pudo borrar: " + (d.error ?? `Error ${r.status}`));
+      }
+    } catch {
+      alert("Fallo de red al borrar.");
+    }
+  }
+
   return (
     <div className="mx-auto max-w-5xl px-8 py-10">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -161,6 +177,13 @@ export function MisAnuncios() {
                   🛠️ Proyecto
                 </a>
               )}
+              <button
+                onClick={() => borrar(it.id, it.title)}
+                className="ml-auto rounded border border-[var(--hairline)] px-2 py-1.5 text-xs text-muted hover:text-[var(--bad)]"
+                title="Borrar este anuncio"
+              >
+                🗑️ Borrar
+              </button>
             </div>
           </div>
         ))}

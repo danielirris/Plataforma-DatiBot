@@ -146,6 +146,12 @@ class JobStore:
             cur = self._conn.execute("SELECT * FROM jobs WHERE id=?", (job_id,))
             return cur.fetchone()
 
+    def delete(self, job_id: str) -> None:
+        """Borra la fila del job (su output en disco lo limpia el manager)."""
+        with self._lock:
+            self._conn.execute("DELETE FROM jobs WHERE id=?", (job_id,))
+            self._conn.commit()
+
     def recent_done(self, limit: int = 25) -> list[sqlite3.Row]:
         """Trabajos terminados, del más reciente al más viejo (para la Galería)."""
         with self._lock:
