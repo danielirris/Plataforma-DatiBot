@@ -75,7 +75,7 @@ ${(o.bonos ?? []).filter((b) => b?.titulo?.trim()).length ? `- Bonos: ${(o.bonos
     : "";
 
   return `--- INSUMOS ---
-Producto: ${p.nombre} | Promesa: ${p.identidad.promesa} | Posicionamiento: ${p.identidad.posicionamiento} | Público: ${p.identidad.dirigidoA}
+Producto: ${p.nombre} | Promesa: ${p.identidad?.promesa ?? ""} | Posicionamiento: ${p.identidad?.posicionamiento ?? ""} | Público: ${p.identidad?.dirigidoA ?? ""}
 ${bloqueQueVendemos(p)}
 ANUNCIOS GANADORES DE REFERENCIA (plantilla de tono/estructura, avatar similar):
 ${refs || "(sin anuncios de referencia)"}
@@ -124,6 +124,10 @@ export async function POST(req: Request, { params }: Ctx) {
   async function intento(nota = ""): Promise<GuionAnuncio[] | null> {
     let raw: string;
     try {
+      // A diferencia de sus hermanas (analizar-anuncios/generar-oferta/generar-guion-embudo)
+      // esta ruta se queda en generarTexto A PROPÓSITO: su salida es un ARRAY de varios
+      // guiones largos y el tope de tokens de generarJson (JSON mode) arriesgaría truncar
+      // el JSON. Con texto plano + parseo tolerante + reintento evitamos esa truncación.
       raw = await generarTexto(nota ? `${prompt}\n\nIMPORTANTE: ${nota}` : prompt);
     } catch (e) {
       ultimoError = e instanceof Error ? e.message : "Error del proveedor de IA";

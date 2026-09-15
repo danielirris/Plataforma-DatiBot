@@ -5,7 +5,8 @@ import {
   type AnalisisAnuncios,
   type Producto,
 } from "@plataforma/products";
-import { generarTexto } from "@/lib/ai/textProvider";
+import { generarJson } from "@/lib/ai/textProvider";
+import { bloqueInstrucciones } from "@/lib/ai/instrucciones";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -44,7 +45,7 @@ function insumos(p: Producto): string {
     .join("\n\n");
 
   return `--- INSUMOS ---
-Producto: ${p.nombre} | Promesa: ${p.identidad.promesa} | Posicionamiento: ${p.identidad.posicionamiento} | Público: ${p.identidad.dirigidoA}
+Producto: ${p.nombre} | Promesa: ${p.identidad?.promesa ?? ""} | Posicionamiento: ${p.identidad?.posicionamiento ?? ""} | Público: ${p.identidad?.dirigidoA ?? ""}
 
 ANUNCIOS GANADORES DE REFERENCIA (avatar MUY similar; de aquí sacas el ángulo, el dolor y el avatar):
 ${refs || "(sin anuncios de referencia; deduce el análisis del público y la promesa)"}
@@ -76,7 +77,10 @@ export async function POST(req: Request, { params }: Ctx) {
   if (!producto?.nombre)
     return NextResponse.json({ error: "Producto no encontrado." }, { status: 404 });
 
-  const prompt = `${SYSTEM_PROMPT}\n\n${insumos(producto)}`;
+  // La fase que fija ángulo/dolor/avatar debe seguir las mismas instrucciones maestras
+  // de anuncios que luego honran los guiones; si no, diverge del resto del pipeline.
+  const instrucciones = await bloqueInstrucciones("anuncios");
+  const prompt = `${SYSTEM_PROMPT}${instrucciones}\n\n${insumos(producto)}`;
 
   // Guardamos el mensaje real del proveedor (p. ej. "Falta la Gemini API Key") para
   // devolverlo en el 502 en vez de un genérico "Reintenta" que confunde ante un fallo
@@ -85,7 +89,7 @@ export async function POST(req: Request, { params }: Ctx) {
   async function intento(nota = ""): Promise<AnalisisAnuncios | null> {
     let raw: string;
     try {
-      raw = await generarTexto(nota ? `${prompt}\n\nIMPORTANTE: ${nota}` : prompt);
+      raw = await generarJson(nota ? `${prompt}\n\nIMPORTANTE: ${nota}` : prompt);
     } catch (e) {
       ultimoError = e instanceof Error ? e.message : "Error del proveedor de IA";
       return null;

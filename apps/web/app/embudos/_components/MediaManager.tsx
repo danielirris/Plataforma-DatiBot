@@ -30,6 +30,7 @@ export function MediaManager() {
   const [numeros, setNumeros] = useState<NumeroBot[]>([]);
   const [productoKey, setProductoKey] = useState<string>("");
   const [otro, setOtro] = useState<boolean>(false);
+  const [otroText, setOtroText] = useState<string>(""); // texto del input "otro" (no dispara carga)
   const [phoneId, setPhoneId] = useState<string>("");
   const [media, setMedia] = useState<MediaRow | null>(null);
   const [captions, setCaptions] = useState<Record<string, string>>({});
@@ -55,9 +56,11 @@ export function MediaManager() {
     const caps: Record<string, string> = {};
     for (const { slot } of SLOTS) caps[slot] = String(row?.[cols(slot).caption] ?? "");
     setCaptions(caps);
-    // Número por defecto: el que vende este producto, o el que subió la media.
+    // Número por defecto: PRIMERO el que ya aloja la media (row.phone_id) — así
+    // "Reemplazar" un slot usa el número correcto y no choca con el guard de mezcla de
+    // números (M5). Si no hay media previa, cae al número que vende el producto.
     const porProducto = numeros.find((n) => n.producto_activo === key);
-    setPhoneId(porProducto?.phone_id || String(row?.phone_id ?? "") || numeros[0]?.phone_id || "");
+    setPhoneId(String(row?.phone_id ?? "") || porProducto?.phone_id || numeros[0]?.phone_id || "");
   }
 
   async function cargar(key: string) {
@@ -161,15 +164,37 @@ export function MediaManager() {
         </p>
       </div>
 
+      {numeros.length === 0 && (
+        <div className="rounded-lg border-l-2 border-amber-400 bg-amber-400/10 p-3 text-xs text-muted">
+          Aún no hay <b className="text-text">números</b> configurados. La media se aloja en un
+          número de WhatsApp, así que crea uno primero en la pestaña{" "}
+          <a href="/embudos" className="text-accent-2 underline">Números</a> — si no, toda subida
+          fallará con «Elige primero el número».
+        </div>
+      )}
+
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         {/* Producto */}
         <label className="flex flex-col gap-1 text-sm">
           <span className="text-muted">Producto</span>
           {otro ? (
             <input
-              value={productoKey}
-              placeholder="clave del producto"
-              onChange={(e) => cargar(e.target.value)}
+              value={otroText}
+              placeholder="clave del producto (Enter para cargar)"
+              // M3: cargar solo al salir del campo o con Enter, no en cada tecla.
+              onChange={(e) => setOtroText(e.target.value)}
+              // Solo recargar si la clave cambió (no pisar lo que haya en pantalla).
+              onBlur={() => {
+                const k = otroText.trim();
+                if (k !== productoKey) cargar(k);
+              }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  const k = otroText.trim();
+                  if (k !== productoKey) cargar(k);
+                }
+              }}
               className={inputCls}
             />
           ) : (
@@ -178,6 +203,7 @@ export function MediaManager() {
               onChange={(e) => {
                 if (e.target.value === "__otro__") {
                   setOtro(true);
+                  setOtroText("");
                   cargar("");
                 } else cargar(e.target.value);
               }}

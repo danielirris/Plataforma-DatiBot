@@ -26,7 +26,7 @@ export function EmbudosTabs() {
   const tabs: { id: Tab; label: string }[] = [
     { id: "numeros", label: "Números" },
     { id: "bots", label: "Bot por producto" },
-    { id: "embudo", label: "Embudo (pasos)" },
+    { id: "embudo", label: "Embudo (constructor)" },
     { id: "media", label: "Media" },
   ];
 

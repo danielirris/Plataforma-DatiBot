@@ -58,7 +58,12 @@ export async function renovarFila(row: MediaRow): Promise<ResultadoRenovar> {
   }
 
   if (renovados > 0) {
-    cambios.media_actualizado_at = new Date().toISOString();
+    // Solo marcamos la fila como "recién renovada" si NO hubo errores. Si algún slot
+    // falló, guardamos los media_id que sí se renovaron pero NO bumpeamos el timestamp:
+    // así la fila sigue "vencida" y el cron reintenta los slots fallidos al día siguiente
+    // (antes: un fallo parcial ocultaba el slot roto durante ~20 días y su media_id
+    // caducaba en silencio).
+    if (errores.length === 0) cambios.media_actualizado_at = new Date().toISOString();
     await upsertRow("media_bots", cambios, "producto");
   }
   return { producto, renovados, errores };

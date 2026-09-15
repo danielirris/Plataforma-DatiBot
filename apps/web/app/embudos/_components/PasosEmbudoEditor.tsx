@@ -160,7 +160,18 @@ export function PasosEmbudoEditor() {
   const [productos, setProductos] = useState<ProductoLite[]>([]);
   const [productoKey, setProductoKey] = useState<string>("");
   const [otro, setOtro] = useState<boolean>(false);
+  const [otroText, setOtroText] = useState<string>(""); // texto del input "otro" (no dispara carga)
   const [bloques, setBloques] = useState<PorEstado>(vacio());
+  // Fila de media del producto (para validar que un bloque "archivo" tenga media_id subido).
+  const [mediaRow, setMediaRow] = useState<Record<string, string | null>>({});
+  // Pasos en estados fuera del modelo (no editables aquí): se conservan tal cual para
+  // que el guardado no los borre por diff (B2).
+  const [pasosExtra, setPasosExtra] = useState<PasoEmbudo[]>([]);
+  // Variantes de rotador que pertenecen a esos pasos extra: se reenvían al guardar para
+  // que el borrado-por-diff del rotador no las elimine (B2).
+  const [rotadorExtra, setRotadorExtra] = useState<
+    { campo: string; variante: number; texto: string }[]
+  >([]);
   const [cargando, setCargando] = useState<boolean>(false);
   const [guardando, setGuardando] = useState<boolean>(false);
   const [estado, setEstado] = useState<string>("");
@@ -222,14 +233,33 @@ export function PasosEmbudoEditor() {
       for (const f of (dr.filas ?? []) as RotadorRow[]) {
         (rot[f.campo] ??= []).push(f.texto);
       }
-      // Captions de media.
+      // Captions/estado de media (se guarda para validar los bloques "archivo" al guardar).
       const media = (dm.media ?? {}) as Record<string, string | null>;
+      setMediaRow(media);
 
+      const ESTADOS_OK = new Set<string>(ESTADOS_EMBUDO);
       const porEstado = vacio();
+      const extra: PasoEmbudo[] = [];
       for (const f of (dp.filas ?? []) as PasoEmbudo[]) {
-        if (!porEstado[f.estado]) porEstado[f.estado] = [];
-        porEstado[f.estado].push(pasoABloque(f, rot, media));
+        if (ESTADOS_OK.has(f.estado)) {
+          porEstado[f.estado].push(pasoABloque(f, rot, media));
+        } else {
+          // B2: estado fuera del modelo del constructor → se conserva verbatim para que
+          // el guardado (borrado-por-diff) no lo elimine.
+          extra.push(f);
+        }
       }
+      // B2: variantes de rotador de esos pasos extra (para no borrarlas al guardar).
+      const rotExtra: { campo: string; variante: number; texto: string }[] = [];
+      for (const p of extra) {
+        if (p.fuente === "rotador") {
+          (rot[p.contenido] ?? []).forEach((t, i) =>
+            rotExtra.push({ campo: p.contenido, variante: i + 1, texto: t }),
+          );
+        }
+      }
+      setRotadorExtra(rotExtra);
+      setPasosExtra(extra);
       setBloques(porEstado);
       setCargado(true);
       const err = dp.error || dr.error || dm.error;
@@ -324,12 +354,65 @@ export function PasosEmbudoEditor() {
     setEstado("Plantilla cargada (recuerda guardar).");
   }
 
+  // ── validación (M2): bloques que el motor NO podría ejecutar. Devuelve la lista de
+  // problemas legibles (vacía = todo ok). Evita publicar un embudo que falla en runtime.
+  function validar(): string[] {
+    const errs: string[] = [];
+    for (const est of ESTADOS_EMBUDO) {
+      (bloques[est] ?? []).forEach((b, idx) => {
+        const donde = `${est} #${idx + 1}`;
+        if (b.tipo === "etiqueta") {
+          if (!b.texto.trim()) errs.push(`${donde}: la etiqueta está vacía.`);
+        } else if (b.tipo === "boton") {
+          const t = b.botonTitulo.trim();
+          if (!t) errs.push(`${donde}: el botón no tiene título.`);
+          else if (t.length > 20) errs.push(`${donde}: el título del botón supera 20 caracteres.`);
+          if (!b.botonBody.trim()) errs.push(`${donde}: el botón no tiene texto de mensaje.`);
+        } else if (b.tipo === "mensaje") {
+          if (b.usaVariaciones) {
+            if (!b.variaciones.some((v) => v.trim()))
+              errs.push(`${donde}: mensaje con variaciones pero todas están vacías.`);
+          } else if (!b.texto.trim()) {
+            errs.push(`${donde}: el mensaje está vacío.`);
+          }
+        }
+      });
+    }
+    return errs;
+  }
+
+  // Bloques "archivo" cuyo slot aún NO tiene media_id subido. NO bloquea el guardado
+  // (el flujo del tutorial es: armar el embudo primero, subir la media después); solo
+  // se avisa al terminar para recordar subirlos en Media.
+  function slotsPendientes(): string[] {
+    const out: string[] = [];
+    for (const est of ESTADOS_EMBUDO)
+      for (const b of bloques[est] ?? [])
+        if (b.tipo === "archivo") {
+          const c = mediaCols(b.mediaSlot);
+          if (!String(mediaRow[c.media_id] ?? "").trim() && !out.includes(b.mediaSlot))
+            out.push(b.mediaSlot);
+        }
+    return out;
+  }
+
   // ── guardado: reparte en pasos_embudo + mensajes_rotador + media_bots ──
   async function guardar() {
     // Solo se guarda si el embudo se cargó BIEN (cargado=true). Así un guardado nunca
     // parte de un estado a medias por un fallo de lectura. El botón ya solo aparece con
     // `cargado`, pero lo reforzamos aquí.
     if (!productoKey || !cargado) return;
+
+    // M2: no publicar bloques que el motor no puede ejecutar.
+    const problemas = validar();
+    if (problemas.length) {
+      setEstado(
+        `⚠️ Revisa ${problemas.length} bloque(s) antes de guardar — ${problemas[0]}` +
+          (problemas.length > 1 ? ` (y ${problemas.length - 1} más)` : ""),
+      );
+      return;
+    }
+
     setGuardando(true);
     setEstado("Guardando…");
 
@@ -374,35 +457,62 @@ export function PasosEmbudoEditor() {
       });
     }
 
+    // B2: reañade los pasos de estados fuera del modelo tal cual (para no borrarlos)
+    // y sus variantes de rotador (si no, el borrado-por-diff del rotador las eliminaría).
+    for (const p of pasosExtra) pasos.push(p);
+    for (const r of rotadorExtra) rotador.push(r);
+
+    // M1 (orden seguro, atomicidad best-effort): escribimos PRIMERO el rotador (y los
+    // captions), porque los pasos con fuente:'rotador' los referencian. Si el rotador
+    // falla, abortamos ANTES de escribir los pasos: así nunca queda un paso apuntando a
+    // variantes que no existen.
     try {
-      const reqs: Promise<Response>[] = [
-        fetch("/api/embudos/pasos", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          // vaciar:true = guardado intencional del estado completo (aunque quede vacío).
-          body: JSON.stringify({ producto: productoKey, filas: pasos, vaciar: true }),
-        }),
-        fetch("/api/embudos/rotador", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ producto: productoKey, filas: rotador, vaciar: true }),
-        }),
-      ];
-      if (Object.keys(captions).length)
-        reqs.push(
-          fetch("/api/embudos/media", {
+      const rRot = await fetch("/api/embudos/rotador", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ producto: productoKey, filas: rotador, vaciar: true }),
+      });
+      if (!rRot.ok) {
+        const d = await rRot.json().catch(() => ({}));
+        setEstado(
+          "⚠️ No se guardaron las variantes (" +
+            (d.error ?? `Error ${rRot.status}`) +
+            "). No se tocaron los pasos; reintenta.",
+        );
+        setGuardando(false);
+        return;
+      }
+
+      // Captions: cosméticos. Su fallo NO debe impedir guardar los pasos, así que va en
+      // su propio try/catch (un rechazo de red aquí no debe saltarse el POST de /pasos).
+      let avisoCaptions = "";
+      if (Object.keys(captions).length) {
+        try {
+          const rMed = await fetch("/api/embudos/media", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ producto: productoKey, campos: captions }),
-          }),
-        );
-      const res = await Promise.all(reqs);
-      const malo = res.find((r) => !r.ok);
-      if (malo) {
-        const d = await malo.json().catch(() => ({}));
-        setEstado("⚠️ " + (d.error ?? `Error ${malo.status}`));
+          });
+          if (!rMed.ok) avisoCaptions = " (los captions no se guardaron)";
+        } catch {
+          avisoCaptions = " (los captions no se guardaron)";
+        }
+      }
+
+      const rPas = await fetch("/api/embudos/pasos", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        // vaciar:true = guardado intencional del estado completo (aunque quede vacío).
+        body: JSON.stringify({ producto: productoKey, filas: pasos, vaciar: true }),
+      });
+      if (!rPas.ok) {
+        const d = await rPas.json().catch(() => ({}));
+        setEstado("⚠️ " + (d.error ?? `Error ${rPas.status}`));
       } else {
-        setEstado("✓ Embudo guardado.");
+        // Aviso no bloqueante: bloques archivo cuyo media aún no se subió.
+        const pend = slotsPendientes();
+        const notaMedia = pend.length ? ` · falta subir en Media: ${pend.join(", ")}` : "";
+        setEstado("✓ Embudo guardado." + avisoCaptions + notaMedia);
       }
     } catch (e) {
       setEstado("⚠️ " + (e instanceof Error ? e.message : "Error de red"));
@@ -429,9 +539,24 @@ export function PasosEmbudoEditor() {
         <span className="text-muted">Producto</span>
         {otro ? (
           <input
-            value={productoKey}
-            placeholder="clave del producto"
-            onChange={(e) => cargar(e.target.value)}
+            value={otroText}
+            placeholder="clave del producto (Enter para cargar)"
+            // M3: NO cargamos en cada tecla (dispararía 3 fetch por pulsación y pisaría
+            // el editor). Solo al salir del campo (blur) o con Enter.
+            onChange={(e) => setOtroText(e.target.value)}
+            // Solo recargar si la clave cambió (evita pisar ediciones no guardadas al
+            // refocar y salir sin cambiar nada).
+            onBlur={() => {
+              const k = otroText.trim();
+              if (k !== productoKey) cargar(k);
+            }}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                const k = otroText.trim();
+                if (k !== productoKey) cargar(k);
+              }
+            }}
             className={inputCls}
           />
         ) : (
@@ -440,6 +565,7 @@ export function PasosEmbudoEditor() {
             onChange={(e) => {
               if (e.target.value === "__otro__") {
                 setOtro(true);
+                setOtroText("");
                 cargar("");
               } else cargar(e.target.value);
             }}

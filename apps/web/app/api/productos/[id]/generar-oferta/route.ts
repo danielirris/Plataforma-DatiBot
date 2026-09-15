@@ -8,7 +8,7 @@ import {
   type Oferta,
   type Producto,
 } from "@plataforma/products";
-import { generarTexto } from "@/lib/ai/textProvider";
+import { generarJson } from "@/lib/ai/textProvider";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -65,7 +65,7 @@ function insumos(p: Producto): string {
     .map((a) => `### Anuncio ganador${a.nicho ? ` (nicho: ${a.nicho})` : ""}${a.titulo ? ` — ${a.titulo}` : ""}\n${a.guion.trim()}`)
     .join("\n\n");
   return `--- INSUMOS ---
-Producto: ${p.nombre} | Promesa: ${p.identidad.promesa} | Posicionamiento: ${p.identidad.posicionamiento} | Público: ${p.identidad.dirigidoA}
+Producto: ${p.nombre} | Promesa: ${p.identidad?.promesa ?? ""} | Posicionamiento: ${p.identidad?.posicionamiento ?? ""} | Público: ${p.identidad?.dirigidoA ?? ""}
 
 ANUNCIOS GANADORES DE REFERENCIA (avatar MUY similar al de este producto — de aquí sacas el avatar, sus deseos y sus objeciones):
 ${refs || "(el usuario no cargó anuncios de referencia; deduce el avatar del público y la promesa)"}${bloqueQueVendemos(p)}`;
@@ -247,7 +247,7 @@ export async function POST(req: Request, { params }: Ctx) {
   async function intento(nota = ""): Promise<{ oferta?: Oferta; error?: string }> {
     let raw: string;
     try {
-      raw = await generarTexto(nota ? `${promptBase}\n\nIMPORTANTE: ${nota}` : promptBase);
+      raw = await generarJson(nota ? `${promptBase}\n\nIMPORTANTE: ${nota}` : promptBase);
     } catch (e) {
       return { error: e instanceof Error ? e.message : "Error del proveedor de IA" };
     }

@@ -5,15 +5,20 @@ import {
   supabaseConfigurado,
   SupabaseError,
 } from "@/lib/embudos/supabase";
-import { leerVpsConfig, faltantesVps, subirImagen } from "@/lib/vps/upload";
-import { columnasSlot, mimeDe, subirMediaWhatsApp } from "@/lib/embudos/media";
+import { leerVpsConfig, faltantesVps, subirImagen, eliminarImagen } from "@/lib/vps/upload";
+import { columnasSlot, mimeDe, subirMediaWhatsApp, SLOTS_MEDIA } from "@/lib/embudos/media";
 import { type NumeroBot } from "@/lib/embudos/types";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
 
-const MAX_BYTES = 100 * 1024 * 1024; // 100 MB (tope de seguridad)
+// Topes REALES de WhatsApp Cloud por tipo: video 16 MB, documentos (PDF) 100 MB.
+// Validar por tipo evita subir a `img` un archivo que WhatsApp va a rechazar (que
+// quedaría huérfano) y da un error claro en vez del genérico de la API.
+const MAX_VIDEO = 16 * 1024 * 1024;
+const MAX_DOC = 100 * 1024 * 1024;
+const mb = (n: number) => Math.round(n / (1024 * 1024));
 
 function slug(s: string): string {
   return s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 40) || "x";
@@ -45,8 +50,17 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Elige el número que aloja la media." }, { status: 400 });
   if (!(archivo instanceof File) || archivo.size === 0)
     return NextResponse.json({ error: "No se envió ningún archivo." }, { status: 400 });
-  if (archivo.size > MAX_BYTES)
-    return NextResponse.json({ error: "El archivo supera 100 MB." }, { status: 413 });
+  const limite = slot === "video" ? MAX_VIDEO : MAX_DOC;
+  if (archivo.size > limite)
+    return NextResponse.json(
+      {
+        error:
+          slot === "video"
+            ? `El video pesa ${mb(archivo.size)} MB. WhatsApp acepta videos de máximo ${mb(MAX_VIDEO)} MB — compártelo comprimido o recórtalo.`
+            : `El archivo pesa ${mb(archivo.size)} MB. El máximo es ${mb(MAX_DOC)} MB.`,
+      },
+      { status: 413 },
+    );
 
   // Token del número (del propio Supabase; nunca viaja al navegador).
   let token = "";
@@ -62,6 +76,37 @@ export async function POST(req: Request) {
       { error: "Ese número no tiene CAPI token configurado (pestaña Números)." },
       { status: 400 },
     );
+
+  // Fila previa del producto: sirve para (a) no mezclar números y (b) limpiar el
+  // archivo viejo al reemplazar un slot. Si la lectura falla, seguimos (la subida manda).
+  let filaPrev: Record<string, unknown> | null = null;
+  try {
+    const prev = await selectRows<Record<string, unknown>>("media_bots", {
+      producto: `eq.${producto}`,
+    });
+    filaPrev = prev[0] ?? null;
+  } catch {
+    /* no bloquea la subida */
+  }
+
+  // M5: la media de un producto debe alojarse en UN solo número (los media_id están
+  // atados al número que los emitió). Si ya hay media de OTRO slot en otro número,
+  // no dejamos mezclar: se enviaría un media_id inválido para el número guardado.
+  const phonePrev = String(filaPrev?.phone_id ?? "").trim();
+  if (phonePrev && phonePrev !== phone_id) {
+    const hayMediaOtroSlot = SLOTS_MEDIA.some((s) => {
+      const c = columnasSlot(s)!;
+      return s !== slot && String(filaPrev?.[c.media_id] ?? "").trim();
+    });
+    if (hayMediaOtroSlot)
+      return NextResponse.json(
+        {
+          error:
+            "Este producto ya tiene media alojada en otro número. Usa el MISMO número para todos sus archivos (los media_id están atados al número que los emitió), o borra la media anterior primero.",
+        },
+        { status: 409 },
+      );
+  }
 
   // Almacén de originales (servidor img). Sin esto no hay renovación posible.
   const cfg = await leerVpsConfig();
@@ -94,8 +139,11 @@ export async function POST(req: Request) {
   try {
     mediaId = await subirMediaWhatsApp(phone_id, token, buffer, nombreOriginal, mime);
   } catch (e) {
+    // B3: WhatsApp rechazó -> el archivo recién guardado en img quedaría huérfano
+    // (nunca se referencia en media_bots). Lo borramos.
+    await eliminarImagen(url, cfg).catch(() => {});
     return NextResponse.json(
-      { error: "WhatsApp rechazó la media: " + (e instanceof Error ? e.message : "?"), url },
+      { error: "WhatsApp rechazó la media: " + (e instanceof Error ? e.message : "?") },
       { status: 502 },
     );
   }
@@ -114,6 +162,10 @@ export async function POST(req: Request) {
 
   try {
     const guardado = await upsertRow("media_bots", fila, "producto");
+    // B3: si esto fue un REEMPLAZO de slot, borra el archivo anterior de img (quedaría
+    // huérfano al pisar su url por la nueva).
+    const urlVieja = String(filaPrev?.[cols.url] ?? "").trim();
+    if (urlVieja && urlVieja !== url) await eliminarImagen(urlVieja, cfg).catch(() => {});
     // No devolvemos el capi_token al navegador (S2): el cliente no lo usa.
     if (guardado) delete (guardado as Record<string, unknown>).capi_token;
     return NextResponse.json({ media: guardado, media_id: mediaId, url });

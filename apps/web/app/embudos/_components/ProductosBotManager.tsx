@@ -74,6 +74,7 @@ export function ProductosBotManager() {
   const [productosDatibot, setProductosDatibot] = useState<ProductoLite[]>([]);
   const [productoKey, setProductoKey] = useState<string>("");
   const [otro, setOtro] = useState<boolean>(false);
+  const [otroText, setOtroText] = useState<string>(""); // texto del input "otro" (no dispara carga)
   const [filas, setFilas] = useState<Record<string, Fila>>({});
   const [pais, setPais] = useState<string>("CO");
   const [cargando, setCargando] = useState<boolean>(false);
@@ -184,9 +185,22 @@ export function ProductosBotManager() {
         <span className="text-muted">Producto</span>
         {otro ? (
           <input
-            value={productoKey}
-            placeholder="clave del producto (ej. masmellos)"
-            onChange={(e) => cargar(e.target.value)}
+            value={otroText}
+            placeholder="clave del producto (ej. masmellos) — Enter para cargar"
+            // M3: cargar solo al salir del campo o con Enter, no en cada tecla.
+            onChange={(e) => setOtroText(e.target.value)}
+            // Solo recargar si la clave cambió (no pisar lo que haya en pantalla).
+            onBlur={() => {
+              const k = otroText.trim();
+              if (k !== productoKey) cargar(k);
+            }}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                const k = otroText.trim();
+                if (k !== productoKey) cargar(k);
+              }
+            }}
             className={inputCls}
           />
         ) : (
@@ -195,6 +209,7 @@ export function ProductosBotManager() {
             onChange={(e) => {
               if (e.target.value === "__otro__") {
                 setOtro(true);
+                setOtroText("");
                 cargar("");
               } else cargar(e.target.value);
             }}
@@ -332,7 +347,7 @@ export function ProductosBotManager() {
           </div>
 
           {/* Las variaciones de mensajes (rotador) ahora se editan en el constructor
-              del Embudo (pestaña "Embudo (pasos)"), inline en cada bloque. */}
+              del Embudo (pestaña "Embudo (constructor)"), inline en cada bloque. */}
 
           {/* Guardar (mensajes fijos + prompts + pixel + pago) */}
           <div className="flex flex-wrap items-center gap-3 rounded-xl border border-[var(--hairline)] glass p-4">

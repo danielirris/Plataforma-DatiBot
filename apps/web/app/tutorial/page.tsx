@@ -206,24 +206,27 @@ export default function TutorialPage() {
           </h3>
           <ol className="mt-3 space-y-3">
             <Paso n={1}>
-              <b>Crea el número</b> (pestaña <b>Números</b> → “+ Nuevo número”): pon el{" "}
+              <b>Crea el número</b> (pestaña <b>Números</b> → “+ Nuevo número”): pon un{" "}
+              <b>Nombre</b> (para identificar la cuenta publicitaria), el{" "}
               <b>número de WhatsApp</b>, el <b>phone_id</b> de Meta, el <b>WABA</b>, el{" "}
-              <b>account_id</b> de Chatwoot, la <b>credencial</b> de n8n, el <b>país</b> y el{" "}
-              <b>CAPI token</b> (se guarda oculto). En{" "}
+              <b>account_id</b> de Chatwoot, la <b>credencial</b> de n8n y el{" "}
+              <b>CAPI token</b> (se guarda oculto). No hay campo país: el motor resuelve el
+              país solo, y un número puede atender varios. En{" "}
               <b>“Producto que vende hoy”</b> eliges cuál de tus productos atiende ese
               número. Guarda.
             </Paso>
             <Paso n={2}>
               <b>Configura el bot del producto</b> (pestaña <b>Bot por producto</b> → elige
-              el mismo producto): <b>mensajes fijos</b>, <b>prompts de las IAs</b>,{" "}
-              <b>datos de pago por país</b> y las <b>variantes anti-spam</b> (rotador, para
-              que no mande siempre el mismo texto). Guarda.
+              el mismo producto): <b>mensajes fijos</b>, <b>prompts de las IAs</b> y los{" "}
+              <b>datos de pago por país</b>. Guarda. (Las <b>variantes anti-spam</b> del
+              rotador se arman por bloque en el <b>constructor del Embudo</b>, Paso 3.)
             </Paso>
             <Paso n={3}>
-              <b>Arma la secuencia</b> (pestaña <b>Embudo (pasos)</b>): pulsa{" "}
+              <b>Arma la secuencia</b> (pestaña <b>Embudo (constructor)</b>): pulsa{" "}
               <b>Cargar plantilla por defecto</b> para partir de la secuencia estándar
               (MENU → VIDEO → CONFIRMACIÓN → ENTREGA → STOP), reordena con ↑/↓, ajusta los{" "}
-              <b>delays</b> y los <b>botones</b>. Guarda.
+              <b>delays</b> y los <b>botones</b>. Aquí cada bloque de mensaje puede tener{" "}
+              <b>variantes anti-spam</b> (marca «Varias versiones»). Guarda.
             </Paso>
             <Paso n={4}>
               <b>Sube la media</b> (pestaña <b>Media</b>): elige el número que la aloja y

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getProduct, bloqueQueVendemos, type GuionEmbudo, type Producto } from "@plataforma/products";
-import { generarTexto } from "@/lib/ai/textProvider";
+import { generarJson } from "@/lib/ai/textProvider";
 import { bloqueInstrucciones } from "@/lib/ai/instrucciones";
 
 export const runtime = "nodejs";
@@ -72,7 +72,7 @@ ${bonos ? `Bonos:\n${bonos}` : ""}
   }
 
   return `--- INSUMOS ---
-Producto: ${p.nombre} | Promesa: ${p.identidad.promesa} | Posicionamiento: ${p.identidad.posicionamiento} | Público: ${p.identidad.dirigidoA}
+Producto: ${p.nombre} | Promesa: ${p.identidad?.promesa ?? ""} | Posicionamiento: ${p.identidad?.posicionamiento ?? ""} | Público: ${p.identidad?.dirigidoA ?? ""}
 
 ANUNCIOS GANADORES DE REFERENCIA (avatar MUY similar; de aquí sacas el tono, el avatar y sus objeciones):
 ${refs || "(sin anuncios de referencia; deduce el avatar del público y la promesa)"}
@@ -106,7 +106,7 @@ export async function POST(req: Request, { params }: Ctx) {
   async function intento(nota = ""): Promise<GuionEmbudo | null> {
     let raw: string;
     try {
-      raw = await generarTexto(nota ? `${prompt}\n\nIMPORTANTE: ${nota}` : prompt);
+      raw = await generarJson(nota ? `${prompt}\n\nIMPORTANTE: ${nota}` : prompt);
     } catch {
       return null;
     }
@@ -117,9 +117,14 @@ export async function POST(req: Request, { params }: Ctx) {
       const formato = typeof o.formato === "string" ? o.formato.trim().slice(0, 40) : "";
       return { formato, guion, generadoEn: new Date().toISOString() };
     } catch {
-      // Si no vino JSON válido pero sí texto, úsalo como guión directo.
+      // Fallback SOLO si el modelo devolvió prosa plana (no JSON). Si intentó JSON pero
+      // salió malformado, NO lo guardamos crudo (antes se guardaba `{"formato":…}` como
+      // guión): devolvemos null para que dispare el reintento correctivo / 502.
       const t = raw.trim();
-      return t ? { formato: "", guion: t, generadoEn: new Date().toISOString() } : null;
+      const pareceJson = t.startsWith("{") || /"guion"\s*:/.test(t);
+      return !pareceJson && t
+        ? { formato: "", guion: t, generadoEn: new Date().toISOString() }
+        : null;
     }
   }
 

@@ -76,6 +76,24 @@ export async function generarTexto(prompt: string): Promise<string> {
   return geminiGenerate(prompt, cfg.geminiKey);
 }
 
+/**
+ * Genera JSON con el proveedor configurado, FORZANDO salida JSON estricta (Gemini:
+ * responseMimeType; OpenAI: response_format json_object). Reduce mucho los "no vino
+ * JSON válido" frente a generarTexto (texto plano). El prompt DEBE pedir JSON (OpenAI
+ * lo exige). Devuelve el string JSON crudo; el caller lo parsea/valida.
+ */
+export async function generarJson(prompt: string, maxOutputTokens = 8192): Promise<string> {
+  const cfg = await leerTextoConfig();
+  if (cfg.provider === "OpenAI") {
+    if (!cfg.openaiKey)
+      throw new Error("Falta la OpenAI API Key (grupo «Compartidas» en Configuración).");
+    return openaiJson(prompt, cfg.openaiKey, maxOutputTokens);
+  }
+  if (!cfg.geminiKey)
+    throw new Error("Falta la Gemini API Key (grupo «Generación con IA» en Configuración).");
+  return generarJsonGemini(prompt, maxOutputTokens);
+}
+
 async function geminiGenerate(prompt: string, key: string): Promise<string> {
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_TEXT_MODEL}:generateContent?key=${encodeURIComponent(key)}`;
   const res = await geminiFetch(url, {
@@ -205,6 +223,26 @@ async function openaiFetch(body: unknown, key: string): Promise<Response> {
     if (i < INTENTOS - 1) await new Promise((r) => setTimeout(r, 1500 * (i + 1)));
   }
   throw ultimo instanceof Error ? ultimo : new Error("OpenAI no respondió (timeout).");
+}
+
+// Igual que openaiChat pero forzando salida JSON (response_format json_object) y con
+// temperatura más baja para estructura. El prompt debe mencionar "JSON" (OpenAI lo exige).
+async function openaiJson(prompt: string, key: string, maxTokens: number): Promise<string> {
+  const res = await openaiFetch(
+    {
+      model: OPENAI_TEXT_MODEL,
+      messages: [{ role: "user", content: prompt }],
+      temperature: 0.6,
+      max_tokens: maxTokens,
+      response_format: { type: "json_object" },
+    },
+    key,
+  );
+  if (!res.ok) throw new Error(`OpenAI respondió ${res.status}: ${await res.text()}`);
+  const data = await res.json();
+  const text = data?.choices?.[0]?.message?.content;
+  if (!text) throw new Error("OpenAI no devolvió JSON.");
+  return text;
 }
 
 async function openaiChat(prompt: string, key: string): Promise<string> {

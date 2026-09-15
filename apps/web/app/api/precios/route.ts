@@ -20,9 +20,16 @@ export async function GET() {
       for (const p of PAISES_EMBUDO) {
         const raw = guardados[p.codigo];
         if (!raw) continue;
-        const nums = raw.split(",").map((s) => Number(String(s).trim()));
-        // Mezcla por posición: usa el valor guardado si es válido, si no el default.
-        precios[p.codigo] = p.montos.map((d, i) => (Number.isFinite(nums[i]) ? nums[i] : d));
+        const partes = raw.split(",");
+        // Mezcla por posición, IGUAL que ConfigForm.preciosDe: un valor en BLANCO usa el
+        // default (no 0). Antes Number("") === 0 colaba un precio 0 y hacía que
+        // Configuración (mostraba el default) y Mensajes (recibía 0) discreparan.
+        precios[p.codigo] = p.montos.map((d, i) => {
+          const s = String(partes[i] ?? "").trim();
+          if (s === "") return d;
+          const n = Number(s);
+          return Number.isFinite(n) ? n : d;
+        });
       }
     }
   } catch {
