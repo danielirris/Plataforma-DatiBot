@@ -48,6 +48,9 @@ export function Sidebar() {
     if (typeof window !== "undefined" && window.innerWidth < 768) setColapsado(true);
   }
 
+  // La pantalla de login no lleva menú (es pantalla completa).
+  if (pathname === "/login") return null;
+
   // En el subdominio del editor solo existe el editor; el menú lo refleja.
   const items = soloEditor ? NAV_ITEMS.filter((i) => i.href === "/extractor") : NAV_ITEMS;
   const inicio = soloEditor ? "/extractor" : "/";
@@ -147,6 +150,13 @@ export function Sidebar() {
           </nav>
         )}
         <ThemeToggle />
+        <a
+          href="/api/logout"
+          className="flex items-center gap-3 rounded-full px-3 py-2 text-sm text-muted transition-colors hover:bg-[var(--hover)] hover:text-text"
+        >
+          <span className="text-base">🚪</span>
+          <span className="flex-1">Salir</span>
+        </a>
         <span className="px-2 text-xs text-muted/70">Datibot · versión #1</span>
       </div>
       </aside>
