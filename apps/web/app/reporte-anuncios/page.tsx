@@ -33,31 +33,11 @@ function anunciosSrc(): string {
 export default function ReporteAnunciosPage() {
   const src = anunciosSrc();
   return (
-    <div className="flex h-full flex-col">
-      <div className="flex items-center justify-between gap-3 border-b border-[var(--hairline)] px-6 py-3">
-        <div className="min-w-0">
-          <h1 className="text-lg font-medium text-text">Reporte de anuncios</h1>
-          <p className="text-xs text-muted">
-            Atribución de Facebook Ads — entra con tu misma sesión de Datibot.
-          </p>
-        </div>
-        <a
-          href={src}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="shrink-0 rounded-lg border border-[var(--hairline)] px-3 py-1.5 text-xs text-muted hover:text-text"
-          title="Si el panel de abajo sale en blanco, ábrelo en una pestaña aparte"
-        >
-          ↗ Abrir en pestaña nueva
-        </a>
-      </div>
-
-      <iframe
-        src={src}
-        title="Reporte de anuncios"
-        className="w-full flex-1 border-0 bg-white"
-        allow="clipboard-read; clipboard-write; fullscreen"
-      />
-    </div>
+    <iframe
+      src={src}
+      title="Reporte de anuncios"
+      className="block h-full w-full border-0 bg-white"
+      allow="clipboard-read; clipboard-write; fullscreen"
+    />
   );
 }
