@@ -343,7 +343,7 @@ export function ConfigForm({ initial }: { initial: ConfigStore }) {
           </span>
         )}
         {status === "error" && (
-          <span className="text-sm text-red-400">Error al guardar.</span>
+          <span className="text-sm text-[var(--bad)]">Error al guardar.</span>
         )}
       </div>
     </div>

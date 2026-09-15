@@ -77,6 +77,36 @@ export function middleware(req: NextRequest) {
   const negado = comprobarAuth(req);
   if (negado) return negado;
 
+  // CSRF: el navegador reenvía el Basic Auth en peticiones cross-site, así que sin esto
+  // otra web podría disparar POST/PUT/DELETE (config, productos, borrar media…) con tu
+  // sesión. Regla: si HAY cabecera Origin y su host NO es el nuestro, se bloquea. Si no
+  // hay Origin (cliente no-navegador, p. ej. curl), no es vector CSRF y se deja pasar.
+  const metodo = req.method.toUpperCase();
+  if (metodo === "POST" || metodo === "PUT" || metodo === "PATCH" || metodo === "DELETE") {
+    const origin = req.headers.get("origin");
+    if (origin) {
+      const propios = new Set(
+        [
+          req.headers.get("host"),
+          req.headers.get("x-forwarded-host"),
+          req.nextUrl.host,
+        ].filter(Boolean),
+      );
+      let originHost = "";
+      try {
+        originHost = new URL(origin).host;
+      } catch {
+        /* Origin malformado → se trata como no coincidente */
+      }
+      if (!originHost || !propios.has(originHost)) {
+        return NextResponse.json(
+          { error: "Origen no permitido (posible CSRF)." },
+          { status: 403 },
+        );
+      }
+    }
+  }
+
   if (esSoloEditor()) {
     const { pathname } = req.nextUrl;
     if (!permitidaEnEditor(pathname)) {

@@ -121,7 +121,7 @@ export function MisAnuncios() {
                       fuente{it.n_videos === 1 ? "" : "s"}
                     </>
                   ) : (
-                    <span className="text-amber-400">Sin renderizar todavía</span>
+                    <span className="text-[var(--warn)]">Sin renderizar todavía</span>
                   )}
                 </p>
               </div>

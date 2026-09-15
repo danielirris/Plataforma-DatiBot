@@ -43,7 +43,7 @@ export function MediaManager() {
   const cargado = productoKey !== "" && !cargando;
 
   useEffect(() => {
-    fetch("/api/products", { cache: "no-store" })
+    fetch("/api/products?slim=1", { cache: "no-store" })
       .then((r) => (r.ok ? r.json() : []))
       .then((l: ProductoLite[]) => setProductosDatibot(Array.isArray(l) ? l : []))
       .catch(() => {});

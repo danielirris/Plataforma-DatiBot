@@ -87,7 +87,7 @@ export function ProductosBotManager() {
   const cargado = Object.keys(filas).length > 0;
 
   useEffect(() => {
-    fetch("/api/products", { cache: "no-store" })
+    fetch("/api/products?slim=1", { cache: "no-store" })
       .then((r) => (r.ok ? r.json() : []))
       .then((lista: ProductoLite[]) =>
         setProductosDatibot(Array.isArray(lista) ? lista : []),

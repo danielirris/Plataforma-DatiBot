@@ -149,7 +149,35 @@ export function EbooksCreator({ productos }: { productos: Producto[] }) {
     });
   }
   function removeCapitulo(i: number) {
+    // Al quitar el capítulo i hay que REINDEXAR los buffers keyeados por índice, o el
+    // textarea/estado de los capítulos siguientes queda desalineado y editarlos corrompe
+    // el capítulo equivocado.
+    const shiftNum = <T,>(rec: Record<number, T>): Record<number, T> => {
+      const out: Record<number, T> = {};
+      for (const [k, v] of Object.entries(rec)) {
+        const n = Number(k);
+        if (n < i) out[n] = v;
+        else if (n > i) out[n - 1] = v; // n === i se descarta
+      }
+      return out;
+    };
     setEbook((e) => ({ ...e, capitulos: e.capitulos.filter((_, k) => k !== i) }));
+    setRedaccion(shiftNum);
+    setCapEstado(shiftNum);
+    setFotosEstado((s) => {
+      const out: Record<string, string> = {};
+      for (const [k, v] of Object.entries(s)) {
+        if (!/^\d+$/.test(k)) {
+          out[k] = v; // claves no numéricas (p. ej. "portada") se conservan
+          continue;
+        }
+        const n = Number(k);
+        if (n < i) out[String(n)] = v;
+        else if (n > i) out[String(n - 1)] = v;
+      }
+      return out;
+    });
+    setPreviewCap((pc) => (pc == null ? pc : pc === i ? null : pc > i ? pc - 1 : pc));
   }
 
   async function generarIdeaEbook() {

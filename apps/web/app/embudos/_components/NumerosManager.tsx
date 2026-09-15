@@ -36,7 +36,7 @@ export function NumerosManager() {
     try {
       const [rn, rp] = await Promise.all([
         fetch("/api/embudos/numeros", { cache: "no-store" }),
-        fetch("/api/products", { cache: "no-store" }),
+        fetch("/api/products?slim=1", { cache: "no-store" }),
       ]);
       const dn = await rn.json();
       setConfigurado(dn.configurado !== false);
@@ -161,7 +161,7 @@ EMBUDOS_SUPABASE_SERVICE_KEY=<tu service key>`}
       </div>
 
       {errorCarga && (
-        <div className="rounded-lg border border-red-400/40 bg-red-400/10 p-3 text-xs text-red-400">
+        <div className="rounded-lg border border-[var(--bad)]/40 bg-[var(--bad)]/10 p-3 text-xs text-[var(--bad)]">
           {errorCarga}
         </div>
       )}

@@ -1022,7 +1022,7 @@ export function EditorVideos({
                   </button>
                 </>
               ) : (
-                <span className="flex-1 text-xs text-amber-400">— falta el audio —</span>
+                <span className="flex-1 text-xs text-[var(--warn)]">— falta el audio —</span>
               )}
             </div>
           ))}
@@ -1047,7 +1047,7 @@ export function EditorVideos({
         </div>
 
         {voces.length !== numClips && (
-          <p className="text-xs text-amber-400">
+          <p className="text-xs text-[var(--warn)]">
             {voces.length < numClips
               ? `Faltan ${numClips - voces.length} audio(s) para poder generar.`
               : `Sobran ${voces.length - numClips}; quita alguno (deben ser ${numClips}).`}
@@ -1084,7 +1084,7 @@ export function EditorVideos({
             <p className="text-xs font-medium text-text">
               Ganchos elegidos: {Math.min(hookElegidos.length, numClips)}/{numClips}
               {hookElegidos.length > numClips && (
-                <span className="text-amber-400">
+                <span className="text-[var(--warn)]">
                   {" "}
                   (sobran {hookElegidos.length - numClips}, se usarán los primeros {numClips})
                 </span>

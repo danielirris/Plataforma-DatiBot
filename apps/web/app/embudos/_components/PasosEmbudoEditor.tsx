@@ -178,7 +178,7 @@ export function PasosEmbudoEditor() {
   const [cargado, setCargado] = useState<boolean>(false);
 
   useEffect(() => {
-    fetch("/api/products", { cache: "no-store" })
+    fetch("/api/products?slim=1", { cache: "no-store" })
       .then((r) => (r.ok ? r.json() : []))
       .then((l: ProductoLite[]) => setProductos(Array.isArray(l) ? l : []))
       .catch(() => {});

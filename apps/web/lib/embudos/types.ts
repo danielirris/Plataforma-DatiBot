@@ -45,9 +45,6 @@ export function numeroBotVacio(): NumeroBot {
   };
 }
 
-/** Campos técnicos del número que se muestran como sensibles (tipo password). */
-export const NUMERO_CAMPOS_SENSIBLES: (keyof NumeroBot)[] = ["capi_token"];
-
 /** `productos` — lo variable por (producto, pais). Se usará en la fase de edición del bot. */
 export interface ProductoBot {
   producto: string;
@@ -95,8 +92,6 @@ export interface PasoEmbudo {
 }
 
 export const ESTADOS_EMBUDO = ["MENU", "VIDEO", "CONFIRMACION", "ENTREGA", "STOP"] as const;
-export const TIPOS_PASO = ["mensaje", "video", "pdf", "boton", "etiqueta", "wait"] as const;
-export const FUENTES_PASO = ["config", "media", "rotador", "directo"] as const;
 
 /** Descripción corta de cada estado (para la UI del editor de embudo). */
 export const ESTADO_INFO: Record<string, string> = {

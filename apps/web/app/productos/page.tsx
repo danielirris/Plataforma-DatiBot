@@ -8,7 +8,7 @@ export default function ProductosPage() {
   const [productos, setProductos] = useState<Producto[] | null>(null);
 
   async function cargar() {
-    const res = await fetch("/api/products");
+    const res = await fetch("/api/products?slim=1");
     setProductos(res.ok ? await res.json() : []);
   }
   useEffect(() => {

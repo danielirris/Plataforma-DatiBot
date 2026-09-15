@@ -130,8 +130,9 @@ export async function POST(req: Request, { params }: Ctx) {
     );
   }
 
-  const pdf = await res.arrayBuffer();
-  return new NextResponse(pdf, {
+  // Retransmite el PDF por streaming (res.body) en vez de bufferizarlo entero en RAM
+  // con arrayBuffer() (un PDF con muchas fotos podía pesar decenas de MB → riesgo OOM).
+  return new NextResponse(res.body, {
     status: 200,
     headers: {
       "Content-Type": "application/pdf",

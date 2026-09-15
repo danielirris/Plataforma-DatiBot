@@ -111,59 +111,10 @@ async function geminiGenerate(prompt: string, key: string): Promise<string> {
   return text;
 }
 
-export interface ResultadoGrounding {
-  text: string;
-  fuentes: { titulo: string; url: string }[];
-}
-
 /**
- * Investigación con Gemini + Google Search grounding (búsqueda web real).
- * Devuelve el texto y las fuentes web usadas. Solo Gemini soporta grounding.
- */
-export async function investigarConGemini(
-  prompt: string,
-): Promise<ResultadoGrounding> {
-  const cfg = await leerTextoConfig();
-  if (!cfg.geminiKey)
-    throw new Error(
-      "La investigación de avatar usa Gemini (búsqueda web). Falta la Gemini API Key en Configuración.",
-    );
-
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_TEXT_MODEL}:generateContent?key=${encodeURIComponent(cfg.geminiKey)}`;
-  const res = await geminiFetch(url, {
-    contents: [{ parts: [{ text: prompt }] }],
-    tools: [{ google_search: {} }],
-    generationConfig: { temperature: 0.7 },
-  });
-  if (!res.ok)
-    throw new Error(`Gemini (grounding) respondió ${res.status}: ${await res.text()}`);
-
-  const data = await res.json();
-  const cand = data?.candidates?.[0];
-  const text = (cand?.content?.parts ?? [])
-    .map((p: { text?: string }) => p.text ?? "")
-    .join("");
-  if (!text) throw new Error("Gemini no devolvió texto en la investigación.");
-
-  // Fuentes desde groundingMetadata.groundingChunks[].web { uri, title }
-  const chunks = cand?.groundingMetadata?.groundingChunks ?? [];
-  const fuentes = chunks
-    .map((c: { web?: { uri?: string; title?: string } }) => ({
-      url: c?.web?.uri ?? "",
-      titulo: c?.web?.title ?? c?.web?.uri ?? "",
-    }))
-    .filter((f: { url: string }) => f.url);
-
-  return { text, fuentes };
-}
-
-/**
- * Genera JSON con Gemini SIN grounding pero forzando salida JSON estricta
- * (responseMimeType) y con un tope de tokens holgado. Es MUCHO más fiable para
- * estructuras que ``investigarConGemini``: el grounding (búsqueda web) prioriza la
- * prosa de investigación y trunca el JSON largo — por eso las partes estructuradas
- * que van al final (p.ej. las objeciones del avatar) se perdían. Usa grounding solo
- * para investigar en texto; usa ESTO para las partes estructuradas.
+ * Genera JSON con Gemini forzando salida JSON estricta (responseMimeType) y con un tope
+ * de tokens holgado. Fiable para estructuras (la salida JSON forzada no se trunca ni
+ * mezcla con prosa). Lo usa generarJson() cuando el proveedor es Gemini.
  */
 export async function generarJsonGemini(
   prompt: string,

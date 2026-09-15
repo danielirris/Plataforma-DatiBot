@@ -20,11 +20,17 @@ export function Sidebar() {
 
   useEffect(() => {
     setSoloEditor(/(?:^|;\s*)datibot_solo_editor=1(?:;|$)/.test(document.cookie));
+    let guardado: string | null = null;
     try {
-      setColapsado(localStorage.getItem(LS_COLAPSADO) === "1");
+      guardado = localStorage.getItem(LS_COLAPSADO);
     } catch {
-      /* sin localStorage: queda visible */
+      /* sin localStorage */
     }
+    // Respeta la preferencia guardada; si no hay, arranca COLAPSADO en móvil (el menú
+    // fijo de 240px se comería la pantalla), y visible en escritorio.
+    if (guardado === "1") setColapsado(true);
+    else if (guardado === "0") setColapsado(false);
+    else setColapsado(typeof window !== "undefined" && window.innerWidth < 768);
   }, []);
 
   function setColapso(v: boolean) {
@@ -34,6 +40,12 @@ export function Sidebar() {
     } catch {
       /* no-op */
     }
+  }
+
+  // En móvil, al navegar cerramos el drawer (queda encima del contenido); en escritorio
+  // no se toca (el menú es estático). No persiste la preferencia (solo cierra la vista).
+  function cerrarSiMovil() {
+    if (typeof window !== "undefined" && window.innerWidth < 768) setColapsado(true);
   }
 
   // En el subdominio del editor solo existe el editor; el menú lo refleja.
@@ -65,7 +77,15 @@ export function Sidebar() {
   }
 
   return (
-    <aside className="flex w-60 shrink-0 flex-col border-r border-[var(--border)] bg-[var(--sidebar)]">
+    <>
+      {/* Backdrop: solo en móvil, cuando el menú está abierto ENCIMA del contenido.
+          Tocarlo lo cierra. En escritorio el aside es estático (no hace falta). */}
+      <button
+        aria-label="Cerrar menú"
+        onClick={() => setColapso(true)}
+        className="fixed inset-0 z-30 bg-black/30 md:hidden"
+      />
+      <aside className="fixed inset-y-0 left-0 z-40 flex w-60 shrink-0 flex-col border-r border-[var(--border)] bg-[var(--sidebar)] md:static md:z-auto">
       {/* Marca + botón para ocultar */}
       <div className="flex items-center justify-between gap-2 px-5 py-6">
         <Link href={inicio} className="flex items-center gap-2.5">
@@ -91,6 +111,7 @@ export function Sidebar() {
               key={item.href}
               href={item.href}
               title={item.description}
+              onClick={cerrarSiMovil}
               className={pill(active)}
             >
               <span className="text-base">{item.icon}</span>
@@ -115,6 +136,7 @@ export function Sidebar() {
                   key={item.href}
                   href={item.href}
                   title={item.description}
+                  onClick={cerrarSiMovil}
                   className={pill(active)}
                 >
                   <span className="text-base">{item.icon}</span>
@@ -127,6 +149,7 @@ export function Sidebar() {
         <ThemeToggle />
         <span className="px-2 text-xs text-muted/70">Datibot · versión #1</span>
       </div>
-    </aside>
+      </aside>
+    </>
   );
 }

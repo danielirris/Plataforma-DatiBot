@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getProduct, saveProduct, type VideoProducto } from "@plataforma/products";
-import { leerVpsConfig, faltantesVps, subirImagen } from "@/lib/vps/upload";
+import { leerVpsConfig, faltantesVps, subirImagen, eliminarImagen } from "@/lib/vps/upload";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -69,4 +69,39 @@ export async function POST(req: Request, { params }: Ctx) {
       { status: 502 },
     );
   }
+}
+
+// Quita UN video del producto (por url): lo saca del store Y borra el archivo. Se hace
+// server-side releyendo el producto para NO dejar el store apuntando a un archivo ya
+// borrado (referencia colgante) y sin chocar con la concurrencia optimista del PUT.
+export async function DELETE(req: Request, { params }: Ctx) {
+  const { id } = await params;
+  let url = "";
+  try {
+    url = String(((await req.json()) as { url?: string })?.url ?? "").trim();
+  } catch {
+    /* url vacío → 400 abajo */
+  }
+  if (!url) return NextResponse.json({ error: "Falta la url del video." }, { status: 400 });
+
+  const producto = await getProduct(id).catch(() => null);
+  if (!producto) return NextResponse.json({ error: "Producto no encontrado." }, { status: 404 });
+
+  const videos = (producto.videos ?? []).filter((v) => v.url !== url);
+  try {
+    await saveProduct({ ...producto, videos });
+  } catch (e) {
+    return NextResponse.json(
+      { error: e instanceof Error ? e.message : "No se pudo actualizar el producto." },
+      { status: 500 },
+    );
+  }
+  // El archivo se borra DESPUÉS de persistir (best-effort): si falla, el store ya no lo
+  // referencia y a lo sumo queda un huérfano, nunca una referencia rota.
+  try {
+    await eliminarImagen(url, await leerVpsConfig()).catch(() => {});
+  } catch {
+    /* ignore */
+  }
+  return NextResponse.json({ ok: true, videos });
 }

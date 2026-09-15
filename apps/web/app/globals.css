@@ -95,6 +95,15 @@ code {
   font-family: "Space Mono", ui-monospace, "SFMono-Regular", monospace;
 }
 
+/* Foco de TECLADO visible en toda la app: los inputs usan `outline-none`, así que sin
+   esto quien navega con teclado no ve dónde está. Solo aparece con teclado (:focus-visible),
+   no al hacer clic con el ratón. `--accent-2` contrasta en claro (oliva) y en oscuro (neón). */
+:focus-visible {
+  outline: 2px solid var(--accent-2);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
 /* ── Tarjetas: PLANAS (adiós glassmorphism) ─────────────────── */
 .glass {
   background: var(--panel);

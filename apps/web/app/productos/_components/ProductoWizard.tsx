@@ -429,17 +429,31 @@ export function ProductoWizard({ producto }: { producto?: Producto }) {
   }
 
   async function quitarVideo(url: string) {
+    // Quitado optimista en la UI.
     setP((prev) => ({ ...prev, videos: (prev.videos ?? []).filter((v) => v.url !== url) }));
+    // Producto nuevo sin guardar: no hay nada persistido que sincronizar.
+    if (!p.id) {
+      setVideoEstado("✓ Video quitado.");
+      return;
+    }
     try {
-      await fetch("/api/images/delete", {
-        method: "POST",
+      // El servidor quita el video del store Y borra el archivo (persiste al instante,
+      // sin dejar una referencia colgante ni chocar con el 409 del PUT).
+      const res = await fetch(`/api/productos/${p.id}/videos`, {
+        method: "DELETE",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ url }),
       });
-    } catch {
-      /* aunque falle el borrado remoto, ya se quitó del producto */
+      const data = await res.json().catch(() => ({}));
+      if (res.ok && Array.isArray(data.videos)) {
+        setP((prev) => ({ ...prev, videos: data.videos as typeof prev.videos }));
+        setVideoEstado("✓ Video quitado.");
+      } else {
+        setVideoEstado("⚠️ " + (data.error ?? "No se pudo quitar el video."));
+      }
+    } catch (e) {
+      setVideoEstado("⚠️ " + errorDeRed(e));
     }
-    setVideoEstado("✓ Video quitado. Guarda para conservar el cambio.");
   }
 
   return (
