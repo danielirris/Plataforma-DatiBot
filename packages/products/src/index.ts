@@ -1,25 +1,15 @@
 import { promises as fs, existsSync } from "node:fs";
 import path from "node:path";
+import { dataDir } from "@plataforma/config";
 import type { Producto } from "./schema";
 
 export * from "./schema";
 
-// El almacén vive en la raíz del monorepo, fuera de git (.gitignore), como
-// .config-store.json. Un archivo JSON por producto en .products-store/.
-function findRepoRoot(): string {
-  let dir = process.cwd();
-  for (let i = 0; i < 8; i++) {
-    if (existsSync(path.join(dir, "pnpm-workspace.yaml"))) return dir;
-    const parent = path.dirname(dir);
-    if (parent === dir) break;
-    dir = parent;
-  }
-  return process.cwd();
-}
-
-// DATA_DIR: en producción (contenedor) apunta a un volumen persistente; en local
-// queda undefined y se usa la raíz del monorepo.
-const STORE_DIR = path.join(process.env.DATA_DIR || findRepoRoot(), ".products-store");
+// El almacén vive en el directorio de datos del proyecto: en producción
+// (contenedor) un volumen persistente vía DATA_DIR; en local, la raíz del
+// monorepo. dataDir() es la fuente ÚNICA para ubicarlo — ver @plataforma/config,
+// para no recalcular la raíz aquí y que un cambio no quede a medias.
+const STORE_DIR = path.join(dataDir(), ".products-store");
 
 /** Sanea el id para usarlo como nombre de archivo (evita path traversal). */
 function safeId(id: string): string {

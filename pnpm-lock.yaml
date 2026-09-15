@@ -72,7 +72,11 @@ importers:
 
   packages/config: {}
 
-  packages/products: {}
+  packages/products:
+    dependencies:
+      '@plataforma/config':
+        specifier: workspace:*
+        version: link:../config
 
   packages/ui:
     dependencies:
