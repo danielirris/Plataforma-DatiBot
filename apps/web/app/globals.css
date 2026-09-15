@@ -62,28 +62,31 @@
   --color-muted: var(--muted);
   --color-accent: var(--accent);
   --color-accent-2: var(--accent-2);
-  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  /* Tipografía UNIFICADA con la app de anuncios: Source Sans para texto/títulos,
+     Space Mono para botones/etiquetas. */
+  --font-sans: "Source Sans 3", "Source Sans Pro", ui-sans-serif, system-ui, sans-serif;
   --font-mono: "Space Mono", ui-monospace, "SFMono-Regular", monospace;
-  --font-display: "Anton", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Source Sans 3", "Source Sans Pro", ui-sans-serif, system-ui, sans-serif;
 }
 
 html,
 body {
   color: var(--text);
-  font-family: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  font-family: "Source Sans 3", "Source Sans Pro", ui-sans-serif, system-ui, -apple-system,
+    "Segoe UI", Roboto, sans-serif;
 }
 
 body {
   background: var(--bg);
 }
 
-/* Títulos masivos condensados (jerarquía por tipografía, no por color). */
+/* Títulos: Source Sans en bold mayúsculas (mismo look que la app de anuncios). */
 h1 {
-  font-family: "Anton", ui-sans-serif, sans-serif;
+  font-family: "Source Sans 3", "Source Sans Pro", ui-sans-serif, sans-serif;
   text-transform: uppercase;
-  letter-spacing: -0.02em;
-  line-height: 0.95;
-  font-weight: 400;
+  letter-spacing: -0.01em;
+  line-height: 1;
+  font-weight: 700;
 }
 
 /* Etiquetas/monoespaciadas. */
