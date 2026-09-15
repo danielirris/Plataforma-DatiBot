@@ -25,7 +25,7 @@ export const NAV_ITEMS: NavItem[] = [
     label: "Productos",
     icon: "📦",
     description:
-      "Crea un producto: identidad, oferta, anuncios ganadores de referencia, guión de video de embudo, ebook y videos.",
+      "Crea un producto: identidad, oferta, anuncios ganadores de referencia, análisis, guiones de anuncios, guión de video de embudo y videos.",
   },
   {
     href: "/ebooks",

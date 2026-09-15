@@ -54,7 +54,7 @@ export default function TutorialPage() {
         {[
           ["#producto", "1 · Crear un producto"],
           ["#precios", "2 · Precios por país"],
-          ["#videos", "3 · Videos y anuncios"],
+          ["#videos", "3 · Videos, ebooks y anuncios"],
           ["#embudo", "4 · Montar número + producto"],
           ["#plantillas", "Plantillas n8n"],
           ["#numero", "Dar de alta un número"],

@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { randomUUID } from "node:crypto";
 import {
   selectRows,
   upsertRow,
@@ -121,7 +122,11 @@ export async function POST(req: Request) {
   const ext = (nombreOriginal.split(".").pop() ?? "bin").toLowerCase().replace(/[^a-z0-9]/g, "");
   const mime = mimeDe(nombreOriginal);
   const buffer = Buffer.from(await archivo.arrayBuffer());
-  const nombreArchivo = `emb-${slug(producto)}-${slug(slot)}-${Date.now()}.${ext}`;
+  // Token aleatorio en el nombre: los originales de embudos (lead magnets / entregables
+  // de pago) se sirven por /api/img SIN login, así que el nombre debe ser imposible de
+  // adivinar (URL-capacidad). El motor sigue accediendo por la url guardada en media_bots.
+  const rnd = randomUUID().replace(/-/g, "").slice(0, 20);
+  const nombreArchivo = `emb-${slug(producto)}-${slug(slot)}-${rnd}.${ext}`;
 
   // 1) Guardar el original en img (para poder renovar sin re-subir a mano).
   let url = "";

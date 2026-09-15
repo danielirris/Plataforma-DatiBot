@@ -1316,7 +1316,13 @@ export function EditorVideos({
           onClick={generar}
           disabled={trabajando || seleccion.size === 0 || voces.length !== numClips}
           className="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
-          title={voces.length !== numClips ? `Sube ${numClips} audios (uno por anuncio)` : ""}
+          title={
+            seleccion.size === 0
+              ? "Elige al menos un video de la lista de arriba"
+              : voces.length !== numClips
+                ? `Sube ${numClips} audios (uno por anuncio)`
+                : ""
+          }
         >
           {trabajando ? "Procesando…" : "✨ Crear anuncios"}
         </button>

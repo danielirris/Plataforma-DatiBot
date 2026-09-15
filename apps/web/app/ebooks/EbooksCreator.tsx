@@ -12,29 +12,10 @@ import {
 } from "@plataforma/products/schema";
 import { AutoTextarea } from "../productos/_components/AutoTextarea";
 import { bloquesATexto, textoABloques } from "@/lib/ebook/bloquesTexto";
+import { mensajeDeError, errorDeRed } from "@/lib/http/errores";
 
 // Temas de diseño del motor de ebooks (carpetas en themes/).
 const TEMAS_EBOOK = ["amigurumi", "arcade", "capital", "impulso", "sabores", "sereno"];
-
-// Mensaje legible de una respuesta fallida (usa {error} si vino JSON).
-async function mensajeDeError(res: Response): Promise<string> {
-  const raw = await res.text().catch(() => "");
-  try {
-    const d = JSON.parse(raw);
-    if (d?.error) return String(d.error);
-  } catch {
-    /* la respuesta no era JSON (401, 504, HTML de error…) */
-  }
-  // Página HTML del proxy (502/504 de EasyPanel): mensaje legible, no el churro.
-  const t = raw.trimStart().toLowerCase();
-  if (t.startsWith("<!doctype") || t.startsWith("<html")) {
-    return `Error ${res.status}: el servidor tardó demasiado o se reinició (respuesta del proxy). Vuelve a intentarlo en unos segundos.`;
-  }
-  return `Error ${res.status}${raw ? `: ${raw.slice(0, 160)}` : ""}`;
-}
-function errorDeRed(e: unknown): string {
-  return "Fallo de red: " + (e instanceof Error ? e.message : "desconocido");
-}
 
 // Rellena defaults del ebook por si el producto es anterior a esos campos.
 function conEbook(prod: Producto): Producto {
@@ -67,16 +48,33 @@ export function EbooksCreator({ productos }: { productos: Producto[] }) {
   const [previewHtml, setPreviewHtml] = useState<string>("");
   const [previewEstado, setPreviewEstado] = useState<string>("");
 
-  function cambiarProducto(id: string) {
-    const prod = productos.find((x) => x.id === id);
+  async function cambiarProducto(id: string) {
     setProductoId(id);
-    setP(prod ? conEbook(prod) : null);
     setIdeaEstado("");
     setIndiceEstado("");
     setCapEstado({});
     setFotosEstado({});
     setRenderEstado("");
     setGuardando("idle");
+    setPreviewCap(null);
+    setPreviewHtml("");
+    setPreviewEstado("");
+    if (!id) {
+      setP(null);
+      setRedaccion({});
+      return;
+    }
+    // Trae la versión FRESCA del store (no el snapshot estático del prop `productos`, que
+    // puede estar desactualizado: si guardaste el ebook y vuelves a este producto, el prop
+    // seguía teniendo la versión sin ebook y la pisaba en pantalla).
+    let prod: Producto | null = productos.find((x) => x.id === id) ?? null;
+    try {
+      const res = await fetch(`/api/products/${id}`, { cache: "no-store" });
+      if (res.ok) prod = (await res.json()) as Producto;
+    } catch {
+      /* si falla la red, usamos el del prop como fallback */
+    }
+    setP(prod ? conEbook(prod) : null);
     // Precarga los cuadros de redacción desde los bloques ya guardados.
     const caps = prod?.ebook?.capitulos ?? [];
     const r: Record<number, string> = {};
@@ -84,9 +82,6 @@ export function EbooksCreator({ productos }: { productos: Producto[] }) {
       if (c.bloques?.length) r[i] = bloquesATexto(c.bloques);
     });
     setRedaccion(r);
-    setPreviewCap(null);
-    setPreviewHtml("");
-    setPreviewEstado("");
   }
 
   // Cambiar de entregable (principal ↔ bono). Se trabaja UNO a la vez: si ya
