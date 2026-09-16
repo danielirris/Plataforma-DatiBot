@@ -21,6 +21,23 @@ const CAMPOS: { k: keyof NumeroBot; label: string; sensible?: boolean; hint?: st
   { k: "capi_token", label: "CAPI token (System User)", sensible: true, hint: "Se guarda oculto." },
 ];
 
+// Claves que se persisten en `numeros` (coincide con el allowlist del backend). El
+// guardado hace un diff contra el snapshot cargado y manda SOLO estas que cambiaron;
+// phone_id y numero_whatsapp van SIEMPRE aparte (obligatorias). capi_token_set es un
+// flag de cliente y nunca se persiste.
+const CLAVES_PATCH: (keyof NumeroBot)[] = [
+  "nombre",
+  "waba_id",
+  "capi_token",
+  "account_id",
+  "credencial_wa",
+  "cuenta_publicitaria",
+  "perfil",
+  "aplicacion",
+  "pais",
+  "producto_activo",
+];
+
 // Un dato con etiqueta pequeña, para la vista "de un vistazo" de cada número.
 function Dato({ label, valor }: { label: string; valor?: string | null }) {
   return (
@@ -40,6 +57,8 @@ export function NumerosManager() {
   const [cargando, setCargando] = useState(true);
   const [errorCarga, setErrorCarga] = useState("");
   const [form, setForm] = useState<NumeroBot | null>(null);
+  // Snapshot de lo cargado: el guardado compara contra esto y manda solo lo que cambió.
+  const [original, setOriginal] = useState<NumeroBot | null>(null);
   const [editandoId, setEditandoId] = useState<string | null>(null);
   const [otroProducto, setOtroProducto] = useState(false);
   const [estado, setEstado] = useState("");
@@ -79,7 +98,9 @@ export function NumerosManager() {
   }, []);
 
   function nuevo() {
-    setForm(numeroBotVacio());
+    const vacio = numeroBotVacio();
+    setForm(vacio);
+    setOriginal(vacio); // snapshot vacío → solo viajará lo que el usuario llene
     setEditandoId(null);
     setOtroProducto(false);
     setEstado("");
@@ -87,6 +108,7 @@ export function NumerosManager() {
 
   function editar(n: NumeroBot) {
     setForm({ ...n });
+    setOriginal({ ...n }); // snapshot de lo cargado para el diff del guardado
     setEditandoId(n.phone_id);
     const enLista = productos.some((p) => keyProducto(p) === n.producto_activo);
     setOtroProducto(Boolean(n.producto_activo) && !enLista);
@@ -100,11 +122,24 @@ export function NumerosManager() {
   async function guardar() {
     if (!form) return;
     setEstado("Guardando…");
+    // PATCH PARCIAL: comparamos contra el snapshot cargado y mandamos SOLO las claves que
+    // cambiaron, más las obligatorias (phone_id, numero_whatsapp). Un campo intacto no
+    // viaja → Supabase lo conserva. Un campo vaciado a propósito viaja como "" → se borra.
+    const base = original ?? numeroBotVacio();
+    const payload: Record<string, string> = {
+      phone_id: String(form.phone_id ?? "").trim(),
+      numero_whatsapp: String(form.numero_whatsapp ?? "").trim(),
+    };
+    for (const k of CLAVES_PATCH) {
+      const actual = String(form[k] ?? "");
+      const previo = String(base[k] ?? "");
+      if (actual !== previo) payload[k] = actual;
+    }
     try {
       const res = await fetch("/api/embudos/numeros", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form),
+        body: JSON.stringify(payload),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
@@ -112,6 +147,7 @@ export function NumerosManager() {
         return;
       }
       setForm(null);
+      setOriginal(null);
       setEditandoId(null);
       await cargar();
     } catch (e) {

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import {
   selectRows,
-  upsertRows,
+  upsertRow,
   supabaseConfigurado,
   SupabaseError,
 } from "@/lib/embudos/supabase";
@@ -82,9 +82,16 @@ export async function POST(req: Request) {
     const producto = String(f.producto ?? "").trim();
     const pais = String(f.pais ?? "").trim();
     if (!producto || !pais) continue; // sin clave completa no se puede upsertar
+    // Guardado PARCIAL (patch): la clave siempre; el resto SOLO si el front lo mandó
+    // (campo que el usuario cambió). Columna ausente → no se incluye → merge-duplicates
+    // NO la toca y Supabase la conserva. Columna presente con "" → borrado intencional.
     const fila: Record<string, unknown> = { producto, pais };
-    for (const c of CAMPOS_TEXTO) fila[c] = String(f[c] ?? "");
-    fila.precio_base = coercePrecio(f.precio_base);
+    for (const c of CAMPOS_TEXTO) {
+      if (Object.prototype.hasOwnProperty.call(f, c)) fila[c] = String(f[c] ?? "");
+    }
+    if (Object.prototype.hasOwnProperty.call(f, "precio_base")) {
+      fila.precio_base = coercePrecio(f.precio_base);
+    }
     filas.push(fila);
   }
   if (!filas.length)
@@ -93,8 +100,16 @@ export async function POST(req: Request) {
       { status: 400 },
     );
 
+  // Un upsert POR PAÍS (no en lote): con el guardado parcial cada fila puede llevar un
+  // set de columnas distinto, y PostgREST rechaza un insert en lote con claves
+  // heterogéneas (PGRST102 "All object keys must match"). Fila por fila lo evita.
+  // Trade-off aceptado: N transacciones en vez de 1 (config de admin, baja frecuencia).
   try {
-    const guardadas = await upsertRows<ProductoBot>("productos", filas, "producto,pais");
+    const guardadas: ProductoBot[] = [];
+    for (const fila of filas) {
+      const g = await upsertRow<ProductoBot>("productos", fila, "producto,pais");
+      if (g) guardadas.push(g);
+    }
     return NextResponse.json({ filas: guardadas });
   } catch (e) {
     const status = e instanceof SupabaseError ? e.status : 500;

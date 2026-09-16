@@ -68,6 +68,32 @@ const VALIDACION: { k: string; label: string }[] = [
   { k: "validacion_alias", label: "Alias" },
 ];
 
+// Claves que se persisten en `productos` (coincide con CAMPOS_TEXTO + precio_base del
+// backend). El guardado hace un diff contra el snapshot CRUDO de Supabase y manda, por
+// país, la clave (producto, pais) + SOLO estas que cambiaron.
+const CLAVES_PATCH_PROD = [
+  "pixel_id",
+  "page_id",
+  "msg_bienvenida",
+  "msg_cobro",
+  "msg_bonos_intro",
+  "msg_datos_pago",
+  "msg_felicitacion",
+  "system_prompt_convencer",
+  "system_prompt_cobrar",
+  "titular_cuenta",
+  "numero_cuenta",
+  "metodo_pago",
+  "metodos_pago_texto",
+  "brec_alias",
+  "moneda",
+  "moneda_simbolo",
+  "precio_base",
+  "validacion_titular",
+  "validacion_cuenta_hint",
+  "validacion_alias",
+];
+
 function filaVacia(producto: string, pais: string): Fila {
   return { producto, pais };
 }
@@ -78,6 +104,8 @@ export function ProductosBotManager() {
   const [otro, setOtro] = useState<boolean>(false);
   const [otroText, setOtroText] = useState<string>(""); // texto del input "otro" (no dispara carga)
   const [filas, setFilas] = useState<Record<string, Fila>>({});
+  // Snapshot CRUDO de Supabase (antes de la precarga). El guardado diffea contra esto.
+  const [originales, setOriginales] = useState<Record<string, Fila>>({});
   const [pais, setPais] = useState<string>("CO");
   // Precios globales (Configuración → Precios): precargan el precio base por país.
   const [globalPrecios, setGlobalPrecios] = useState<Record<string, number[]>>({});
@@ -104,6 +132,7 @@ export function ProductosBotManager() {
     setEstado("");
     if (!key) {
       setFilas({});
+      setOriginales({});
       return;
     }
     setCargando(true);
@@ -125,6 +154,12 @@ export function ProductosBotManager() {
           porPais[f.pais] = fila;
         }
       }
+      // Snapshot CRUDO (lo que hay en Supabase), ANTES de la precarga. El guardado diffea
+      // contra esto: así la precarga se sigue guardando (difiere del crudo vacío) y solo
+      // se protegen los campos genuinamente vacíos e intactos.
+      const snap: Record<string, Fila> = {};
+      for (const pa of PAISES_EMBUDO_BOT) snap[pa] = { ...porPais[pa] };
+      setOriginales(snap);
       // Precarga de datos de pago: rellena SOLO los campos vacíos con los fijos del país
       // (el precio base sale de los precios globales de Configuración si están definidos).
       for (const pa of PAISES_EMBUDO_BOT) {
@@ -162,14 +197,37 @@ export function ProductosBotManager() {
     if (!productoKey) return;
     setGuardando(true);
     setEstado("Guardando…");
+    // PATCH PARCIAL por país: por cada fila mandamos la clave (producto, pais) + SOLO los
+    // campos que cambiaron respecto al snapshot crudo de Supabase. Intacto → no viaja (se
+    // conserva). Vaciado a propósito → viaja como "" (se borra). El backend upserta país
+    // por país, así cada fila puede llevar un set de columnas distinto.
+    const filasPayload = Object.values(filas).map((fila) => {
+      const base = originales[fila.pais] ?? {};
+      const out: Record<string, string> = { producto: fila.producto, pais: fila.pais };
+      for (const k of CLAVES_PATCH_PROD) {
+        const actual = String(fila[k] ?? "");
+        const previo = String(base[k] ?? "");
+        if (actual !== previo) out[k] = actual;
+      }
+      return out;
+    });
     try {
       const r = await fetch("/api/embudos/productos", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ filas: Object.values(filas) }),
+        body: JSON.stringify({ filas: filasPayload }),
       });
       const data = await r.json().catch(() => ({}));
-      setEstado(r.ok ? "✓ Guardado en Supabase." : "⚠️ " + (data.error ?? `Error ${r.status}`));
+      if (r.ok) {
+        setEstado("✓ Guardado en Supabase.");
+        // El snapshot pasa a ser lo recién guardado: un segundo guardado en la misma
+        // sesión vuelve a mandar solo lo nuevo (y nunca re-pisa con "" lo intacto).
+        const snap: Record<string, Fila> = {};
+        for (const [pa, fila] of Object.entries(filas)) snap[pa] = { ...fila };
+        setOriginales(snap);
+      } else {
+        setEstado("⚠️ " + (data.error ?? `Error ${r.status}`));
+      }
     } catch (e) {
       setEstado("⚠️ " + (e instanceof Error ? e.message : "Error de red"));
     }

@@ -73,18 +73,25 @@ export async function POST(req: Request) {
   if (!numero)
     return NextResponse.json({ error: "El número de WhatsApp es obligatorio." }, { status: 400 });
 
-  // Solo persistimos los campos conocidos (evita meter columnas extra por error).
-  const fila: Record<string, unknown> = {};
+  // Guardado PARCIAL (patch): construimos la fila SOLO con las columnas que el front
+  // realmente mandó (las que el usuario cambió respecto a lo cargado) + la clave. Una
+  // columna AUSENTE del body no se incluye → el upsert (merge-duplicates) NO la toca y
+  // Supabase conserva su valor. Una columna PRESENTE con "" es un borrado intencional y
+  // sí se escribe. Así editar un solo campo ya no borra los demás.
+  const fila: Record<string, unknown> = { phone_id };
   for (const c of CAMPOS) {
+    if (c === "phone_id") continue; // ya está (PK, no editable)
     if (c === "capi_token") {
-      // El form no recibe el token guardado (S2): si llega vacío, NO lo pisamos —
-      // el upsert (merge-duplicates) conserva el valor de la base. Solo lo escribimos
-      // si el usuario tecleó uno nuevo.
+      // El form no recibe el token guardado (S2): si llega vacío/ausente, NO lo pisamos —
+      // el merge-duplicates conserva el valor de la base. Solo lo escribimos si el
+      // usuario tecleó uno nuevo.
       const t = String(body.capi_token ?? "").trim();
       if (t) fila.capi_token = t;
       continue;
     }
-    fila[c] = String(body[c] ?? "").trim();
+    if (Object.prototype.hasOwnProperty.call(body, c)) {
+      fila[c] = String(body[c] ?? "").trim();
+    }
   }
 
   try {
