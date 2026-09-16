@@ -52,7 +52,9 @@ export function numeroBotVacio(): NumeroBot {
   };
 }
 
-/** `productos` — lo variable por (producto, pais). Se usará en la fase de edición del bot. */
+/** Config del bot por (producto, pais). Se lee/escribe en la tabla `config_bots` de
+ * Supabase (NO en `productos`, que es el catálogo de precios). El nombre del tipo se
+ * conserva por compatibilidad. */
 export interface ProductoBot {
   producto: string;
   pais: string;

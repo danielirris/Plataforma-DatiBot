@@ -10,7 +10,10 @@ import { type ProductoBot } from "@/lib/embudos/types";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-// Columnas de texto de `productos` (todas menos la clave y precio_base numérico).
+// La config del bot vive en la tabla `config_bots` de Supabase (NO en `productos`, que
+// es el catálogo de precios/negocio y no tiene columnas de mensajes/prompts). La ruta se
+// sigue llamando "productos" por la URL, pero lee/escribe `config_bots`.
+// Columnas de texto de `config_bots` (todas menos la clave y precio_base numérico).
 const CAMPOS_TEXTO: (keyof ProductoBot)[] = [
   "pixel_id",
   "page_id",
@@ -43,7 +46,7 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: "Falta el parámetro producto." }, { status: 400 });
 
   try {
-    const filas = await selectRows<ProductoBot>("productos", {
+    const filas = await selectRows<ProductoBot>("config_bots", {
       producto: `eq.${producto}`,
       order: "pais.asc",
     });
@@ -107,7 +110,7 @@ export async function POST(req: Request) {
   try {
     const guardadas: ProductoBot[] = [];
     for (const fila of filas) {
-      const g = await upsertRow<ProductoBot>("productos", fila, "producto,pais");
+      const g = await upsertRow<ProductoBot>("config_bots", fila, "producto,pais");
       if (g) guardadas.push(g);
     }
     return NextResponse.json({ filas: guardadas });

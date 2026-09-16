@@ -68,7 +68,7 @@ const VALIDACION: { k: string; label: string }[] = [
   { k: "validacion_alias", label: "Alias" },
 ];
 
-// Claves que se persisten en `productos` (coincide con CAMPOS_TEXTO + precio_base del
+// Claves que se persisten en `config_bots` (coincide con CAMPOS_TEXTO + precio_base del
 // backend). El guardado hace un diff contra el snapshot CRUDO de Supabase y manda, por
 // país, la clave (producto, pais) + SOLO estas que cambiaron.
 const CLAVES_PATCH_PROD = [
@@ -243,7 +243,7 @@ export function ProductosBotManager() {
         <h2 className="text-lg font-medium">Bot por producto</h2>
         <p className="text-xs text-muted">
           Los mensajes, prompts y datos de pago que el bot lee para este producto. Se
-          guardan en Supabase (tabla <code>productos</code>).
+          guardan en Supabase (tabla <code>config_bots</code>).
         </p>
       </div>
 
