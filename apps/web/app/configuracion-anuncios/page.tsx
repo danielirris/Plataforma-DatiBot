@@ -5,6 +5,7 @@
 // anuncios».
 import Link from "next/link";
 import { anunciosUrl } from "@/lib/anuncios";
+import { AnunciosFrame } from "../_components/AnunciosFrame";
 
 export const metadata = { title: "Configuración de anuncios · Datibot" };
 export const runtime = "nodejs";
@@ -24,11 +25,10 @@ export default function ConfiguracionAnunciosPage() {
         <span className="text-xs text-muted">Configuración de anuncios</span>
       </div>
 
-      <iframe
-        src={anunciosUrl("configuracion")}
+      <AnunciosFrame
+        baseSrc={anunciosUrl("configuracion")}
         title="Configuración de anuncios"
-        className="block w-full flex-1 border-0 bg-white"
-        allow="clipboard-read; clipboard-write; fullscreen"
+        className="block w-full flex-1 border-0"
       />
     </div>
   );
