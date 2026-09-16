@@ -140,6 +140,8 @@ export default function TutorialPage() {
       {/* Índice */}
       <nav className="mt-6 flex flex-wrap gap-2 text-xs">
         {[
+          ["#dia1", "Antes del día 1"],
+          ["#mapa", "Cómo se conecta todo"],
           ["#empezar", "Cómo entrar y moverte"],
           ["#producto", "1 · Producto"],
           ["#config", "2 · Configuración"],
@@ -150,6 +152,7 @@ export default function TutorialPage() {
           ["#embudo", "7 · Embudos (el bot)"],
           ["#plantillas", "Plantillas n8n"],
           ["#numero", "Dar de alta un número"],
+          ["#glosario", "Diccionario"],
           ["#faq", "Preguntas frecuentes"],
           ["#reglas", "Reglas de oro"],
         ].map(([href, label]) => (
@@ -170,6 +173,78 @@ export default function TutorialPage() {
         <b>ebooks/anuncios/videos</b> → y al final monta el <b>número y el bot</b> en
         Embudos, que es lo que cierra la venta.
       </div>
+
+      {/* ── ANTES DEL DÍA 1 ── */}
+      <Seccion
+        id="dia1"
+        num="•"
+        titulo="Antes del día 1: qué necesitas (y quién lo monta)"
+        sub="La parte técnica se instala una sola vez; como dueño empiezas en «Crear un producto» cuando esté lista."
+        defaultOpen
+      >
+        <p className="text-sm text-muted [&_b]:font-medium [&_b]:text-text">
+          Datibot se apoya en varias piezas externas. La <b>instalación (una sola vez) la
+          hace tu técnico</b>; tú, como dueño, trabajas el día a día dentro de la app.
+        </p>
+        <p className="mt-4 text-xs font-semibold uppercase tracking-wide text-muted">
+          Cuentas y servicios que hacen falta
+        </p>
+        <ul className="mt-2 space-y-1.5 text-sm text-muted [&_b]:font-medium [&_b]:text-text">
+          <li>• <b>Meta Business</b> con un número de <b>WhatsApp Business</b> aprobado (Cloud API) — por ahí vende el bot.</li>
+          <li>• <b>Servidor</b> (EasyPanel) con RAM suficiente — aquí vive Datibot.</li>
+          <li>• <b>n8n</b> — el motor que automatiza los mensajes del bot.</li>
+          <li>• <b>Chatwoot</b> — la bandeja donde ves las conversaciones.</li>
+          <li>• <b>Supabase</b> — la base de datos donde vive la configuración del bot.</li>
+          <li>• Clave/saldo de <b>OpenAI</b> y <b>Gemini</b> — para la IA (textos) y las imágenes de los ebooks.</li>
+        </ul>
+        <div className="mt-4 grid gap-3 sm:grid-cols-2">
+          <div className="rounded-xl border border-[var(--hairline)] bg-[var(--field)] p-3 text-sm text-muted [&_b]:font-medium [&_b]:text-text">
+            <b className="text-text">Una sola vez · tu técnico</b>
+            <p className="mt-1 text-xs">Montar los servicios de arriba, correr el SQL de Embudos, poner las variables en EasyPanel y conectar cada número (ver «Dar de alta un número»).</p>
+          </div>
+          <div className="rounded-xl border border-accent/40 bg-[var(--field)] p-3 text-sm text-muted [&_b]:font-medium [&_b]:text-text">
+            <b className="text-text">Cada día · tú</b>
+            <p className="mt-1 text-xs">Crear productos, generar ebooks/anuncios/videos, editar los Embudos (mensajes, precios, secuencia) y leer el Reporte.</p>
+          </div>
+        </div>
+      </Seccion>
+
+      {/* ── CÓMO SE CONECTA TODO ── */}
+      <Seccion
+        id="mapa"
+        num="•"
+        titulo="Cómo se conecta todo (el recorrido de una venta)"
+        sub="De un producto a una venta atribuida: cómo encajan las piezas."
+      >
+        <div className="flex flex-wrap items-center gap-2 text-xs">
+          {[
+            "Producto",
+            "Ebook + videos",
+            "Editor → anuncios",
+            "Publicas en Facebook (clic a WhatsApp)",
+            "El bot atiende (Embudos)",
+            "Venta",
+            "Reporte (atribución)",
+          ].map((paso, i, arr) => (
+            <span key={paso} className="flex items-center gap-2">
+              <span className="rounded-full border border-[var(--hairline)] bg-[var(--field)] px-2.5 py-1 text-text">
+                {paso}
+              </span>
+              {i < arr.length - 1 && <span className="text-accent-2">→</span>}
+            </span>
+          ))}
+        </div>
+        <Notas
+          tono="tip"
+          titulo="Cruces que conviene saber"
+          items={[
+            <>El <b>video de embudo</b> que creas en Productos (paso 4) es el MISMO que subes en <b>Embudos → Media</b>.</>,
+            <>Los <b>ebooks y bonos</b> son los <b>PDFs</b> que el bot entrega en la ENTREGA.</>,
+            <>Los <b>precios</b> de Configuración precargan los <b>datos de pago</b> del bot por país.</>,
+            <>El bot solo aparece en el <b>Reporte</b> si publicaste el video como <b>anuncio de clic a WhatsApp</b>: así Facebook genera el <Cod>ctwa_clid</Cod> que cruza cada venta.</>,
+          ]}
+        />
+      </Seccion>
 
       {/* ── CÓMO ENTRAR Y MOVERTE ── */}
       <Seccion
@@ -486,6 +561,17 @@ export default function TutorialPage() {
             <>Se conservan los últimos 25; los más antiguos se descartan solos.</>,
           ]}
         />
+
+        <div className="mt-5 rounded-xl border-l-2 border-accent bg-[var(--field)] p-4 text-sm text-muted [&_b]:font-medium [&_b]:text-text">
+          <p className="font-medium text-text">El puente con las ventas: publica el video en Facebook</p>
+          <p className="mt-1">
+            Descargar el video no lo pone a vender. El paso que conecta todo es{" "}
+            <b>subirlo a Facebook Ads Manager como anuncio de «clic a WhatsApp»</b> apuntando
+            al número del bot. Así, cuando alguien toca el anuncio y escribe, el bot lo
+            atiende (Embudos) y Facebook genera el <Cod>ctwa_clid</Cod> que luego cruza cada
+            venta en el <b>Reporte de anuncios</b>. Sin este paso, tu atribución sale vacía.
+          </p>
+        </div>
       </Seccion>
 
       {/* ── 6 · REPORTE DE ANUNCIOS ── */}
@@ -760,6 +846,23 @@ export default function TutorialPage() {
               <>Si el constructor del Embudo avisa que no pudo leer Supabase, <b>no entra en modo edición</b> a propósito (evita borrar pasos al guardar con datos a medias): vuelve a elegir el producto.</>,
             ]}
           />
+
+          <div className="mt-5 rounded-xl border border-[var(--hairline)] bg-[var(--field)] p-4 text-sm text-muted [&_b]:font-medium [&_b]:text-text">
+            <p className="font-medium text-text">Compruébalo tú mismo (2 minutos)</p>
+            <p className="mt-1">
+              Escríbete al número desde <b>otro</b> WhatsApp y confirma el recorrido completo:
+            </p>
+            <ul className="mt-2 space-y-1 text-xs">
+              <li>☐ Llega la <b>bienvenida</b> con el menú.</li>
+              <li>☐ Respondes y llega el <b>video</b> con su botón.</li>
+              <li>☐ Confirmas y llegan los <b>PDFs / bonos</b> y los <b>datos de pago</b>.</li>
+              <li>☐ Escribes <b>STOP</b> y el bot deja de escribirte.</li>
+            </ul>
+            <p className="mt-2 text-xs">
+              Si algo de esto no pasa, revisa el FAQ («El bot no responde nada») o avisa a tu
+              técnico.
+            </p>
+          </div>
       </Seccion>
 
       {/* PLANTILLAS n8n (técnico) */}
@@ -780,6 +883,26 @@ export default function TutorialPage() {
         sub="Conectar por primera vez un número con Meta, n8n y Chatwoot. Como dueño puedes saltarte esta parte."
       >
         <ConfigTutorialNumero />
+      </Seccion>
+
+      {/* ── DICCIONARIO ── */}
+      <Seccion
+        id="glosario"
+        num="•"
+        titulo="Diccionario rápido"
+        sub="Las palabras técnicas que aparecen en el tutorial, en una línea cada una."
+      >
+        <ul className="space-y-1.5 text-sm text-muted [&_b]:font-medium [&_b]:text-text">
+          <li><b>Meta / WhatsApp Cloud API</b> — la plataforma de Facebook por donde tu número envía y recibe mensajes.</li>
+          <li><b>n8n</b> — el motor que automatiza los mensajes del bot (lee lo que editas en Embudos y actúa).</li>
+          <li><b>Supabase</b> — la base de datos donde vive la configuración del bot (lo que editas en Embudos).</li>
+          <li><b>Chatwoot</b> — la bandeja donde ves y respondes las conversaciones.</li>
+          <li><b>Phone ID</b> — el identificador de tu número que da Meta (no es una contraseña).</li>
+          <li><b>WABA</b> — el identificador de tu cuenta de WhatsApp Business en Meta.</li>
+          <li><b>media_id</b> — el «id» que WhatsApp le pone a un archivo (video/PDF) para enviarlo al instante; caduca y se renueva sola.</li>
+          <li><b>Pixel / CAPI</b> — la forma de devolverle a Facebook las ventas que ocurren en WhatsApp, para que optimice tus anuncios.</li>
+          <li><b>ctwa_clid</b> — el id del clic en un anuncio de «clic a WhatsApp»; conecta cada venta con el anuncio que la trajo.</li>
+        </ul>
       </Seccion>
 
       {/* ── PREGUNTAS FRECUENTES ── */}
@@ -806,7 +929,11 @@ export default function TutorialPage() {
             ],
             [
               "Edité los Embudos pero el bot no cambió",
-              <>Revisa que Supabase esté conectado y, sobre todo, que el flujo de <b className="font-medium text-text">n8n resuelva phone_id → producto_activo</b>. La plataforma solo escribe las filas; el «cableado» del bot vive en n8n.</>,
+              <>Primero confirma que <b className="font-medium text-text">guardaste</b> y que Embudos no muestra aviso de conexión. Si guardaste y aun así no cambia, avisa a quien te montó el sistema: la parte de automatización (n8n) puede necesitar un ajuste.</>,
+            ],
+            [
+              "El bot no responde nada",
+              <>Revisa en orden: (1) ¿le <b className="font-medium text-text">escribiste tú primero</b>? WhatsApp solo deja responder dentro de las 24 h de tu último mensaje. (2) ¿el número quedó bien conectado? (usa «Compruébalo tú mismo» en Embudos). Si nada de eso, avísale a tu técnico: puede ser el flujo de n8n apagado o el webhook de Meta caído (tiene la tabla de errores en «Dar de alta un número»).</>,
             ],
             [
               "El bot dejó de enviar el video o los PDFs",
@@ -818,7 +945,11 @@ export default function TutorialPage() {
             ],
             [
               "Se perdieron productos o anuncios tras reimplementar",
-              <>Faltan los <b className="font-medium text-text">volúmenes persistentes</b> en <Cod>/data</Cod> (web y editor). Sin ellos, cada redeploy empieza vacío.</>,
+              <>Faltan los <b className="font-medium text-text">volúmenes persistentes</b> en <Cod>/data</Cod> (web y editor). Sin ellos, cada redeploy empieza vacío. Esto lo configura tu técnico en EasyPanel.</>,
+            ],
+            [
+              "La página no carga, da error 502, o se vació todo tras un cambio",
+              <>No es tu culpa ni algo que arregles tú: recarga y, si sigue, <b className="font-medium text-text">avisa a tu técnico</b>. Suele ser del servidor (falta de RAM al desplegar, las variables internas, o los volúmenes <Cod>/data</Cod>) y se revisa en EasyPanel.</>,
             ],
             [
               "Olvidé la contraseña",

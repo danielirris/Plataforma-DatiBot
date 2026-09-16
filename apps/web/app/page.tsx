@@ -33,6 +33,23 @@ export default function HomePage() {
         </div>
       </div>
 
+      {/* ¿Primera vez? → Tutorial */}
+      <Link
+        href="/tutorial"
+        className="group mt-6 flex items-center gap-3 rounded-2xl border border-accent/40 bg-[var(--field)] p-4 transition-colors hover:bg-[var(--hover)]"
+      >
+        <span className="text-accent-2">
+          <Icon name="book-open" size={20} />
+        </span>
+        <span className="min-w-0 flex-1 text-sm text-muted">
+          <b className="font-medium text-text">¿Primera vez?</b> Empieza por el Tutorial:
+          cómo crear un producto y montar el bot que cierra la venta.
+        </span>
+        <span className="shrink-0 text-muted transition-transform group-hover:translate-x-1 group-hover:text-accent-2">
+          →
+        </span>
+      </Link>
+
       {/* Secciones */}
       <h2 className="mb-4 mt-12 text-sm font-semibold uppercase tracking-[0.15em] text-muted">
         Herramientas
