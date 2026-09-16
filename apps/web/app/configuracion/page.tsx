@@ -1,6 +1,6 @@
+import Link from "next/link";
 import { readConfig, redactSecrets } from "@plataforma/config";
 import { ConfigForm } from "./ConfigForm";
-import { anunciosUrl } from "@/lib/anuncios";
 
 export const dynamic = "force-dynamic";
 
@@ -9,7 +9,6 @@ export default async function ConfiguracionPage() {
   // instrucciones y precios; las API keys/credenciales se gestionan en EasyPanel y
   // no deben incrustarse en el HTML que llega al navegador.
   const initial = redactSecrets(await readConfig());
-  const anunciosConfig = anunciosUrl("configuracion");
 
   return (
     <div className="mx-auto max-w-4xl px-8 py-10">
@@ -31,14 +30,12 @@ export default async function ConfiguracionPage() {
           {" "}(conexiones de Facebook, Supabase y tasas de cambio) viven en su propia app.
           Se abre con tu misma sesión.
         </p>
-        <a
-          href={anunciosConfig}
-          target="_blank"
-          rel="noopener noreferrer"
+        <Link
+          href="/configuracion-anuncios"
           className="mt-4 inline-flex items-center gap-2 rounded-full bg-accent px-4 py-2 text-sm font-medium text-[#111]"
         >
           ⚙ Abrir configuración de anuncios
-        </a>
+        </Link>
       </div>
     </div>
   );
