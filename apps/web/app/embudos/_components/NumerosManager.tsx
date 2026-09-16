@@ -15,8 +15,23 @@ const CAMPOS: { k: keyof NumeroBot; label: string; sensible?: boolean; hint?: st
   { k: "waba_id", label: "WABA ID" },
   { k: "account_id", label: "Chatwoot account_id" },
   { k: "credencial_wa", label: "Credencial WA en n8n", hint: 'ej. "Carolina1 [4838]"' },
+  { k: "cuenta_publicitaria", label: "Cuenta publicitaria", hint: "La cuenta de Facebook Ads (nombre o id)" },
+  { k: "perfil", label: "Perfil", hint: "El perfil de Facebook dueño del número" },
+  { k: "aplicacion", label: "Aplicación", hint: "La App de Facebook usada" },
   { k: "capi_token", label: "CAPI token (System User)", sensible: true, hint: "Se guarda oculto." },
 ];
+
+// Un dato con etiqueta pequeña, para la vista "de un vistazo" de cada número.
+function Dato({ label, valor }: { label: string; valor?: string | null }) {
+  return (
+    <div className="min-w-0">
+      <div className="text-[10px] uppercase tracking-wide text-muted">{label}</div>
+      <div className="truncate text-text" title={valor || undefined}>
+        {valor || <span className="text-muted">—</span>}
+      </div>
+    </div>
+  );
+}
 
 export function NumerosManager() {
   const [configurado, setConfigurado] = useState(true);
@@ -179,25 +194,22 @@ EMBUDOS_SUPABASE_SERVICE_KEY=<tu service key>`}
             numeros.map((n) => (
               <div
                 key={n.phone_id}
-                className="flex flex-wrap items-center gap-3 rounded-xl border border-[var(--hairline)] glass p-4"
+                className="flex flex-wrap items-start gap-3 rounded-xl border border-[var(--hairline)] glass p-4"
               >
-                <div className="min-w-0">
-                  <div className="font-medium text-text">
-                    {n.nombre || n.numero_whatsapp || n.phone_id}
+                <div className="min-w-0 flex-1">
+                  {n.nombre && <div className="mb-2 font-medium text-text">{n.nombre}</div>}
+                  <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-xs sm:grid-cols-3 lg:grid-cols-5">
+                    <Dato label="Número" valor={n.numero_whatsapp || n.phone_id} />
+                    <Dato
+                      label="Producto que vende"
+                      valor={n.producto_activo ? nombreProducto(n.producto_activo) : null}
+                    />
+                    <Dato label="Cuenta publicitaria" valor={n.cuenta_publicitaria} />
+                    <Dato label="Perfil" valor={n.perfil} />
+                    <Dato label="Aplicación" valor={n.aplicacion} />
                   </div>
-                  {n.nombre && (
-                    <div className="text-xs text-muted">{n.numero_whatsapp || n.phone_id}</div>
-                  )}
                 </div>
-                <span className="text-xs text-muted">
-                  vende:{" "}
-                  {n.producto_activo ? (
-                    <b className="text-text">{nombreProducto(n.producto_activo)}</b>
-                  ) : (
-                    <i>sin asignar</i>
-                  )}
-                </span>
-                <div className="ml-auto flex items-center gap-3">
+                <div className="flex shrink-0 items-center gap-3">
                   <button
                     onClick={() => editar(n)}
                     className="text-xs text-accent-2 hover:underline"

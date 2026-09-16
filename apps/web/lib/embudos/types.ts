@@ -22,6 +22,11 @@ export interface NumeroBot {
   capi_token: string;
   account_id: string;
   credencial_wa: string;
+  /** Referencia del dueño (Facebook): a qué cuenta publicitaria / perfil / app
+   * pertenece este número. Texto libre, solo para verlo de un vistazo. */
+  cuenta_publicitaria: string;
+  perfil: string;
+  aplicacion: string;
   pais: string;
   /** apuntador: qué producto vende HOY este número (clave `producto`) */
   producto_activo: string;
@@ -39,6 +44,9 @@ export function numeroBotVacio(): NumeroBot {
     capi_token: "",
     account_id: "",
     credencial_wa: "",
+    cuenta_publicitaria: "",
+    perfil: "",
+    aplicacion: "",
     pais: "",
     producto_activo: "",
   };

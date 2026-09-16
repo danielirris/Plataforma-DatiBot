@@ -17,15 +17,21 @@ create table if not exists public.numeros (
   numero_whatsapp  text not null,               -- número marcable, ej. 573227784838
   waba_id          text,                        -- WhatsApp Business Account id
   capi_token       text,                        -- token System User (CAPI / envíos)  [SENSIBLE]
-  account_id       text,                        -- id de cuenta de Chatwoot
-  credencial_wa    text,                        -- referencia a la credencial de WA en n8n
-  pais             text,                        -- país que atiende (CO/PE/EC/CL/VE)
-  producto_activo  text,                        -- ⭐ apuntador: qué producto vende HOY
-  actualizado_at   timestamptz default now()
+  account_id          text,                     -- id de cuenta de Chatwoot
+  credencial_wa       text,                     -- referencia a la credencial de WA en n8n
+  cuenta_publicitaria text,                     -- FB: cuenta publicitaria (referencia del dueño)
+  perfil              text,                     -- FB: perfil dueño (referencia del dueño)
+  aplicacion          text,                     -- FB: app de Facebook usada (referencia del dueño)
+  pais                text,                     -- país que atiende (CO/PE/EC/CL/VE)
+  producto_activo     text,                     -- ⭐ apuntador: qué producto vende HOY
+  actualizado_at      timestamptz default now()
 );
--- Si la tabla `numeros` YA existe (no es la primera vez), corre solo esto para el
--- nombre de la cuenta publicitaria:
---   alter table public.numeros add column if not exists nombre text;
+-- Si la tabla `numeros` YA existe (no es la primera vez), corre estos ALTER
+-- idempotentes para añadir las columnas nuevas sin tocar los datos:
+alter table public.numeros add column if not exists nombre text;
+alter table public.numeros add column if not exists cuenta_publicitaria text;
+alter table public.numeros add column if not exists perfil text;
+alter table public.numeros add column if not exists aplicacion text;
 
 -- 2) PRODUCTOS — lo VARIABLE por producto + país (reemplaza el negocio de config_bots).
 create table if not exists public.productos (

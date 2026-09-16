@@ -47,6 +47,9 @@ const CAMPOS: (keyof NumeroBot)[] = [
   "capi_token",
   "account_id",
   "credencial_wa",
+  "cuenta_publicitaria",
+  "perfil",
+  "aplicacion",
   "pais",
   "producto_activo",
 ];
