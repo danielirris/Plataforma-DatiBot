@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { PlantillasN8n } from "./PlantillasN8n";
 import { ConfigTutorialNumero } from "../configuracion/ConfigTutorialNumero";
+import { OpenHashSection } from "./OpenHashSection";
 
 export const dynamic = "force-dynamic";
 
@@ -54,6 +55,7 @@ function Seccion({
   titulo,
   sub,
   defaultOpen,
+  destacado,
   children,
 }: {
   id: string;
@@ -61,13 +63,16 @@ function Seccion({
   titulo: string;
   sub: string;
   defaultOpen?: boolean;
+  destacado?: boolean;
   children: React.ReactNode;
 }) {
   return (
     <details
       id={id}
       open={defaultOpen}
-      className="group mt-4 scroll-mt-6 overflow-hidden rounded-2xl border border-[var(--hairline)] glass"
+      className={`group mt-4 scroll-mt-6 overflow-hidden rounded-2xl border glass ${
+        destacado ? "border-accent/40" : "border-[var(--hairline)]"
+      }`}
     >
       <summary className="flex cursor-pointer list-none items-start gap-3 p-5 [&::-webkit-details-marker]:hidden">
         <span className="mt-0.5 grid h-7 w-7 shrink-0 place-items-center rounded-full bg-[var(--field)] text-xs font-medium text-text ring-1 ring-[var(--hairline)]">
@@ -120,6 +125,7 @@ function SubGuia({ titulo, children }: { titulo: string; children: React.ReactNo
 export default function TutorialPage() {
   return (
     <div className="mx-auto max-w-3xl px-6 py-10">
+      <OpenHashSection />
       <span className="inline-block rounded-full border border-[var(--hairline)] bg-[var(--field)] px-3 py-1 text-xs text-muted">
         Guía completa
       </span>
@@ -190,8 +196,9 @@ export default function TutorialPage() {
             Tutorial y Configuración. La sección donde estás se resalta en verde.
           </Paso>
           <Paso n={4}>
-            <b>Ocultar el menú.</b> Pulsa la flecha «« » arriba del menú para ganar
-            pantalla; queda un botón redondo «☰» para volver a mostrarlo. Se recuerda en ese
+            <b>Ocultar el menú.</b> Pulsa el botón de flecha arriba del menú para
+            plegarlo y ganar pantalla; queda un botón redondo con tres rayas (menú)
+            para volver a mostrarlo. Se recuerda en ese
             navegador (en el celular arranca oculto).
           </Paso>
           <Paso n={5}>
@@ -503,6 +510,11 @@ export default function TutorialPage() {
         <p className="mt-5 text-xs font-semibold uppercase tracking-wide text-muted">
           Puesta a punto (una vez)
         </p>
+        <p className="mt-1 mb-1 text-xs text-muted">
+          Esto se configura <b className="font-medium text-text">una sola vez</b> y suele
+          hacerlo quien monta la parte técnica. Como dueño, para el día a día te basta con
+          los dos pasos de arriba (entrar y leer el reporte).
+        </p>
 
         <SubGuia titulo="Conectar un Business de Facebook (token de Usuario del Sistema)">
           <p className="mb-3 text-sm text-muted">
@@ -648,49 +660,57 @@ export default function TutorialPage() {
       </Seccion>
 
       {/* ── 7 · EMBUDOS — número + producto (lo importante) ── */}
-      <div id="embudo" className="mt-10 scroll-mt-6">
-        <div className="rounded-2xl border border-accent/40 glass p-6">
-          <span className="inline-block rounded-full border border-accent/50 bg-accent/10 px-3 py-1 text-[11px] font-medium uppercase tracking-wide text-text">
-            Lo importante
-          </span>
-          <h2 className="mt-3 text-2xl">7 · Montar el número y el producto (el bot)</h2>
-          <p className="mt-2 text-sm text-muted">
-            La sección <b className="font-medium text-text">Embudos</b> configura el bot de
-            WhatsApp. Todo se guarda en Supabase y el motor de n8n lo lee en vivo:{" "}
-            <b className="font-medium text-text">editar aquí = cambiar el bot al
-            instante</b>, sin redesplegar.
+      <Seccion
+        id="embudo"
+        num="7"
+        titulo="Montar el número y el producto (el bot)"
+        sub="Lo importante: aquí se configura el bot de WhatsApp. Editar en Embudos = cambiar el bot al instante."
+        defaultOpen
+        destacado
+      >
+        <span className="inline-block rounded-full border border-accent/50 bg-accent/10 px-3 py-1 text-[11px] font-medium uppercase tracking-wide text-text">
+          Lo importante
+        </span>
+        <p className="mt-3 text-sm text-muted">
+          La sección <b className="font-medium text-text">Embudos</b> configura el bot de
+          WhatsApp. Todo se guarda en Supabase y el motor de n8n lo lee en vivo:{" "}
+          <b className="font-medium text-text">editar aquí = cambiar el bot al
+          instante</b>, sin redesplegar.
+        </p>
+
+        {/* Requisito técnico (una sola vez) */}
+        <div className="mt-5 rounded-xl border border-[var(--hairline)] bg-[var(--field)] p-4">
+          <p className="text-sm font-semibold text-text">
+            Puesta a punto técnica (una sola vez — la hace quien monta el sistema)
           </p>
+          <p className="mt-1 text-xs text-muted">
+            Como dueño no necesitas hacer esto: si al entrar a Embudos <b>no</b> ves un
+            aviso de conexión, ya está lista para usar. Si aparece el aviso, pásale estos
+            dos pasos a tu técnico.
+          </p>
+          <ol className="mt-3 space-y-3">
+            <Paso n={1}>
+              Correr el <b>SQL del esquema</b> (<Cod>apps/web/lib/embudos/schema.sql</Cod>)
+              en el editor SQL de Supabase — crea las tablas <Cod>numeros</Cod>,{" "}
+              <Cod>productos</Cod>, <Cod>pasos_embudo</Cod>, <Cod>mensajes_rotador</Cod> y{" "}
+              <Cod>media_bots</Cod>. Se puede correr varias veces sin romper nada.
+            </Paso>
+            <Paso n={2}>
+              Definir en EasyPanel (servicio web) <Cod>EMBUDOS_SUPABASE_URL</Cod> y{" "}
+              <Cod>EMBUDOS_SUPABASE_SERVICE_KEY</Cod>, y redesplegar.
+            </Paso>
+          </ol>
+        </div>
 
-          {/* Requisito */}
-          <div className="mt-5 rounded-xl border border-[var(--hairline)] bg-[var(--field)] p-4">
-            <p className="text-sm font-semibold text-text">Antes de empezar (una sola vez)</p>
-            <ol className="mt-3 space-y-3">
-              <Paso n={1}>
-                Corre el <b>SQL del esquema</b> (<Cod>apps/web/lib/embudos/schema.sql</Cod>)
-                en el editor SQL de Supabase: crea las tablas <Cod>numeros</Cod>,{" "}
-                <Cod>productos</Cod>, <Cod>pasos_embudo</Cod>, <Cod>mensajes_rotador</Cod> y{" "}
-                <Cod>media_bots</Cod>. Es idempotente (se puede correr sin miedo).
-              </Paso>
-              <Paso n={2}>
-                Define en EasyPanel (servicio web) <Cod>EMBUDOS_SUPABASE_URL</Cod> y{" "}
-                <Cod>EMBUDOS_SUPABASE_SERVICE_KEY</Cod>, y redespliega.
-              </Paso>
-            </ol>
-            <p className="mt-3 text-xs text-muted">
-              Mientras no esté conectado, Embudos muestra un aviso con estas instrucciones y
-              no deja guardar.
-            </p>
-          </div>
-
-          {/* Paso a paso */}
-          <h3 className="mt-6 text-sm font-semibold uppercase tracking-wide text-muted">
-            Las 4 pestañas, en orden
-          </h3>
+        {/* Paso a paso */}
+        <h3 className="mt-6 text-sm font-semibold uppercase tracking-wide text-muted">
+          Las 4 pestañas, en orden
+        </h3>
           <ol className="mt-3 space-y-3">
             <Paso n={1}>
               <b>Números</b> («+ Nuevo número»): pon un <b>Nombre</b> (identifica la cuenta
-              publicitaria), el <b>número de WhatsApp</b>, el <b>Phone ID</b> de Meta (la
-              clave del número), el <b>WABA</b>, el <b>account_id</b> de Chatwoot, la{" "}
+              publicitaria), el <b>número de WhatsApp</b>, el <b>Phone ID</b> de Meta (su
+              identificador, te lo da Meta), el <b>WABA</b>, el <b>account_id</b> de Chatwoot, la{" "}
               <b>credencial</b> de n8n y el <b>CAPI token</b> (se guarda oculto). En{" "}
               <b>«Producto que vende hoy»</b> eliges cuál de tus productos atiende ese
               número. Guarda.
@@ -734,31 +754,33 @@ export default function TutorialPage() {
             tono="warn"
             titulo="Ojo con esto"
             items={[
-              <>El <b>Phone ID</b> es la clave del número: no se puede cambiar al editar. Si te equivocas, borra el número y créalo de nuevo.</>,
+              <>El <b>Phone ID</b> (el identificador del número que da Meta, no es una contraseña) no se puede cambiar al editar: si te equivocas, borra el número y créalo de nuevo.</>,
               <>El <b>CAPI token</b> no se vuelve a mostrar: al editar, si dejas el campo vacío se conserva el que ya estaba; solo escribe uno nuevo si quieres reemplazarlo.</>,
               <>Para subir media <b>debe existir al menos un número</b> (la media se aloja en un WhatsApp). Y el video no puede pasar de 16 MB.</>,
               <>Si el constructor del Embudo avisa que no pudo leer Supabase, <b>no entra en modo edición</b> a propósito (evita borrar pasos al guardar con datos a medias): vuelve a elegir el producto.</>,
             ]}
           />
-        </div>
-      </div>
+      </Seccion>
 
-      {/* PLANTILLAS n8n */}
-      <div id="plantillas" className="scroll-mt-6">
-        <Seccion
-          id="plantillas-inner"
-          num="+"
-          titulo="Plantillas de n8n (descargar)"
-          sub="Sube y descarga los workflows de n8n para importarlos (recibidor, motor, precarga de media)."
-        >
-          <PlantillasN8n />
-        </Seccion>
-      </div>
+      {/* PLANTILLAS n8n (técnico) */}
+      <Seccion
+        id="plantillas"
+        num="+"
+        titulo="Plantillas de n8n (avanzado · para tu técnico)"
+        sub="Descarga los workflows de n8n para importarlos (recibidor, motor, precarga de media)."
+      >
+        <PlantillasN8n />
+      </Seccion>
 
-      {/* DAR DE ALTA UN NÚMERO (técnico) */}
-      <div id="numero" className="mt-6 scroll-mt-6">
+      {/* DAR DE ALTA UN NÚMERO (avanzado · técnico) */}
+      <Seccion
+        id="numero"
+        num="⚙"
+        titulo="Dar de alta un número (avanzado · para tu técnico)"
+        sub="Conectar por primera vez un número con Meta, n8n y Chatwoot. Como dueño puedes saltarte esta parte."
+      >
         <ConfigTutorialNumero />
-      </div>
+      </Seccion>
 
       {/* ── PREGUNTAS FRECUENTES ── */}
       <div id="faq" className="mt-10 scroll-mt-6">
@@ -792,7 +814,7 @@ export default function TutorialPage() {
             ],
             [
               "«Reporte de anuncios» sale en blanco",
-              <>Es cómo se muestra embebido, no tu sesión. Pulsa <b className="font-medium text-text">↗ Abrir en pestaña nueva</b>.</>,
+              <>Es cómo se muestra embebido, no tu sesión. Ábrelo directo en <b className="font-medium text-text">anuncios.datibot.lat</b>.</>,
             ],
             [
               "Se perdieron productos o anuncios tras reimplementar",

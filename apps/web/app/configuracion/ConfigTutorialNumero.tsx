@@ -4,10 +4,10 @@
 function Paso({ n, children }: { n: number; children: React.ReactNode }) {
   return (
     <li className="flex gap-3">
-      <span className="mt-0.5 grid h-6 w-6 shrink-0 place-items-center rounded-md bg-accent text-xs font-bold text-[#111] ring-1 ring-[#111]">
+      <span className="mt-0.5 grid h-6 w-6 shrink-0 place-items-center rounded-full bg-[var(--field)] text-xs font-medium text-text ring-1 ring-[var(--hairline)]">
         {n}
       </span>
-      <div className="min-w-0 flex-1 text-sm leading-relaxed text-muted [&_b]:font-semibold [&_b]:text-text">
+      <div className="min-w-0 flex-1 text-sm leading-relaxed text-muted [&_b]:font-medium [&_b]:text-text">
         {children}
       </div>
     </li>
@@ -16,7 +16,7 @@ function Paso({ n, children }: { n: number; children: React.ReactNode }) {
 
 function Warn({ children }: { children: React.ReactNode }) {
   return (
-    <div className="mt-3 rounded-lg border-l-2 border-[#e0a800] bg-[var(--field)] p-3 text-xs text-muted [&_b]:text-text">
+    <div className="mt-3 rounded-lg border-l-2 border-[var(--warn)] bg-[var(--field)] p-3 text-xs text-muted [&_b]:text-text">
       ⚠️ {children}
     </div>
   );
@@ -36,10 +36,10 @@ function Parte({
   return (
     <section className="rounded-2xl border border-[var(--hairline)] glass p-5">
       <div className="flex items-baseline gap-2">
-        <span className="rounded border border-[#111] bg-accent px-2 py-0.5 text-xs font-bold text-[#111]">
+        <span className="rounded-full bg-[var(--field)] px-2 py-0.5 text-xs font-medium text-text ring-1 ring-[var(--hairline)]">
           {letra}
         </span>
-        <h3 className="text-base font-semibold text-text">{titulo}</h3>
+        <h3 className="text-base font-medium text-text">{titulo}</h3>
       </div>
       {sub && <p className="mt-1 text-xs text-muted">{sub}</p>}
       <div className="mt-3">{children}</div>
@@ -47,7 +47,7 @@ function Parte({
   );
 }
 
-const code = "rounded bg-[var(--field)] px-1 py-0.5 text-[12px] font-mono text-text border border-[var(--hairline)]";
+const code = "rounded bg-[var(--panel)] px-1 text-[12px] text-text";
 
 const ERRORES: [string, string, string][] = [
   ['WhatsApp: "Object … does not exist / missing permissions"', "Credencial WA de otro número", "Usar la credencial del número correcto"],
@@ -63,14 +63,17 @@ const ERRORES: [string, string, string][] = [
 export function ConfigTutorialNumero() {
   return (
     <div className="space-y-4">
-      <div>
-        <h2 className="text-xl">Tutorial: dar de alta un número nuevo</h2>
-        <p className="mt-1 text-sm text-muted">
-          Proceso completo para conectar un número de WhatsApp nuevo al bot (Meta · n8n ·
-          Chatwoot · Supabase). ~15-20 min la primera vez. La mayoría es <b className="text-text">cablear
-          infraestructura</b>; la config de producto/embudo NO se toca aquí (esa la edita la app).
-        </p>
+      <div className="rounded-xl border-l-2 border-accent bg-[var(--field)] p-3 text-sm text-muted [&_b]:font-medium [&_b]:text-text">
+        <b>Esta parte es para quien monta el sistema</b> (tu desarrollador o técnico). Como
+        dueño, tu trabajo del día a día está en <b>Embudos</b> (sección 7); puedes saltarte
+        esto sin problema.
       </div>
+      <p className="text-sm text-muted [&_b]:font-medium [&_b]:text-text">
+        Proceso completo para conectar un número de WhatsApp nuevo al bot (Meta · n8n ·
+        Chatwoot · Supabase). ~15-20 min la primera vez: casi todo es{" "}
+        <b>conectar el número por primera vez</b>; la configuración de producto/embudo NO se
+        toca aquí (esa la edita la app).
+      </p>
 
       {/* Mapa mental */}
       <div className="rounded-2xl border border-[var(--hairline)] glass p-5">
@@ -132,7 +135,7 @@ export function ConfigTutorialNumero() {
           <Paso n={1}>Chatwoot → <b>Settings → Inboxes → Add Inbox → WhatsApp (API)</b>.</Paso>
           <Paso n={2}>Conéctalo con el <code className={code}>phone_id</code> / token del número.</Paso>
           <Paso n={3}>Anota el <b>account_id</b> (normalmente <code className={code}>1</code>) y el <b>inbox_id</b>.</Paso>
-          <Paso n={4}>Asegúrate de que existan las <b>etiquetas</b> del bot (en minúscula): <code className={code}>menu_enviado</code>, <code className={code}>bienvenida</code>, <code className={code}>contenido_solicitado</code>, <code className={code}>contenido_enviado</code>, <code className={code}>comprador</code>, <code className={code}>stop</code>, y las de país: <code className={code}>col per mex chi ven ecu</code>. (Chatwoot solo aplica etiquetas que YA existen.)</Paso>
+          <Paso n={4}>Asegúrate de que existan las <b>etiquetas</b> del bot (en minúscula): <code className={code}>menu_enviado</code>, <code className={code}>bienvenida</code>, <code className={code}>contenido_solicitado</code>, <code className={code}>contenido_enviado</code>, <code className={code}>comprador</code>, <code className={code}>stop</code>, y las de país (los 5 que soporta la plataforma): <code className={code}>col per ecu chi ven</code>. (Chatwoot solo aplica etiquetas que YA existen.)</Paso>
         </ol>
       </Parte>
 
@@ -202,9 +205,9 @@ export function ConfigTutorialNumero() {
             <tbody>
               {ERRORES.map(([s, c, f], i) => (
                 <tr key={i} className="align-top">
-                  <td className="border-b border-[var(--hair)] py-2 pr-3 text-text">{s}</td>
-                  <td className="border-b border-[var(--hair)] py-2 pr-3 text-muted">{c}</td>
-                  <td className="border-b border-[var(--hair)] py-2 text-muted">{f}</td>
+                  <td className="border-b border-[var(--hairline)] py-2 pr-3 text-text">{s}</td>
+                  <td className="border-b border-[var(--hairline)] py-2 pr-3 text-muted">{c}</td>
+                  <td className="border-b border-[var(--hairline)] py-2 text-muted">{f}</td>
                 </tr>
               ))}
             </tbody>
