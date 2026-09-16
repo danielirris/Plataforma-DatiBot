@@ -5,6 +5,7 @@ import logging
 import shutil
 import time
 from pathlib import Path
+from typing import Callable
 
 logger = logging.getLogger(__name__)
 
@@ -30,7 +31,8 @@ def delete_source(source: Path) -> None:
         logger.warning("No se pudo borrar el fuente %s: %s", source, exc)
 
 
-def purge_keep_recent(outputs_dir: Path, keep_n: int) -> int:
+def purge_keep_recent(outputs_dir: Path, keep_n: int,
+                      on_deleted: Callable[[str], None] | None = None) -> int:
     """Conserva los ``keep_n`` trabajos más recientes y borra el resto.
 
     Se usa para alimentar la Galería: en vez de borrar por antigüedad (que haría
@@ -40,6 +42,10 @@ def purge_keep_recent(outputs_dir: Path, keep_n: int) -> int:
     Args:
         outputs_dir: carpeta ``storage/outputs`` (un subdirectorio por job).
         keep_n: cuántos trabajos recientes conservar.
+        on_deleted: si se pasa, se llama con el nombre de cada carpeta borrada
+            (que es el job_id) para borrar TAMBIÉN su fila en jobs.db y que la
+            base no crezca sin límite. Best-effort: un fallo aquí no corta la
+            purga de disco.
 
     Returns:
         Número de trabajos borrados.
@@ -60,6 +66,12 @@ def purge_keep_recent(outputs_dir: Path, keep_n: int) -> int:
                 item.unlink()
             borrados += 1
             logger.info("Galería llena: borrado el trabajo viejo %s", item.name)
+            if on_deleted is not None:
+                try:
+                    on_deleted(item.name)
+                except Exception as exc:  # noqa: BLE001 - best-effort
+                    logger.warning("No se pudo borrar la fila %s de jobs.db: %s",
+                                   item.name, exc)
         except OSError as exc:  # pragma: no cover - mejor esfuerzo
             logger.warning("No se pudo borrar %s: %s", item, exc)
     return borrados

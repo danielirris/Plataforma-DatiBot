@@ -576,7 +576,8 @@ class JobManager:
         # "en cola" para siempre). Por eso va envuelta y es best-effort.
         try:
             cleanup.purge_keep_recent(
-                self._settings.outputs_dir, self._settings.galeria_max
+                self._settings.outputs_dir, self._settings.galeria_max,
+                on_deleted=self._store.delete,
             )
         except Exception:  # noqa: BLE001 - la limpieza es opcional, el worker es crítico
             logger.exception("Fallo en la limpieza inicial; el worker sigue igual")
@@ -674,7 +675,8 @@ class JobManager:
             # Limpieza: borra temporales y videos fuente (deja solo los clips).
             cleanup.cleanup_job_dir(work_dir)
             self._pop_job_state(job_id)
-            cleanup.purge_keep_recent(settings.outputs_dir, settings.galeria_max)
+            cleanup.purge_keep_recent(settings.outputs_dir, settings.galeria_max,
+                                      on_deleted=self._store.delete)
 
     def _pop_job_state(self, job_id: str) -> None:
         """Libera el estado en memoria asociado a un job ya procesado."""
@@ -1075,7 +1077,8 @@ class JobManager:
         finally:
             cleanup.cleanup_job_dir(work_dir)
             self._pop_job_state(job_id)
-            cleanup.purge_keep_recent(settings.outputs_dir, settings.galeria_max)
+            cleanup.purge_keep_recent(settings.outputs_dir, settings.galeria_max,
+                                      on_deleted=self._store.delete)
 
     def _render_existing_ad(self, job_id: str, output_dir: Path | None = None,
                             videos_n: int | None = None) -> None:
