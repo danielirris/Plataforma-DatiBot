@@ -170,8 +170,9 @@ export default function TutorialPage() {
       <div className="mt-6 rounded-xl border-l-2 border-accent bg-[var(--field)] p-4 text-sm text-muted [&_b]:font-medium [&_b]:text-text">
         <b>Orden recomendado la primera vez:</b> crea un <b>producto</b> → define{" "}
         <b>precios e instrucciones de la IA</b> en Configuración → genera sus{" "}
-        <b>ebooks/anuncios/videos</b> → y al final monta el <b>número y el bot</b> en
-        Embudos, que es lo que cierra la venta.
+        <b>ebooks/anuncios/videos</b> → monta el <b>número y el bot</b> en Embudos → y{" "}
+        <b>publica tus videos en Facebook</b> como anuncios de clic a WhatsApp (eso es lo que
+        trae los clientes al bot).
       </div>
 
       {/* ── ANTES DEL DÍA 1 ── */}
@@ -184,7 +185,9 @@ export default function TutorialPage() {
       >
         <p className="text-sm text-muted [&_b]:font-medium [&_b]:text-text">
           Datibot se apoya en varias piezas externas. La <b>instalación (una sola vez) la
-          hace tu técnico</b>; tú, como dueño, trabajas el día a día dentro de la app.
+          hace tu técnico</b>; tú, como dueño, trabajas el día a día dentro de la app.{" "}
+          ¿Ves una palabra que no conoces? Están todas explicadas en una línea en el{" "}
+          <a href="#glosario" className="text-accent-2 underline">Diccionario rápido</a>.
         </p>
         <p className="mt-4 text-xs font-semibold uppercase tracking-wide text-muted">
           Cuentas y servicios que hacen falta
@@ -195,7 +198,8 @@ export default function TutorialPage() {
           <li>• <b>n8n</b> — el motor que automatiza los mensajes del bot.</li>
           <li>• <b>Chatwoot</b> — la bandeja donde ves las conversaciones.</li>
           <li>• <b>Supabase</b> — la base de datos donde vive la configuración del bot.</li>
-          <li>• Clave/saldo de <b>OpenAI</b> y <b>Gemini</b> — para la IA (textos) y las imágenes de los ebooks.</li>
+          <li>• <b>Gemini</b> — el motor por defecto de toda la IA de texto (productos, ebooks, guiones) y de las imágenes de los ebooks: la clave imprescindible.</li>
+          <li>• <b>OpenAI</b> — opcional como texto alternativo, y necesaria para los <b>subtítulos del Editor de videos</b> (transcripción).</li>
         </ul>
         <div className="mt-4 grid gap-3 sm:grid-cols-2">
           <div className="rounded-xl border border-[var(--hairline)] bg-[var(--field)] p-3 text-sm text-muted [&_b]:font-medium [&_b]:text-text">
@@ -220,7 +224,7 @@ export default function TutorialPage() {
           {[
             "Producto",
             "Ebook + videos",
-            "Editor → anuncios",
+            "Editor: anuncios cortos",
             "Publicas en Facebook (clic a WhatsApp)",
             "El bot atiende (Embudos)",
             "Venta",
@@ -238,10 +242,10 @@ export default function TutorialPage() {
           tono="tip"
           titulo="Cruces que conviene saber"
           items={[
-            <>El <b>video de embudo</b> que creas en Productos (paso 4) es el MISMO que subes en <b>Embudos → Media</b>.</>,
-            <>Los <b>ebooks y bonos</b> son los <b>PDFs</b> que el bot entrega en la ENTREGA.</>,
+            <>El <b>guión</b> del video de embudo lo escribes en Productos (paso 4); el <b>video ya grabado</b> a partir de ese guión es el que subes en <b>Embudos → Media</b>.</>,
+            <>Los <b>ebooks y bonos</b> son los <b>PDFs</b> que el bot le entrega al cliente cuando confirma la compra.</>,
             <>Los <b>precios</b> de Configuración precargan los <b>datos de pago</b> del bot por país.</>,
-            <>El bot solo aparece en el <b>Reporte</b> si publicaste el video como <b>anuncio de clic a WhatsApp</b>: así Facebook genera el <Cod>ctwa_clid</Cod> que cruza cada venta.</>,
+            <>El bot solo aparece en el <b>Reporte</b> si publicaste el video como <b>anuncio de clic a WhatsApp</b>: así Facebook manda el <Cod>ad_id</Cod> (con el que el Reporte cruza cada venta) y el <Cod>ctwa_clid</Cod> (que la app le devuelve a Facebook por CAPI).</>,
           ]}
         />
       </Seccion>
@@ -568,10 +572,36 @@ export default function TutorialPage() {
             Descargar el video no lo pone a vender. El paso que conecta todo es{" "}
             <b>subirlo a Facebook Ads Manager como anuncio de «clic a WhatsApp»</b> apuntando
             al número del bot. Así, cuando alguien toca el anuncio y escribe, el bot lo
-            atiende (Embudos) y Facebook genera el <Cod>ctwa_clid</Cod> que luego cruza cada
-            venta en el <b>Reporte de anuncios</b>. Sin este paso, tu atribución sale vacía.
+            atiende (Embudos) y Facebook registra de qué anuncio vino: el <Cod>ad_id</Cod>,
+            con el que el <b>Reporte de anuncios</b> cruza cada venta (más un{" "}
+            <Cod>ctwa_clid</Cod> del clic que la app le devuelve por CAPI). Sin este paso,
+            el Reporte no podrá decirte qué anuncio trajo cada venta.
           </p>
         </div>
+
+        <SubGuia titulo="Cómo publicar el anuncio de clic a WhatsApp (en Facebook)">
+          <p className="mb-2 text-sm text-muted">
+            Se hace en <b className="font-medium text-text">Facebook Ads Manager</b> (fuera de
+            Datibot). Meta cambia a veces los nombres de los menús, pero la idea es la misma:
+          </p>
+          <ol className="space-y-2">
+            <Paso n={1}>
+              Crea una <b>campaña</b> con objetivo <b>«Interacción» / «Mensajes»</b>.
+            </Paso>
+            <Paso n={2}>
+              En el conjunto de anuncios, elige como destino <b>«WhatsApp»</b> y selecciona
+              el <b>número del bot</b>.
+            </Paso>
+            <Paso n={3}>
+              En el anuncio, sube el <b>video</b> que descargaste aquí en «Mis anuncios» y
+              escribe el texto.
+            </Paso>
+            <Paso n={4}>
+              <b>Publica.</b> Cada clic abre un chat con el bot y queda registrado para que
+              luego lo veas en el Reporte.
+            </Paso>
+          </ol>
+        </SubGuia>
       </Seccion>
 
       {/* ── 6 · REPORTE DE ANUNCIOS ── */}
@@ -856,7 +886,7 @@ export default function TutorialPage() {
               <li>☐ Llega la <b>bienvenida</b> con el menú.</li>
               <li>☐ Respondes y llega el <b>video</b> con su botón.</li>
               <li>☐ Confirmas y llegan los <b>PDFs / bonos</b> y los <b>datos de pago</b>.</li>
-              <li>☐ Escribes <b>STOP</b> y el bot deja de escribirte.</li>
+              <li>☐ Escribes la <b>palabra de baja</b> (STOP) y el bot deja de escribirte.</li>
             </ul>
             <p className="mt-2 text-xs">
               Si algo de esto no pasa, revisa el FAQ («El bot no responde nada») o avisa a tu
@@ -893,14 +923,15 @@ export default function TutorialPage() {
         sub="Las palabras técnicas que aparecen en el tutorial, en una línea cada una."
       >
         <ul className="space-y-1.5 text-sm text-muted [&_b]:font-medium [&_b]:text-text">
+          <li><b>Atribución</b> — saber qué anuncio trajo cada venta.</li>
           <li><b>Meta / WhatsApp Cloud API</b> — la plataforma de Facebook por donde tu número envía y recibe mensajes.</li>
           <li><b>n8n</b> — el motor que automatiza los mensajes del bot (lee lo que editas en Embudos y actúa).</li>
           <li><b>Supabase</b> — la base de datos donde vive la configuración del bot (lo que editas en Embudos).</li>
           <li><b>Chatwoot</b> — la bandeja donde ves y respondes las conversaciones.</li>
           <li><b>Phone ID</b> — el identificador de tu número que da Meta (no es una contraseña).</li>
-          <li><b>WABA</b> — el identificador de tu cuenta de WhatsApp Business en Meta.</li>
+          <li><b>WABA</b> (WhatsApp Business Account) — el identificador de tu cuenta de WhatsApp Business en Meta.</li>
           <li><b>media_id</b> — el «id» que WhatsApp le pone a un archivo (video/PDF) para enviarlo al instante; caduca y se renueva sola.</li>
-          <li><b>Pixel / CAPI</b> — la forma de devolverle a Facebook las ventas que ocurren en WhatsApp, para que optimice tus anuncios.</li>
+          <li><b>Pixel / CAPI</b> (API de Conversiones) — la forma de devolverle a Facebook las ventas que ocurren en WhatsApp, para que optimice tus anuncios.</li>
           <li><b>ctwa_clid</b> — el id del clic en un anuncio de «clic a WhatsApp»; conecta cada venta con el anuncio que la trajo.</li>
         </ul>
       </Seccion>
@@ -933,7 +964,7 @@ export default function TutorialPage() {
             ],
             [
               "El bot no responde nada",
-              <>Revisa en orden: (1) ¿le <b className="font-medium text-text">escribiste tú primero</b>? WhatsApp solo deja responder dentro de las 24 h de tu último mensaje. (2) ¿el número quedó bien conectado? (usa «Compruébalo tú mismo» en Embudos). Si nada de eso, avísale a tu técnico: puede ser el flujo de n8n apagado o el webhook de Meta caído (tiene la tabla de errores en «Dar de alta un número»).</>,
+              <>Revisa en orden: (1) ¿alguien le <b className="font-medium text-text">escribió primero</b>? WhatsApp solo permite que el bot responda dentro de las 24 h desde el último mensaje del cliente; no puede iniciar la conversación. (2) ¿el número quedó bien conectado? (usa «Compruébalo tú mismo» en Embudos). Si nada de eso, avísale a tu técnico: puede ser el flujo de n8n apagado o el webhook de Meta caído (tiene la tabla de errores en «Dar de alta un número»).</>,
             ],
             [
               "El bot dejó de enviar el video o los PDFs",
