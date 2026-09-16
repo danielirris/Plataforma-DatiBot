@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { supabaseConfigurado, SupabaseError } from "@/lib/embudos/supabase";
 import { renovarProducto, renovarVencidas } from "@/lib/embudos/renovar";
+import { toProductoId } from "@/lib/producto/id";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -19,7 +20,7 @@ export async function POST(req: Request) {
   } catch {
     /* opcional */
   }
-  const producto = String(body.producto ?? "").trim();
+  const producto = toProductoId(String(body.producto ?? ""));
 
   try {
     if (producto) {

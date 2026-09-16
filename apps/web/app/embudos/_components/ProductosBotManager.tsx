@@ -7,11 +7,10 @@ import {
   type ProductoBot,
 } from "@/lib/embudos/types";
 import { PAISES_EMBUDO } from "@/lib/embudo/paises";
+import { keyProducto, toProductoId } from "@/lib/producto/id";
 
 type ProductoLite = { id: string; nombre: string; productoId?: string };
 type Fila = Record<string, string>; // producto, pais + campos (todos como string)
-
-const keyProducto = (p: ProductoLite) => (p.productoId?.trim() || p.id);
 
 // Datos de pago FIJOS por país (siempre los mismos). Se usan para PRECARGAR los campos
 // vacíos; lo que guarde el usuario manda. `precios` son los precios globales de
@@ -258,13 +257,13 @@ export function ProductosBotManager() {
             onChange={(e) => setOtroText(e.target.value)}
             // Solo recargar si la clave cambió (no pisar lo que haya en pantalla).
             onBlur={() => {
-              const k = otroText.trim();
+              const k = toProductoId(otroText);
               if (k !== productoKey) cargar(k);
             }}
             onKeyDown={(e) => {
               if (e.key === "Enter") {
                 e.preventDefault();
-                const k = otroText.trim();
+                const k = toProductoId(otroText);
                 if (k !== productoKey) cargar(k);
               }
             }}

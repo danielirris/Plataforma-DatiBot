@@ -6,6 +6,7 @@ import {
   SupabaseError,
 } from "@/lib/embudos/supabase";
 import { type ProductoBot } from "@/lib/embudos/types";
+import { toProductoId } from "@/lib/producto/id";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -41,7 +42,7 @@ export async function GET(req: Request) {
   if (!supabaseConfigurado())
     return NextResponse.json({ configurado: false, filas: [] }, { status: 200 });
 
-  const producto = new URL(req.url).searchParams.get("producto")?.trim();
+  const producto = toProductoId(new URL(req.url).searchParams.get("producto") ?? "");
   if (!producto)
     return NextResponse.json({ error: "Falta el parámetro producto." }, { status: 400 });
 
@@ -82,7 +83,7 @@ export async function POST(req: Request) {
 
   const filas: Record<string, unknown>[] = [];
   for (const f of entradas) {
-    const producto = String(f.producto ?? "").trim();
+    const producto = toProductoId(String(f.producto ?? ""));
     const pais = String(f.pais ?? "").trim();
     if (!producto || !pais) continue; // sin clave completa no se puede upsertar
     // Guardado PARCIAL (patch): la clave siempre; el resto SOLO si el front lo mandó

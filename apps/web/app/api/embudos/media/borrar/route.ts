@@ -7,6 +7,7 @@ import {
 } from "@/lib/embudos/supabase";
 import { leerVpsConfig, eliminarImagen } from "@/lib/vps/upload";
 import { SLOTS_MEDIA, columnasSlot } from "@/lib/embudos/media";
+import { toProductoId } from "@/lib/producto/id";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -28,7 +29,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "JSON inválido." }, { status: 400 });
   }
 
-  const producto = String(body.producto ?? "").trim();
+  const producto = toProductoId(String(body.producto ?? ""));
   if (!producto)
     return NextResponse.json({ error: "Falta el producto." }, { status: 400 });
 

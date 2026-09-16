@@ -2,10 +2,9 @@
 
 import { useEffect, useState } from "react";
 import { numeroBotVacio, type NumeroBot } from "@/lib/embudos/types";
+import { keyProducto, toProductoId } from "@/lib/producto/id";
 
 type ProductoLite = { id: string; nombre: string; productoId?: string };
-
-const keyProducto = (p: ProductoLite) => (p.productoId?.trim() || p.id);
 
 // Campos de texto simple del formulario (label + si es sensible/password).
 const CAMPOS: { k: keyof NumeroBot; label: string; sensible?: boolean; hint?: string }[] = [
@@ -346,6 +345,7 @@ EMBUDOS_SUPABASE_SERVICE_KEY=<tu service key>`}
                   value={form.producto_activo}
                   placeholder="clave del producto (ej. masmellos)"
                   onChange={(e) => setCampo("producto_activo", e.target.value)}
+                  onBlur={(e) => setCampo("producto_activo", toProductoId(e.target.value))}
                   className="rounded-lg border border-[var(--hairline)] bg-[var(--field)] px-3 py-2 text-text outline-none focus:border-accent"
                 />
               ) : (

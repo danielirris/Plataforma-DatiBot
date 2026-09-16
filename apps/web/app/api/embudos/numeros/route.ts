@@ -6,6 +6,7 @@ import {
   SupabaseError,
 } from "@/lib/embudos/supabase";
 import { type NumeroBot } from "@/lib/embudos/types";
+import { toProductoId } from "@/lib/producto/id";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -87,6 +88,14 @@ export async function POST(req: Request) {
       // usuario tecleó uno nuevo.
       const t = String(body.capi_token ?? "").trim();
       if (t) fila.capi_token = t;
+      continue;
+    }
+    if (c === "producto_activo") {
+      // El apuntador al producto se guarda SIEMPRE con la clave canónica (misma
+      // normalización que config_bots/pasos/rotador/media), para que n8n lo resuelva.
+      // Vacío ("— sin asignar —") sigue siendo "" → desasigna.
+      if (Object.prototype.hasOwnProperty.call(body, c))
+        fila.producto_activo = toProductoId(String(body.producto_activo ?? ""));
       continue;
     }
     if (Object.prototype.hasOwnProperty.call(body, c)) {

@@ -2,11 +2,10 @@
 
 import { useEffect, useState } from "react";
 import { type NumeroBot } from "@/lib/embudos/types";
+import { keyProducto, toProductoId } from "@/lib/producto/id";
 
 type ProductoLite = { id: string; nombre: string; productoId?: string };
 type MediaRow = Record<string, string | null>;
-
-const keyProducto = (p: ProductoLite) => (p.productoId?.trim() || p.id);
 
 const SLOTS: { slot: string; label: string; acepta: string }[] = [
   { slot: "video", label: "Video del embudo", acepta: "video/mp4,video/quicktime,.mp4,.mov,.m4v" },
@@ -237,13 +236,13 @@ export function MediaManager() {
               onChange={(e) => setOtroText(e.target.value)}
               // Solo recargar si la clave cambió (no pisar lo que haya en pantalla).
               onBlur={() => {
-                const k = otroText.trim();
+                const k = toProductoId(otroText);
                 if (k !== productoKey) cargar(k);
               }}
               onKeyDown={(e) => {
                 if (e.key === "Enter") {
                   e.preventDefault();
-                  const k = otroText.trim();
+                  const k = toProductoId(otroText);
                   if (k !== productoKey) cargar(k);
                 }
               }}

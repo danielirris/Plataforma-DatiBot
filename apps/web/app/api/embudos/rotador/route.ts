@@ -7,6 +7,7 @@ import {
   SupabaseError,
 } from "@/lib/embudos/supabase";
 import { type RotadorRow } from "@/lib/embudos/types";
+import { toProductoId } from "@/lib/producto/id";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -16,7 +17,7 @@ export async function GET(req: Request) {
   if (!supabaseConfigurado())
     return NextResponse.json({ configurado: false, filas: [] }, { status: 200 });
 
-  const producto = new URL(req.url).searchParams.get("producto")?.trim();
+  const producto = toProductoId(new URL(req.url).searchParams.get("producto") ?? "");
   if (!producto)
     return NextResponse.json({ error: "Falta el parámetro producto." }, { status: 400 });
 
@@ -50,7 +51,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "JSON inválido." }, { status: 400 });
   }
 
-  const producto = String(body.producto ?? "").trim();
+  const producto = toProductoId(String(body.producto ?? ""));
   if (!producto)
     return NextResponse.json({ error: "Falta el producto." }, { status: 400 });
 

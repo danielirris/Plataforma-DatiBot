@@ -9,6 +9,7 @@ import {
 import { leerVpsConfig, faltantesVps, subirImagen, eliminarImagen } from "@/lib/vps/upload";
 import { columnasSlot, mimeDe, subirMediaWhatsApp, SLOTS_MEDIA } from "@/lib/embudos/media";
 import { type NumeroBot } from "@/lib/embudos/types";
+import { toProductoId } from "@/lib/producto/id";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -38,7 +39,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Formulario inválido." }, { status: 400 });
   }
 
-  const producto = String(form.get("producto") ?? "").trim();
+  const producto = toProductoId(String(form.get("producto") ?? ""));
   const slot = String(form.get("slot") ?? "").trim();
   const phone_id = String(form.get("phone_id") ?? "").trim();
   const caption = String(form.get("caption") ?? "");

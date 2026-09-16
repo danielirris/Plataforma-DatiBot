@@ -7,9 +7,9 @@ import {
   type PasoEmbudo,
   type RotadorRow,
 } from "@/lib/embudos/types";
+import { keyProducto, toProductoId } from "@/lib/producto/id";
 
 type ProductoLite = { id: string; nombre: string; productoId?: string };
-const keyProducto = (p: ProductoLite) => (p.productoId?.trim() || p.id);
 
 // ── Constructor en línea ──────────────────────────────────────────────
 // Cada "bloque" es un paso del embudo con su contenido AHÍ MISMO. Por debajo se
@@ -529,13 +529,13 @@ export function PasosEmbudoEditor() {
             // Solo recargar si la clave cambió (evita pisar ediciones no guardadas al
             // refocar y salir sin cambiar nada).
             onBlur={() => {
-              const k = otroText.trim();
+              const k = toProductoId(otroText);
               if (k !== productoKey) cargar(k);
             }}
             onKeyDown={(e) => {
               if (e.key === "Enter") {
                 e.preventDefault();
-                const k = otroText.trim();
+                const k = toProductoId(otroText);
                 if (k !== productoKey) cargar(k);
               }
             }}
