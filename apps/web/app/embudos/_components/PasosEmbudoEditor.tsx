@@ -46,7 +46,6 @@ const MSG_PRODUCTO: { k: string; label: string }[] = [
   { k: "msg_datos_pago", label: "Datos de pago (cuenta del país)" },
   { k: "msg_bienvenida", label: "Bienvenida (fijo)" },
   { k: "msg_bonos_intro", label: "Intro de bonos" },
-  { k: "msg_felicitacion", label: "Felicitación" },
 ];
 
 const MEDIA_SLOTS: { slot: string; label: string }[] = [
