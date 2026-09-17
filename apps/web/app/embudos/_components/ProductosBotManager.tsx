@@ -40,12 +40,9 @@ function defaultsPago(pais: string, precios: Record<string, number[]>): Record<s
 const MENSAJES: { k: string; label: string }[] = [
   { k: "msg_bienvenida", label: "Bienvenida" },
   { k: "msg_bonos_intro", label: "Intro de bonos (link)" },
-  { k: "msg_felicitacion", label: "Felicitación" },
 ];
-const PROMPTS: { k: string; label: string }[] = [
-  { k: "system_prompt_convencer", label: "Prompt IA — Convencer" },
-  { k: "system_prompt_cobrar", label: "Prompt IA — Cobrar" },
-];
+// Los prompts de IA (system_prompt_convencer/cobrar) se editan en la pestaña «IA»
+// (IAManager), por país. Ya no se gestionan aquí.
 const PIXEL: { k: string; label: string }[] = [
   { k: "pixel_id", label: "Pixel ID" },
   { k: "page_id", label: "Page ID" },
@@ -82,9 +79,6 @@ const CLAVES_PATCH_PROD = [
   "msg_cobro",
   "msg_bonos_intro",
   "msg_datos_pago",
-  "msg_felicitacion",
-  "system_prompt_convencer",
-  "system_prompt_cobrar",
   "titular_cuenta",
   "numero_cuenta",
   "metodo_pago",
@@ -321,21 +315,7 @@ export function ProductosBotManager() {
             ))}
           </div>
 
-          {/* Prompts IA (compartidos) */}
-          <div className="space-y-3 rounded-xl border border-[var(--hairline)] glass p-5">
-            <p className="text-sm font-medium text-text">Prompts de las IAs</p>
-            {PROMPTS.map(({ k, label }) => (
-              <label key={k} className="flex flex-col gap-1 text-sm">
-                <span className="text-muted">{label}</span>
-                <textarea
-                  value={compartido(k)}
-                  onChange={(e) => setCompartido(k, e.target.value)}
-                  rows={6}
-                  className={inputCls + " font-mono text-xs"}
-                />
-              </label>
-            ))}
-          </div>
+          {/* Los prompts de IA se editan ahora en la pestaña «IA» (por país). */}
 
           {/* Pixel (compartido) */}
           <div className="space-y-3 rounded-xl border border-[var(--hairline)] glass p-5">

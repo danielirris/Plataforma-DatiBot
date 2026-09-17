@@ -5,9 +5,10 @@ import { NumerosManager } from "./NumerosManager";
 import { ProductosBotManager } from "./ProductosBotManager";
 import { PasosEmbudoEditor } from "./PasosEmbudoEditor";
 import { MediaManager } from "./MediaManager";
+import { IAManager } from "./IAManager";
 import { SupabaseSetupBanner } from "./SupabaseSetupBanner";
 
-type Tab = "numeros" | "bots" | "embudo" | "media";
+type Tab = "numeros" | "bots" | "embudo" | "media" | "ia";
 
 export function EmbudosTabs() {
   const [configurado, setConfigurado] = useState<boolean | null>(null);
@@ -28,6 +29,7 @@ export function EmbudosTabs() {
     { id: "bots", label: "Bot por producto" },
     { id: "embudo", label: "Embudo (constructor)" },
     { id: "media", label: "Media" },
+    { id: "ia", label: "IA" },
   ];
 
   return (
@@ -55,8 +57,10 @@ export function EmbudosTabs() {
         <ProductosBotManager />
       ) : tab === "embudo" ? (
         <PasosEmbudoEditor />
-      ) : (
+      ) : tab === "media" ? (
         <MediaManager />
+      ) : (
+        <IAManager />
       )}
     </div>
   );
