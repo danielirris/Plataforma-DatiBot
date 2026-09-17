@@ -22,11 +22,11 @@ interface Bloque {
   tipo: BloqueTipo;
   texto: string; // mensaje simple / etiqueta (nombre)
   usaVariaciones: boolean;
-  variaciones: string[]; // mensaje con varias versiones (rotador)
-  productoMsg: string; // "mensaje del producto": columna de productos (config)
+  variaciones: string[]; // mensaje con varias versiones (rotador) · también el body del botón
+  rotadorCampo: string; // campo SEMÁNTICO del rotador (ej. bienvenida, compromiso_1) — mensaje-variaciones y botón
+  productoMsg: string; // "mensaje del producto": columna de config_bots (config)
   mediaSlot: string; // archivo: video | pdf_1..6
   caption: string; // archivo: caption
-  botonBody: string;
   botonTitulo: string;
   botonId: string;
   delay: number; // segundos DESPUÉS del bloque
@@ -81,17 +81,17 @@ function nuevoBloque(tipo: BloqueTipo = "mensaje"): Bloque {
     texto: "",
     usaVariaciones: false,
     variaciones: [""],
+    rotadorCampo: "",
     productoMsg: "msg_cobro",
     mediaSlot: tipo === "archivo" ? "video" : "",
     caption: "",
-    botonBody: "",
     botonTitulo: "",
     botonId: "recibir_material",
     delay: tipo === "etiqueta" ? 0 : 2,
   };
 }
 
-function parseBoton(contenido: string): { body: string; titulo: string; id: string } {
+function parseBoton(contenido: string): { campo: string; bodyLiteral: string; titulo: string; id: string } {
   try {
     const o = JSON.parse(contenido) as {
       body?: string;
@@ -99,9 +99,9 @@ function parseBoton(contenido: string): { body: string; titulo: string; id: stri
       buttons?: { id?: string; title?: string }[];
     };
     const b = o.buttons?.[0] ?? {};
-    return { body: o.body ?? o.rotador_campo ?? "", titulo: b.title ?? "", id: b.id ?? "" };
+    return { campo: o.rotador_campo ?? "", bodyLiteral: o.body ?? "", titulo: b.title ?? "", id: b.id ?? "" };
   } catch {
-    return { body: "", titulo: "", id: "" };
+    return { campo: "", bodyLiteral: "", titulo: "", id: "" };
   }
 }
 
@@ -116,42 +116,45 @@ function vacio(): PorEstado {
 function plantilla(): PorEstado {
   const b = (t: BloqueTipo, extra: Partial<Bloque>): Bloque => ({ ...nuevoBloque(t), ...extra });
   return {
-    MENU: [
+    // 1) Primer contacto (sin etiqueta): bienvenida rotada → video → botón (rota) → etiqueta.
+    bienvenida: [
       b("mensaje", {
         usaVariaciones: true,
+        rotadorCampo: "bienvenida",
         variaciones: [
-          "¡Hola! 👋 Soy Laura. ¿Qué es lo que más te gustaría lograr? Escríbeme el número:\n1️⃣ …\n2️⃣ …\n3️⃣ …\n4️⃣ …",
-          "¡Hey! 😃 Soy Laura. Cuéntame qué buscas y te ayudo. Escribe el número:\n1️⃣ …\n2️⃣ …\n3️⃣ …\n4️⃣ …",
+          "¡Hola {nombre}! 👋 Soy Laura. Me encanta que me escribas 💛",
+          "¡Hey {nombre}! 😃 Soy Laura. Qué bueno tenerte por aquí.",
         ],
         delay: 2,
       }),
-      b("etiqueta", { texto: "menu_enviado", delay: 0 }),
-    ],
-    VIDEO: [
-      b("archivo", { mediaSlot: "video", caption: "Mira esto 👀", delay: 2 }),
+      b("archivo", { mediaSlot: "video", delay: 2 }), // caption ("qué incluye") se edita en Media
       b("boton", {
-        botonBody: "¿Te envío TODO el material ahora?",
+        rotadorCampo: "compromiso_1",
+        variaciones: ["¿Te envío TODO el material ahora, {nombre}?"],
         botonTitulo: "Recibir material",
         botonId: "recibir_material",
         delay: 0,
       }),
       b("etiqueta", { texto: "bienvenida", delay: 0 }),
     ],
-    CONFIRMACION: [
-      b("mensaje", { texto: "Escríbeme *SÍ RECIBIR* y te paso todo en un momento 🙌", delay: 2 }),
+    // 2) Ya tiene «bienvenida»: botón de compromiso #2 (rota) → etiqueta.
+    contenido_solicitado: [
+      b("boton", {
+        rotadorCampo: "compromiso_2",
+        variaciones: ["¡Perfecto {nombre}! Toca aquí y te lo envío 👇"],
+        botonTitulo: "Quiero recibirlo",
+        botonId: "quiero_recibirlo",
+        delay: 0,
+      }),
       b("etiqueta", { texto: "contenido_solicitado", delay: 0 }),
     ],
-    ENTREGA: [
+    // 3) Entrega: etiqueta PRIMERO (candado anti-reenvío) → PDFs → bonos → cobro → datos pago.
+    contenido_enviado: [
       b("etiqueta", { texto: "contenido_enviado", delay: 0 }),
       b("archivo", { mediaSlot: "pdf_1", delay: 3 }),
-      b("archivo", { mediaSlot: "pdf_2", delay: 3 }),
       b("producto", { productoMsg: "msg_bonos_intro", delay: 3 }),
       b("producto", { productoMsg: "msg_cobro", delay: 3 }),
       b("producto", { productoMsg: "msg_datos_pago", delay: 0 }),
-    ],
-    STOP: [
-      b("mensaje", { texto: "Listo, no te escribo más. Cuando quieras, aquí estoy 🙌", delay: 0 }),
-      b("etiqueta", { texto: "stop", delay: 0 }),
     ],
   };
 }
@@ -282,7 +285,17 @@ export function PasosEmbudoEditor() {
     base.delay = Number(f.delay_segundos) || 0;
     if (f.tipo === "boton") {
       const b = parseBoton(f.contenido);
-      return { ...base, tipo: "boton", botonBody: b.body, botonTitulo: b.titulo, botonId: b.id };
+      // El body del botón rota: las variantes salen del rotador (campo = rotador_campo).
+      // Si es un botón antiguo con body literal, lo tomamos como una única variante.
+      const vars = b.campo ? rot[b.campo] ?? [] : b.bodyLiteral ? [b.bodyLiteral] : [];
+      return {
+        ...base,
+        tipo: "boton",
+        rotadorCampo: b.campo,
+        variaciones: vars.length ? vars : [""],
+        botonTitulo: b.titulo,
+        botonId: b.id,
+      };
     }
     if (f.tipo === "etiqueta") {
       return { ...base, tipo: "etiqueta", texto: f.contenido };
@@ -296,7 +309,7 @@ export function PasosEmbudoEditor() {
     }
     if (f.fuente === "rotador") {
       const vars = rot[f.contenido] ?? [];
-      return { ...base, id: f.contenido, tipo: "mensaje", usaVariaciones: true, variaciones: vars.length ? vars : [""] };
+      return { ...base, tipo: "mensaje", usaVariaciones: true, rotadorCampo: f.contenido, variaciones: vars.length ? vars : [""] };
     }
     // directo (mensaje simple)
     return { ...base, tipo: "mensaje", texto: f.contenido };
@@ -358,6 +371,18 @@ export function PasosEmbudoEditor() {
   // problemas legibles (vacía = todo ok). Evita publicar un embudo que falla en runtime.
   function validar(): string[] {
     const errs: string[] = [];
+    // Los campos de rotador deben ser ÚNICOS entre bloques: dos bloques con el mismo campo
+    // colisionarían en (producto,campo,variante) y uno pisaría al otro al guardar.
+    const camposUsados = new Map<string, string>();
+    const chequearCampo = (campo: string, donde: string) => {
+      if (!campo) {
+        errs.push(`${donde}: falta el «campo del rotador».`);
+        return;
+      }
+      const prev = camposUsados.get(campo);
+      if (prev) errs.push(`${donde}: el campo de rotador «${campo}» ya se usa en ${prev} (deben ser únicos).`);
+      else camposUsados.set(campo, donde);
+    };
     for (const est of ESTADOS_EMBUDO) {
       (bloques[est] ?? []).forEach((b, idx) => {
         const donde = `${est} #${idx + 1}`;
@@ -367,11 +392,14 @@ export function PasosEmbudoEditor() {
           const t = b.botonTitulo.trim();
           if (!t) errs.push(`${donde}: el botón no tiene título.`);
           else if (t.length > 20) errs.push(`${donde}: el título del botón supera 20 caracteres.`);
-          if (!b.botonBody.trim()) errs.push(`${donde}: el botón no tiene texto de mensaje.`);
+          if (!b.variaciones.some((v) => v.trim()))
+            errs.push(`${donde}: el botón no tiene ningún texto de mensaje.`);
+          chequearCampo(b.rotadorCampo.trim(), donde);
         } else if (b.tipo === "mensaje") {
           if (b.usaVariaciones) {
             if (!b.variaciones.some((v) => v.trim()))
               errs.push(`${donde}: mensaje con variaciones pero todas están vacías.`);
+            chequearCampo(b.rotadorCampo.trim(), donde);
           } else if (!b.texto.trim()) {
             errs.push(`${donde}: el mensaje está vacío.`);
           }
@@ -424,15 +452,24 @@ export function PasosEmbudoEditor() {
         const orden = idx + 1;
         const base = { producto: productoKey, estado: est, orden, delay_segundos: b.delay };
         if (b.tipo === "boton") {
+          // El body del botón ROTA: el paso guarda una referencia al campo del rotador
+          // (rotador_campo) + el botón fijo; las variantes del body van a mensajes_rotador.
+          const campo = b.rotadorCampo.trim();
           pasos.push({
             ...base,
             tipo: "boton",
             fuente: "directo",
             contenido: JSON.stringify({
-              body: b.botonBody,
+              rotador_campo: campo,
               buttons: [{ id: b.botonId || "opcion", title: b.botonTitulo }],
             }),
           });
+          let n = 0;
+          for (const t of b.variaciones) {
+            if (!t.trim()) continue;
+            n += 1;
+            rotador.push({ campo, variante: n, texto: t });
+          }
         } else if (b.tipo === "etiqueta") {
           pasos.push({ ...base, tipo: "etiqueta", fuente: "directo", contenido: b.texto.trim() });
         } else if (b.tipo === "archivo") {
@@ -442,13 +479,14 @@ export function PasosEmbudoEditor() {
         } else if (b.tipo === "producto") {
           pasos.push({ ...base, tipo: "mensaje", fuente: "config", contenido: b.productoMsg });
         } else if (b.usaVariaciones) {
-          // Mensaje con variaciones → rotador (campo = id estable del bloque).
-          pasos.push({ ...base, tipo: "mensaje", fuente: "rotador", contenido: b.id });
+          // Mensaje con variaciones → rotador (campo = nombre SEMÁNTICO estable del bloque).
+          const campo = b.rotadorCampo.trim();
+          pasos.push({ ...base, tipo: "mensaje", fuente: "rotador", contenido: campo });
           let n = 0;
           for (const t of b.variaciones) {
             if (!t.trim()) continue;
             n += 1;
-            rotador.push({ campo: b.id, variante: n, texto: t });
+            rotador.push({ campo, variante: n, texto: t });
           }
         } else {
           pasos.push({ ...base, tipo: "mensaje", fuente: "directo", contenido: b.texto });
@@ -507,6 +545,12 @@ export function PasosEmbudoEditor() {
 
   return (
     <section className="space-y-5">
+      {/* Sugerencias de campos de rotador semánticos (el usuario puede escribir otros). */}
+      <datalist id="rotador-campos">
+        <option value="bienvenida" />
+        <option value="compromiso_1" />
+        <option value="compromiso_2" />
+      </datalist>
       <div>
         <h2 className="text-lg font-medium">Embudo (constructor)</h2>
         <p className="text-xs text-muted">
@@ -611,6 +655,10 @@ export function PasosEmbudoEditor() {
                           <textarea value={b.texto} rows={2} placeholder="Texto del mensaje…" onChange={(e) => upd(est, b.id, { texto: e.target.value })} className={inputCls + " w-full"} />
                         ) : (
                           <div className="space-y-1.5">
+                            <label className="flex flex-col gap-1 text-xs text-muted">
+                              Campo del rotador (nombre estable que lee el motor)
+                              <input list="rotador-campos" value={b.rotadorCampo} placeholder="ej. bienvenida" onChange={(e) => upd(est, b.id, { rotadorCampo: e.target.value })} className={inputCls} />
+                            </label>
                             {b.variaciones.map((v, vi) => (
                               <div key={vi} className="flex items-start gap-2">
                                 <span className="mt-2 w-5 shrink-0 text-right text-[11px] text-muted">{vi + 1}</span>
@@ -650,10 +698,26 @@ export function PasosEmbudoEditor() {
                     )}
 
                     {b.tipo === "boton" && (
-                      <div className="grid gap-2 sm:grid-cols-[1fr_auto_auto]">
-                        <input value={b.botonBody} placeholder="Texto del mensaje del botón" onChange={(e) => upd(est, b.id, { botonBody: e.target.value })} className={inputCls} />
-                        <input value={b.botonTitulo} maxLength={20} placeholder="Título botón (≤20)" onChange={(e) => upd(est, b.id, { botonTitulo: e.target.value })} className={inputCls} />
-                        <input value={b.botonId} placeholder="id" onChange={(e) => upd(est, b.id, { botonId: e.target.value })} className={inputCls + " w-24"} />
+                      <div className="space-y-2">
+                        <label className="flex flex-col gap-1 text-xs text-muted">
+                          Campo del rotador (el body rota; nombre estable)
+                          <input list="rotador-campos" value={b.rotadorCampo} placeholder="ej. compromiso_1" onChange={(e) => upd(est, b.id, { rotadorCampo: e.target.value })} className={inputCls} />
+                        </label>
+                        <div className="space-y-1.5">
+                          <span className="text-[11px] text-muted">Texto del botón (variantes anti-spam; el bot elige una):</span>
+                          {b.variaciones.map((v, vi) => (
+                            <div key={vi} className="flex items-start gap-2">
+                              <span className="mt-2 w-5 shrink-0 text-right text-[11px] text-muted">{vi + 1}</span>
+                              <textarea value={v} rows={2} placeholder="Variante del mensaje del botón…" onChange={(e) => setVar(est, b.id, vi, e.target.value)} className={inputCls + " w-full bg-[var(--bg)]"} />
+                              <button onClick={() => delVar(est, b.id, vi)} className="mt-1.5 shrink-0 text-xs text-muted hover:text-red-400" title="Quitar variante">✕</button>
+                            </div>
+                          ))}
+                          <button onClick={() => addVar(est, b.id)} className="text-xs text-accent-2 hover:underline">+ agregar variante</button>
+                        </div>
+                        <div className="grid gap-2 sm:grid-cols-[1fr_auto]">
+                          <input value={b.botonTitulo} maxLength={20} placeholder="Título del botón (≤20)" onChange={(e) => upd(est, b.id, { botonTitulo: e.target.value })} className={inputCls} />
+                          <input value={b.botonId} placeholder="id" onChange={(e) => upd(est, b.id, { botonId: e.target.value })} className={inputCls + " w-28"} />
+                        </div>
                       </div>
                     )}
 

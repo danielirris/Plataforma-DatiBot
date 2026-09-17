@@ -100,14 +100,19 @@ export interface PasoEmbudo {
   delay_segundos: number;
 }
 
-export const ESTADOS_EMBUDO = ["MENU", "VIDEO", "CONFIRMACION", "ENTREGA", "STOP"] as const;
+// Los 3 estados FINALES del embudo. Sus nombres = las etiquetas que deja (en minúscula):
+// el motor decide qué estado correr según la etiqueta que ya tiene el cliente. Cada estado
+// termina (o empieza) con su bloque `etiqueta` del mismo nombre. La etiqueta `comprador`
+// (al pagar) no tiene estado: con ella el bot se calla.
+export const ESTADOS_EMBUDO = ["bienvenida", "contenido_solicitado", "contenido_enviado"] as const;
 
 /** Descripción corta de cada estado (para la UI del editor de embudo). */
 export const ESTADO_INFO: Record<string, string> = {
-  MENU: "Primer contacto → menú de bienvenida (rotado) → etiqueta menu_enviado.",
-  VIDEO: "Video (con caption) → mensaje con BOTÓN → etiqueta bienvenida.",
-  CONFIRMACION: "Tras el botón → “escribe SI RECIBIR” → etiqueta contenido_solicitado.",
-  ENTREGA: "Etiqueta contenido_enviado (candado) → PDFs → link bonos → cobro → datos de pago.",
-  STOP: "“No te escribo más” → etiqueta stop.",
+  bienvenida:
+    "Primer contacto (sin etiqueta): bienvenida (ROTA) → video con caption → botón «Recibir material» (ROTA) → deja etiqueta bienvenida.",
+  contenido_solicitado:
+    "Ya tiene «bienvenida» y pidió el material: botón «Quiero recibirlo» (ROTA) → deja etiqueta contenido_solicitado.",
+  contenido_enviado:
+    "Ya tiene «contenido_solicitado»: etiqueta contenido_enviado PRIMERO (candado anti-reenvío) → PDF(s) → link a bonos → Cobro #1 (precios) → Cobro #2 (datos de pago).",
 };
 

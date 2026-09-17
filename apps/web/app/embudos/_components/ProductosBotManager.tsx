@@ -35,11 +35,11 @@ function defaultsPago(pais: string, precios: Record<string, number[]>): Record<s
 }
 
 // Campos COMPARTIDOS entre países (se escriben en las 5 filas).
+// Mensajes COMPARTIDOS (iguales para los 5 países). El Cobro #1/#2 NO van aquí: cambian
+// por país → ver MSG_COBRO_PAIS.
 const MENSAJES: { k: string; label: string }[] = [
   { k: "msg_bienvenida", label: "Bienvenida" },
-  { k: "msg_cobro", label: "Cobro" },
-  { k: "msg_bonos_intro", label: "Intro de bonos" },
-  { k: "msg_datos_pago", label: "Datos de pago" },
+  { k: "msg_bonos_intro", label: "Intro de bonos (link)" },
   { k: "msg_felicitacion", label: "Felicitación" },
 ];
 const PROMPTS: { k: string; label: string }[] = [
@@ -65,6 +65,11 @@ const VALIDACION: { k: string; label: string }[] = [
   { k: "validacion_titular", label: "Titular esperado" },
   { k: "validacion_cuenta_hint", label: "Pista de cuenta" },
   { k: "validacion_alias", label: "Alias" },
+];
+// Mensajes de cobro POR PAÍS (los valores/cuenta van escritos en el texto y cambian por país).
+const MSG_COBRO_PAIS: { k: string; label: string }[] = [
+  { k: "msg_cobro", label: "Cobro #1 — escalera de precios (con los valores del país)" },
+  { k: "msg_datos_pago", label: "Cobro #2 — datos de pago (cuenta del país)" },
 ];
 
 // Claves que se persisten en `config_bots` (coincide con CAMPOS_TEXTO + precio_base del
@@ -405,6 +410,23 @@ export function ProductosBotManager() {
                   <input
                     value={fp[k] ?? ""}
                     onChange={(e) => setPorPais(k, e.target.value)}
+                    className={inputCls}
+                  />
+                </label>
+              ))}
+            </div>
+
+            <p className="pt-1 text-xs font-medium text-muted">
+              Mensajes de cobro ({NOMBRE_PAIS[pais]}) — cambian por país
+            </p>
+            <div className="grid grid-cols-1 gap-3">
+              {MSG_COBRO_PAIS.map(({ k, label }) => (
+                <label key={k} className="flex flex-col gap-1 text-sm">
+                  <span className="text-muted">{label}</span>
+                  <textarea
+                    value={fp[k] ?? ""}
+                    onChange={(e) => setPorPais(k, e.target.value)}
+                    rows={4}
                     className={inputCls}
                   />
                 </label>
