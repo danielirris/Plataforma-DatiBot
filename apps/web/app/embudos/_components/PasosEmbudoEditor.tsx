@@ -198,16 +198,6 @@ export function PasosEmbudoEditor() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // 🔎 DIAGNÓSTICO temporal: el conteo de bloques que React COMMITEÓ, cada vez que cambia.
-  // Compáralo con el log de [embudo:guardar]: si aquí dice 4 y allá 1, el estado y el
-  // guardado están desincronizados.
-  useEffect(() => {
-    console.log(
-      "[embudo:estado bloques] →",
-      ESTADOS_EMBUDO.map((e) => `${e}=${(bloques[e] ?? []).length}`).join("  "),
-    );
-  }, [bloques]);
-
   async function cargar(key: string) {
     const myId = ++cargaSeqRef.current; // esta carga es ahora la más reciente
     setProductoKey(key);
@@ -351,11 +341,7 @@ export function PasosEmbudoEditor() {
     setEstado("");
   }
   function add(est: string) {
-    setBloques((prev) => {
-      const next = { ...prev, [est]: [...(prev[est] ?? []), nuevoBloque("mensaje")] };
-      console.log(`[embudo:add] "${est}" ahora tiene ${next[est].length} bloques en el estado`);
-      return next;
-    });
+    setBloques((prev) => ({ ...prev, [est]: [...(prev[est] ?? []), nuevoBloque("mensaje")] }));
   }
   function del(est: string, id: string) {
     setBloques((prev) => ({ ...prev, [est]: prev[est].filter((b) => b.id !== id) }));
@@ -529,16 +515,6 @@ export function PasosEmbudoEditor() {
     // y sus variantes de rotador (si no, el borrado-por-diff del rotador las eliminaría).
     for (const p of pasosExtra) pasos.push(p);
     for (const r of rotadorExtra) rotador.push(r);
-
-    // 🔎 DIAGNÓSTICO (temporal): cuántos bloques hay por estado en el estado del front y
-    // cuántas filas se van a enviar. Si "bloques por estado" dice 1 y en pantalla ves 4,
-    // el navegador está corriendo un bundle viejo (haz hard refresh).
-    console.log(
-      "[embudo:guardar] bloques por estado →",
-      ESTADOS_EMBUDO.map((e) => `${e}=${(bloques[e] ?? []).length}`).join("  "),
-      "| pasosExtra=" + pasosExtra.length,
-      "| FILAS A ENVIAR=" + pasos.length,
-    );
 
     // M1 (orden seguro, atomicidad best-effort): escribimos PRIMERO el rotador, porque
     // los pasos con fuente:'rotador' lo referencian. Si el rotador falla, abortamos ANTES
