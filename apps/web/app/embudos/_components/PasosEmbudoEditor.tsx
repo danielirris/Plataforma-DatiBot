@@ -507,6 +507,16 @@ export function PasosEmbudoEditor() {
     for (const p of pasosExtra) pasos.push(p);
     for (const r of rotadorExtra) rotador.push(r);
 
+    // 🔎 DIAGNÓSTICO (temporal): cuántos bloques hay por estado en el estado del front y
+    // cuántas filas se van a enviar. Si "bloques por estado" dice 1 y en pantalla ves 4,
+    // el navegador está corriendo un bundle viejo (haz hard refresh).
+    console.log(
+      "[embudo:guardar] bloques por estado →",
+      ESTADOS_EMBUDO.map((e) => `${e}=${(bloques[e] ?? []).length}`).join("  "),
+      "| pasosExtra=" + pasosExtra.length,
+      "| FILAS A ENVIAR=" + pasos.length,
+    );
+
     // M1 (orden seguro, atomicidad best-effort): escribimos PRIMERO el rotador, porque
     // los pasos con fuente:'rotador' lo referencian. Si el rotador falla, abortamos ANTES
     // de escribir los pasos: así nunca queda un paso apuntando a variantes inexistentes.
