@@ -194,6 +194,16 @@ export function PasosEmbudoEditor() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // 🔎 DIAGNÓSTICO temporal: el conteo de bloques que React COMMITEÓ, cada vez que cambia.
+  // Compáralo con el log de [embudo:guardar]: si aquí dice 4 y allá 1, el estado y el
+  // guardado están desincronizados.
+  useEffect(() => {
+    console.log(
+      "[embudo:estado bloques] →",
+      ESTADOS_EMBUDO.map((e) => `${e}=${(bloques[e] ?? []).length}`).join("  "),
+    );
+  }, [bloques]);
+
   async function cargar(key: string) {
     setProductoKey(key);
     guardarUltimoProducto(key);
@@ -332,7 +342,11 @@ export function PasosEmbudoEditor() {
     setEstado("");
   }
   function add(est: string) {
-    setBloques((prev) => ({ ...prev, [est]: [...prev[est], nuevoBloque("mensaje")] }));
+    setBloques((prev) => {
+      const next = { ...prev, [est]: [...(prev[est] ?? []), nuevoBloque("mensaje")] };
+      console.log(`[embudo:add] "${est}" ahora tiene ${next[est].length} bloques en el estado`);
+      return next;
+    });
   }
   function del(est: string, id: string) {
     setBloques((prev) => ({ ...prev, [est]: prev[est].filter((b) => b.id !== id) }));
