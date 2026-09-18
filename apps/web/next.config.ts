@@ -15,6 +15,14 @@ const nextConfig: NextConfig = {
   transpilePackages: ["@plataforma/ui", "@plataforma/config", "@plataforma/products"],
   // Módulos nativos: se dejan externos, no se bundlean.
   serverExternalPackages: ["sharp", "ssh2", "ssh2-sftp-client"],
+  experimental: {
+    // Next 15.5 bufferea en memoria el body de las peticiones que pasan por middleware
+    // (aquí, auth/CSRF corre en /api/embudos/media/subir) y por defecto lo CORTA a 10MB
+    // → una subida de video/PDF más grande llegaba truncada y `req.formData()` fallaba
+    // ("Formulario inválido"). Lo subimos para permitir videos (máx 16MB) y PDFs normales.
+    // (En Next 16 esta opción se llama `proxyClientMaxBodySize`.)
+    middlewareClientMaxBodySize: "32mb",
+  },
 };
 
 export default nextConfig;

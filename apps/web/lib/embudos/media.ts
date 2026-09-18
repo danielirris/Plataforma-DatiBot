@@ -56,10 +56,29 @@ export async function subirMediaWhatsApp(
   form.append("type", mime);
   form.append("file", new Blob([new Uint8Array(buffer)], { type: mime }), filename);
 
-  const res = await fetch(
-    `https://graph.facebook.com/v21.0/${encodeURIComponent(phoneId)}/media`,
-    { method: "POST", headers: { Authorization: `Bearer ${token}` }, body: form },
-  );
+  let res: Response;
+  try {
+    res = await fetch(
+      `https://graph.facebook.com/v21.0/${encodeURIComponent(phoneId)}/media`,
+      {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+        body: form,
+        // Sin timeout, si el contenedor no puede salir hacia graph.facebook.com el fetch
+        // se cuelga y el proxy corta con un 502 sin explicación. Falla en 25s con mensaje.
+        signal: AbortSignal.timeout(25000),
+      },
+    );
+  } catch (e) {
+    const nombre = e instanceof Error ? e.name : "";
+    if (nombre === "TimeoutError" || nombre === "AbortError")
+      throw new Error(
+        "No se pudo conectar con WhatsApp/Facebook (timeout de 25s). Revisa que el servidor tenga salida a internet hacia graph.facebook.com.",
+      );
+    throw new Error(
+      "No se pudo conectar con WhatsApp/Facebook: " + (e instanceof Error ? e.message : "?"),
+    );
+  }
   const data = (await res.json().catch(() => ({}))) as {
     id?: string;
     error?: { message?: string };

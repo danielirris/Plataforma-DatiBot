@@ -134,6 +134,7 @@ export async function POST(req: Request) {
   try {
     url = await subirImagen(buffer, nombreArchivo, cfg);
   } catch (e) {
+    console.error(`[embudos/media/subir] fallo al guardar en img (slot=${slot}):`, e);
     return NextResponse.json(
       { error: "No se pudo guardar el archivo en el servidor img: " + (e instanceof Error ? e.message : "?") },
       { status: 502 },
@@ -145,6 +146,7 @@ export async function POST(req: Request) {
   try {
     mediaId = await subirMediaWhatsApp(phone_id, token, buffer, nombreOriginal, mime);
   } catch (e) {
+    console.error(`[embudos/media/subir] fallo al subir a WhatsApp (phone_id=${phone_id}, slot=${slot}):`, e);
     // B3: WhatsApp rechazó -> el archivo recién guardado en img quedaría huérfano
     // (nunca se referencia en media_bots). Lo borramos.
     await eliminarImagen(url, cfg).catch(() => {});
@@ -176,6 +178,7 @@ export async function POST(req: Request) {
     if (guardado) delete (guardado as Record<string, unknown>).capi_token;
     return NextResponse.json({ media: guardado, media_id: mediaId, url });
   } catch (e) {
+    console.error(`[embudos/media/subir] fallo al guardar en media_bots (producto=${producto}, slot=${slot}):`, e);
     // #26: el upsert falló tras subir a img+WhatsApp → el archivo en img quedaría huérfano
     // (no referenciado, ni renovable ni borrable desde la UI). Lo limpiamos.
     await eliminarImagen(url, cfg).catch(() => {});
