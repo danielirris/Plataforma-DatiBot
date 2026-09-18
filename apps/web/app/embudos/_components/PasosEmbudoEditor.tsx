@@ -8,6 +8,7 @@ import {
   type RotadorRow,
 } from "@/lib/embudos/types";
 import { keyProducto, toProductoId } from "@/lib/producto/id";
+import { leerUltimoProducto, guardarUltimoProducto } from "@/lib/embudos/ultimo-producto";
 
 type ProductoLite = { id: string; nombre: string; productoId?: string };
 
@@ -186,8 +187,16 @@ export function PasosEmbudoEditor() {
       .catch(() => {});
   }, []);
 
+  // Autocarga el último producto trabajado al entrar a la pestaña (se recuerda entre pestañas).
+  useEffect(() => {
+    const ultimo = leerUltimoProducto();
+    if (ultimo) cargar(ultimo);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   async function cargar(key: string) {
     setProductoKey(key);
+    guardarUltimoProducto(key);
     setEstado("");
     setCargado(false);
     if (!key) {

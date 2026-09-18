@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { PAISES_EMBUDO_BOT, NOMBRE_PAIS } from "@/lib/embudos/types";
 import { keyProducto, toProductoId } from "@/lib/producto/id";
+import { leerUltimoProducto, guardarUltimoProducto } from "@/lib/embudos/ultimo-producto";
 
 type ProductoLite = { id: string; nombre: string; productoId?: string };
 type Fila = Record<string, string>; // producto, pais + los 2 prompts (como string)
@@ -47,8 +48,16 @@ export function IAManager() {
       .catch(() => {});
   }, []);
 
+  // Autocarga el último producto trabajado al entrar a la pestaña (se recuerda entre pestañas).
+  useEffect(() => {
+    const ultimo = leerUltimoProducto();
+    if (ultimo) cargar(ultimo);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   async function cargar(key: string) {
     setProductoKey(key);
+    guardarUltimoProducto(key);
     setEstado("");
     if (!key) {
       setFilas({});

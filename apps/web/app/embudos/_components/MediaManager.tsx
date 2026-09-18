@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { type NumeroBot } from "@/lib/embudos/types";
 import { keyProducto, toProductoId } from "@/lib/producto/id";
+import { leerUltimoProducto, guardarUltimoProducto } from "@/lib/embudos/ultimo-producto";
 
 type ProductoLite = { id: string; nombre: string; productoId?: string };
 type MediaRow = Record<string, string | null>;
@@ -67,8 +68,16 @@ export function MediaManager() {
     setPhoneId(String(row?.phone_id ?? "") || porProducto?.phone_id || numeros[0]?.phone_id || "");
   }
 
+  // Autocarga el último producto trabajado al entrar a la pestaña (se recuerda entre pestañas).
+  useEffect(() => {
+    const ultimo = leerUltimoProducto();
+    if (ultimo) cargar(ultimo);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   async function cargar(key: string) {
     setProductoKey(key);
+    guardarUltimoProducto(key);
     setEstado("");
     setMsgSlot({}); // limpia avisos por-slot del producto anterior
     if (!key) {
