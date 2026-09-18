@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import {
   selectRows,
-  upsertRow,
+  updateRows,
   supabaseConfigurado,
   SupabaseError,
 } from "@/lib/embudos/supabase";
@@ -61,33 +61,41 @@ export async function POST(req: Request) {
   if (!producto)
     return NextResponse.json({ error: "Falta el producto." }, { status: 400 });
 
-  // Los captions van SOBRE una media ya subida. Si el producto aún no tiene fila en
-  // media_bots, un upsert de solo captions INSERTARÍA una fila sin phone_id (NOT NULL) y
-  // fallaría; además un caption sin archivo no sirve. Guiamos a subir el archivo primero
-  // (la subida ya guarda el caption junto con la media).
+  // Los captions van SOBRE una media ya subida. Verificamos que la fila EXISTA y luego
+  // usamos PATCH (no upsert): así NO incluimos phone_id (NOT NULL). Un upsert que omite
+  // phone_id falla AUNQUE la fila exista, porque Postgres valida NOT NULL sobre la fila
+  // propuesta para INSERT antes de resolver el ON CONFLICT a UPDATE. Si no hay fila,
+  // guiamos a subir el archivo primero (la subida ya guarda el caption con la media).
+  let existentes: MediaRow[] = [];
   try {
-    const existentes = await selectRows<MediaRow>("media_bots", { producto: `eq.${producto}` });
-    if (!existentes.length)
-      return NextResponse.json(
-        {
-          error:
-            "Todavía no hay media para este producto. Sube primero el archivo — el caption se guarda junto con él.",
-        },
-        { status: 400 },
-      );
+    existentes = await selectRows<MediaRow>("media_bots", { producto: `eq.${producto}` });
   } catch (e) {
     const status = e instanceof SupabaseError ? e.status : 500;
     const msg = e instanceof Error ? e.message : "Error leyendo la media.";
     return NextResponse.json({ error: msg }, { status });
   }
+  if (!existentes.length)
+    return NextResponse.json(
+      {
+        error:
+          "Todavía no hay media para este producto. Sube primero el archivo — el caption se guarda junto con él.",
+      },
+      { status: 400 },
+    );
 
-  const fila: Record<string, unknown> = { producto };
+  const cambios: Record<string, unknown> = {};
   for (const c of CAPTIONS) {
-    if (body.campos && c in body.campos) fila[c] = String(body.campos[c] ?? "");
+    if (body.campos && c in body.campos) cambios[c] = String(body.campos[c] ?? "");
+  }
+  if (!Object.keys(cambios).length) {
+    const g = { ...existentes[0] } as Record<string, unknown>;
+    delete g.capi_token;
+    return NextResponse.json({ media: g });
   }
 
   try {
-    const guardado = await upsertRow<MediaRow>("media_bots", fila, "producto");
+    const filas = await updateRows<MediaRow>("media_bots", cambios, { producto: `eq.${producto}` });
+    const guardado = filas[0];
     if (guardado) delete (guardado as Record<string, unknown>).capi_token;
     return NextResponse.json({ media: guardado });
   } catch (e) {

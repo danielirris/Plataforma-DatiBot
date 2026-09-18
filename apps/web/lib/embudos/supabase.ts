@@ -124,6 +124,28 @@ export async function upsertRows<T>(
   return (await res.json()) as T[];
 }
 
+/**
+ * UPDATE (PATCH): actualiza SOLO las columnas de `cambios` en las filas que cumplan
+ * `filtros`. A diferencia del upsert, NO inserta, así que Postgres NO evalúa NOT NULL
+ * sobre columnas ausentes — úsalo para editar parcialmente una fila que YA existe
+ * (p. ej. captions o vaciar un slot sin tocar phone_id, que es NOT NULL). Devuelve las
+ * filas afectadas (vacío si no había ninguna que cumpliera el filtro).
+ */
+export async function updateRows<T>(
+  tabla: string,
+  cambios: Record<string, unknown>,
+  filtros: QueryParams,
+): Promise<T[]> {
+  const qs = new URLSearchParams(filtros).toString();
+  const res = await fetch(`${supabaseUrl()}/rest/v1/${tabla}?${qs}`, {
+    method: "PATCH",
+    headers: headers({ Prefer: "return=representation" }),
+    body: JSON.stringify(cambios),
+  });
+  if (!res.ok) throw new SupabaseError(await parseError(res), res.status);
+  return (await res.json()) as T[];
+}
+
 /** DELETE: borra filas que cumplan los filtros (ej. { phone_id: "eq.123" }). */
 export async function deleteRows(tabla: string, params: QueryParams): Promise<void> {
   const qs = new URLSearchParams(params).toString();

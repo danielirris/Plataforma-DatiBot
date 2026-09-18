@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import {
   selectRows,
-  upsertRow,
+  updateRows,
   supabaseConfigurado,
   SupabaseError,
 } from "@/lib/embudos/supabase";
@@ -51,7 +51,7 @@ export async function POST(req: Request) {
 
   // Borra los originales de img (best-effort) y arma el vaciado de columnas.
   const cfg = await leerVpsConfig();
-  const cambios: Record<string, unknown> = { producto };
+  const cambios: Record<string, unknown> = {};
   for (const s of slots) {
     const c = columnasSlot(s)!;
     const url = String(fila[c.url] ?? "").trim();
@@ -68,7 +68,11 @@ export async function POST(req: Request) {
   }
 
   try {
-    const guardado = await upsertRow<MediaRow>("media_bots", cambios, "producto");
+    // PATCH (no upsert): la fila ya existe (retorno temprano arriba si no). Así, borrar
+    // UN slot NO incluye phone_id (NOT NULL) y no falla; un upsert que lo omite fallaría
+    // aunque la fila exista (Postgres valida NOT NULL antes de resolver el ON CONFLICT).
+    const filas = await updateRows<MediaRow>("media_bots", cambios, { producto: `eq.${producto}` });
+    const guardado = filas[0];
     if (guardado) delete (guardado as Record<string, unknown>).capi_token;
     return NextResponse.json({ media: guardado });
   } catch (e) {
