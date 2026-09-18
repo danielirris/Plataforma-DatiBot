@@ -39,6 +39,9 @@ export function MediaManager() {
   const [renovando, setRenovando] = useState<boolean>(false);
   const [vaciando, setVaciando] = useState<boolean>(false);
   const [estado, setEstado] = useState<string>("");
+  // Aviso POR SLOT (subida/borrado): se muestra en la propia tarjeta del archivo, no en
+  // la barra del fondo, para que se vea al instante qué pasó con ESE archivo.
+  const [msgSlot, setMsgSlot] = useState<Record<string, string>>({});
   const cargado = productoKey !== "" && !cargando;
 
   useEffect(() => {
@@ -67,6 +70,7 @@ export function MediaManager() {
   async function cargar(key: string) {
     setProductoKey(key);
     setEstado("");
+    setMsgSlot({}); // limpia avisos por-slot del producto anterior
     if (!key) {
       setMedia(null);
       return;
@@ -85,11 +89,12 @@ export function MediaManager() {
 
   async function subir(slot: string, file: File) {
     if (!phoneId) {
-      setEstado("⚠️ Elige primero el número que aloja la media.");
+      setMsgSlot((m) => ({ ...m, [slot]: "⚠️ Elige primero el número que aloja la media (arriba)." }));
       return;
     }
     setSubiendo((s) => ({ ...s, [slot]: true }));
-    setEstado(`Subiendo ${slot}… (guarda en img y sube a WhatsApp)`);
+    setMsgSlot((m) => ({ ...m, [slot]: "" })); // el botón ya muestra «Subiendo…»
+    setEstado("");
     try {
       const fd = new FormData();
       fd.append("producto", productoKey);
@@ -101,12 +106,12 @@ export function MediaManager() {
       const data = await r.json().catch(() => ({}));
       if (r.ok) {
         aplicarMedia((data.media ?? null) as MediaRow, productoKey);
-        setEstado(`✓ ${slot}: media_id listo.`);
+        setMsgSlot((m) => ({ ...m, [slot]: `✓ Subido con éxito · 📄 ${file.name}` }));
       } else {
-        setEstado("⚠️ " + (data.error ?? `Error ${r.status}`));
+        setMsgSlot((m) => ({ ...m, [slot]: "⚠️ " + (data.error ?? `Error ${r.status}`) }));
       }
     } catch (e) {
-      setEstado("⚠️ " + (e instanceof Error ? e.message : "Error de red"));
+      setMsgSlot((m) => ({ ...m, [slot]: "⚠️ " + (e instanceof Error ? e.message : "Error de red") }));
     }
     setSubiendo((s) => ({ ...s, [slot]: false }));
   }
@@ -155,7 +160,7 @@ export function MediaManager() {
     if (!confirm(`¿Quitar «${label}»? Se borra el archivo y su media_id (podrás volver a subirlo).`))
       return;
     setBorrando((s) => ({ ...s, [slot]: true }));
-    setEstado("");
+    setMsgSlot((m) => ({ ...m, [slot]: "" }));
     try {
       const r = await fetch("/api/embudos/media/borrar", {
         method: "POST",
@@ -165,10 +170,10 @@ export function MediaManager() {
       const data = await r.json().catch(() => ({}));
       if (r.ok) {
         aplicarMedia((data.media ?? null) as MediaRow | null, productoKey);
-        setEstado(`✓ «${label}» quitado.`);
-      } else setEstado("⚠️ " + (data.error ?? `Error ${r.status}`));
+        setMsgSlot((m) => ({ ...m, [slot]: `✓ «${label}» quitado.` }));
+      } else setMsgSlot((m) => ({ ...m, [slot]: "⚠️ " + (data.error ?? `Error ${r.status}`) }));
     } catch (e) {
-      setEstado("⚠️ " + (e instanceof Error ? e.message : "Error de red"));
+      setMsgSlot((m) => ({ ...m, [slot]: "⚠️ " + (e instanceof Error ? e.message : "Error de red") }));
     }
     setBorrando((s) => ({ ...s, [slot]: false }));
   }
@@ -340,6 +345,20 @@ export function MediaManager() {
                     onChange={(e) => setCaptions((prev) => ({ ...prev, [slot]: e.target.value }))}
                     className={inputCls + " mt-2"}
                   />
+                  {msgSlot[slot] && (
+                    <p
+                      className={
+                        "mt-2 text-xs " +
+                        (msgSlot[slot].startsWith("✓")
+                          ? "text-accent-2"
+                          : msgSlot[slot].startsWith("⚠️")
+                            ? "text-red-400"
+                            : "text-muted")
+                      }
+                    >
+                      {msgSlot[slot]}
+                    </p>
+                  )}
                 </div>
               );
             })}

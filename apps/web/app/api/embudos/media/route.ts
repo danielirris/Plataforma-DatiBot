@@ -61,6 +61,26 @@ export async function POST(req: Request) {
   if (!producto)
     return NextResponse.json({ error: "Falta el producto." }, { status: 400 });
 
+  // Los captions van SOBRE una media ya subida. Si el producto aún no tiene fila en
+  // media_bots, un upsert de solo captions INSERTARÍA una fila sin phone_id (NOT NULL) y
+  // fallaría; además un caption sin archivo no sirve. Guiamos a subir el archivo primero
+  // (la subida ya guarda el caption junto con la media).
+  try {
+    const existentes = await selectRows<MediaRow>("media_bots", { producto: `eq.${producto}` });
+    if (!existentes.length)
+      return NextResponse.json(
+        {
+          error:
+            "Todavía no hay media para este producto. Sube primero el archivo — el caption se guarda junto con él.",
+        },
+        { status: 400 },
+      );
+  } catch (e) {
+    const status = e instanceof SupabaseError ? e.status : 500;
+    const msg = e instanceof Error ? e.message : "Error leyendo la media.";
+    return NextResponse.json({ error: msg }, { status });
+  }
+
   const fila: Record<string, unknown> = { producto };
   for (const c of CAPTIONS) {
     if (body.campos && c in body.campos) fila[c] = String(body.campos[c] ?? "");

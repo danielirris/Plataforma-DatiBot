@@ -10,6 +10,8 @@
 // Este módulo es SOLO de servidor (lo importan únicamente rutas /api). La service key
 // se lee de process.env, que Next nunca expone al navegador.
 
+import { explicarError } from "./errores";
+
 const DEFAULT_URL = "https://jquahxsesqcjakxkcneu.supabase.co";
 
 export function supabaseUrl(): string {
@@ -52,7 +54,10 @@ class SupabaseError extends Error {
 async function parseError(res: Response): Promise<string> {
   try {
     const body = (await res.json()) as { message?: string; hint?: string; details?: string };
-    return body.message || body.details || body.hint || `Error ${res.status}`;
+    const raw = body.message || body.details || body.hint || `Error ${res.status}`;
+    // Punto ÚNICO: traduce el error crudo de Supabase a una explicación clara. Todas las
+    // rutas de embudos devuelven este mensaje, así que la humanización cubre a todas.
+    return explicarError(raw);
   } catch {
     return `Error ${res.status}`;
   }
