@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   ESTADOS_EMBUDO,
   ESTADO_INFO,
@@ -179,6 +179,10 @@ export function PasosEmbudoEditor() {
   const [guardando, setGuardando] = useState<boolean>(false);
   const [estado, setEstado] = useState<string>("");
   const [cargado, setCargado] = useState<boolean>(false);
+  // Nº de secuencia de carga: solo la carga MÁS reciente puede tocar el estado. Evita que
+  // una carga que resuelve tarde (p. ej. la autocarga en segundo plano) pise lo que el
+  // usuario acaba de armar (plantilla/bloques). Sin esto, render y guardar se desincronizan.
+  const cargaSeqRef = useRef(0);
 
   useEffect(() => {
     fetch("/api/products?slim=1", { cache: "no-store" })
@@ -205,6 +209,7 @@ export function PasosEmbudoEditor() {
   }, [bloques]);
 
   async function cargar(key: string) {
+    const myId = ++cargaSeqRef.current; // esta carga es ahora la más reciente
     setProductoKey(key);
     guardarUltimoProducto(key);
     setEstado("");
@@ -220,6 +225,9 @@ export function PasosEmbudoEditor() {
         fetch(`/api/embudos/rotador?producto=${encodeURIComponent(key)}`, { cache: "no-store" }),
         fetch(`/api/embudos/media?producto=${encodeURIComponent(key)}`, { cache: "no-store" }),
       ]);
+      // Si otra carga arrancó después, esta quedó superada → NO tocar el estado (no pisar
+      // lo que el usuario armó ni marcar cargado con datos viejos).
+      if (myId !== cargaSeqRef.current) return;
 
       // ⛔ SEGURIDAD DE DATOS: si CUALQUIER lectura falla (Supabase caído un instante,
       // timeout…), NO entramos en modo edición. Si lo hiciéramos, el editor se vería
@@ -248,6 +256,7 @@ export function PasosEmbudoEditor() {
       const dp = await rp.json();
       const dr = await rr.json();
       const dm = await rm.json();
+      if (myId !== cargaSeqRef.current) return; // carga superada durante el parse → no-op
 
       // Variantes por campo (rotador).
       const rot: Record<string, string[]> = {};
