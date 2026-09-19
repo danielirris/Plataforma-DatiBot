@@ -35,6 +35,26 @@ const CAMPOS_TEXTO: (keyof ProductoBot)[] = [
   "validacion_titular",
   "validacion_cuenta_hint",
   "validacion_alias",
+  "nivel_1_texto",
+  "nivel_2_texto",
+  "nivel_3_texto",
+  "nivel_4_texto",
+  "nivel_5_texto",
+  "nivel_6_texto",
+  "nivel_7_texto",
+];
+
+// Columnas NUMÉRICAS (se guardan con coercePrecio → número o null). El monto mínimo de
+// cada nivel de entrega cambia por país, igual que precio_base.
+const CAMPOS_NUM: (keyof ProductoBot)[] = [
+  "precio_base",
+  "nivel_1_min",
+  "nivel_2_min",
+  "nivel_3_min",
+  "nivel_4_min",
+  "nivel_5_min",
+  "nivel_6_min",
+  "nivel_7_min",
 ];
 
 // Lee las filas (una por país) de un producto.
@@ -93,8 +113,8 @@ export async function POST(req: Request) {
     for (const c of CAMPOS_TEXTO) {
       if (Object.prototype.hasOwnProperty.call(f, c)) fila[c] = String(f[c] ?? "");
     }
-    if (Object.prototype.hasOwnProperty.call(f, "precio_base")) {
-      fila.precio_base = coercePrecio(f.precio_base);
+    for (const c of CAMPOS_NUM) {
+      if (Object.prototype.hasOwnProperty.call(f, c)) fila[c] = coercePrecio(f[c]);
     }
     filas.push(fila);
   }

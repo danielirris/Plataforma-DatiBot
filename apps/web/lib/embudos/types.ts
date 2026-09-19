@@ -78,6 +78,22 @@ export interface ProductoBot {
   validacion_titular: string;
   validacion_cuenta_hint: string;
   validacion_alias: string;
+  // Niveles de entrega: monto MÍNIMO del rango por país (numérico) + mensaje que se envía
+  // si el pago cae en ese nivel (texto, IGUAL para todos los países). Nivel vacío = ignorado.
+  nivel_1_min: number | null;
+  nivel_1_texto: string;
+  nivel_2_min: number | null;
+  nivel_2_texto: string;
+  nivel_3_min: number | null;
+  nivel_3_texto: string;
+  nivel_4_min: number | null;
+  nivel_4_texto: string;
+  nivel_5_min: number | null;
+  nivel_5_texto: string;
+  nivel_6_min: number | null;
+  nivel_6_texto: string;
+  nivel_7_min: number | null;
+  nivel_7_texto: string;
   actualizado_at?: string;
 }
 

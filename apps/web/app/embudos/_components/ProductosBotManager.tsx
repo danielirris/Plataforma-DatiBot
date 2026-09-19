@@ -69,6 +69,12 @@ const MSG_COBRO_PAIS: { k: string; label: string }[] = [
   { k: "msg_cobro", label: "Cobro #1 — escalera de precios (con los valores del país)" },
   { k: "msg_datos_pago", label: "Cobro #2 — datos de pago (cuenta del país)" },
 ];
+// Niveles de entrega (según monto pagado): monto MÍNIMO del rango POR PAÍS (numérico) +
+// mensaje COMPARTIDO (igual para todos los países; suelen ser links de Drive). Un nivel sin
+// min ni texto se ignora. El motor envía el nivel más alto cuyo `min` alcanza el pago.
+const NIVELES = [1, 2, 3, 4, 5, 6, 7];
+const nivelMin = (n: number) => `nivel_${n}_min`;
+const nivelTexto = (n: number) => `nivel_${n}_texto`;
 
 // Claves que se persisten en `config_bots` (coincide con CAMPOS_TEXTO + precio_base del
 // backend). El guardado hace un diff contra el snapshot CRUDO de Supabase y manda, por
@@ -91,6 +97,13 @@ const CLAVES_PATCH_PROD = [
   "validacion_titular",
   "validacion_cuenta_hint",
   "validacion_alias",
+  "nivel_1_min", "nivel_1_texto",
+  "nivel_2_min", "nivel_2_texto",
+  "nivel_3_min", "nivel_3_texto",
+  "nivel_4_min", "nivel_4_texto",
+  "nivel_5_min", "nivel_5_texto",
+  "nivel_6_min", "nivel_6_texto",
+  "nivel_7_min", "nivel_7_texto",
 ];
 
 function filaVacia(producto: string, pais: string): Fila {
@@ -419,6 +432,66 @@ export function ProductosBotManager() {
                     className={inputCls}
                   />
                 </label>
+              ))}
+            </div>
+          </div>
+
+          {/* Niveles de entrega (según monto pagado): mínimo por país + mensaje compartido */}
+          <div className="space-y-3 rounded-xl border border-[var(--hairline)] glass p-5">
+            <p className="text-sm font-medium text-text">Niveles de entrega</p>
+            <p className="text-xs text-muted">
+              Cuando el cliente paga, el bot envía el mensaje del nivel más alto cuyo{" "}
+              <b>monto mínimo</b> alcanza el pago. El monto mínimo <b>cambia por país</b>; el
+              mensaje es el <b>mismo para todos los países</b>. Usa <code>{"{nombre}"}</code> si
+              quieres personalizar. Deja vacío un nivel que no uses.
+            </p>
+
+            {/* Selector de país (mismo estado que Datos de pago): el mínimo es del país activo. */}
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-xs text-muted">Monto mínimo para:</span>
+              {PAISES_EMBUDO_BOT.map((pa) => (
+                <button
+                  key={pa}
+                  onClick={() => setPais(pa)}
+                  className={
+                    "rounded-lg border px-3 py-1 text-xs " +
+                    (pais === pa
+                      ? "border-accent bg-accent/10 text-accent-2"
+                      : "border-[var(--hairline)] text-muted hover:border-accent/40")
+                  }
+                >
+                  {NOMBRE_PAIS[pa]} ({pa})
+                </button>
+              ))}
+            </div>
+
+            <div className="space-y-3">
+              {NIVELES.map((n) => (
+                <div key={n} className="rounded-lg border border-[var(--hairline)] bg-[var(--field)] p-3">
+                  <div className="flex flex-wrap items-center gap-3">
+                    <span className="text-sm font-medium text-text">Nivel {n}</span>
+                    <label className="flex items-center gap-2 text-xs text-muted">
+                      Monto mínimo ({pais})
+                      <input
+                        type="number"
+                        value={fp[nivelMin(n)] ?? ""}
+                        onChange={(e) => setPorPais(nivelMin(n), e.target.value)}
+                        placeholder="—"
+                        className={inputCls + " w-36"}
+                      />
+                    </label>
+                  </div>
+                  <label className="mt-2 flex flex-col gap-1 text-xs text-muted">
+                    Mensaje del nivel (compartido — igual en todos los países)
+                    <textarea
+                      value={compartido(nivelTexto(n))}
+                      onChange={(e) => setCompartido(nivelTexto(n), e.target.value)}
+                      rows={3}
+                      placeholder="Mensaje/link que se envía si el pago cae en este nivel…"
+                      className={inputCls}
+                    />
+                  </label>
+                </div>
               ))}
             </div>
           </div>
