@@ -210,6 +210,28 @@ export function ProductosBotManager() {
     setEstado("");
   }
 
+  // Carga los MONTOS mínimos por defecto de los 7 niveles, en TODOS los países, tomando
+  // la escalera fija de cada país del catálogo (PAISES_EMBUDO.montos, nivel 1→7 en su
+  // moneda local). Es el mismo juego para todos los productos. NO toca los textos de
+  // nivel (son los links/mensajes propios de cada producto). El usuario revisa y guarda.
+  function cargarNivelesPorDefecto() {
+    setFilas((prev) => {
+      const out: Record<string, Fila> = { ...prev };
+      for (const pa of PAISES_EMBUDO_BOT) {
+        const p = PAISES_EMBUDO.find((x) => x.codigo === pa);
+        if (!p) continue;
+        const fila: Fila = { ...(out[pa] ?? filaVacia(productoKey, pa)) };
+        for (const n of NIVELES) {
+          const m = p.montos[n - 1];
+          if (m != null) fila[nivelMin(n)] = String(m);
+        }
+        out[pa] = fila;
+      }
+      return out;
+    });
+    setEstado("Montos por defecto cargados (la escalera de cada país). Revisa y pulsa Guardar.");
+  }
+
   const fp = filas[pais] ?? {};
   const compartido = (k: string) => filas[PAISES_EMBUDO_BOT[0]]?.[k] ?? "";
 
@@ -438,12 +460,24 @@ export function ProductosBotManager() {
 
           {/* Niveles de entrega (según monto pagado): mínimo por país + mensaje compartido */}
           <div className="space-y-3 rounded-xl border border-[var(--hairline)] glass p-5">
-            <p className="text-sm font-medium text-text">Niveles de entrega</p>
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <p className="text-sm font-medium text-text">Niveles de entrega</p>
+              <button
+                type="button"
+                onClick={cargarNivelesPorDefecto}
+                className="rounded-lg border border-accent/50 px-3 py-1 text-xs text-accent-2 hover:bg-accent/10"
+                title="Rellena los montos mínimos de los 7 niveles en TODOS los países con la escalera estándar de cada país. Los mensajes no se tocan. Luego revisa y pulsa Guardar."
+              >
+                Cargar valores por defecto
+              </button>
+            </div>
             <p className="text-xs text-muted">
               Cuando el cliente paga, el bot envía el mensaje del nivel más alto cuyo{" "}
               <b>monto mínimo</b> alcanza el pago. El monto mínimo <b>cambia por país</b>; el
               mensaje es el <b>mismo para todos los países</b>. Usa <code>{"{nombre}"}</code> si
-              quieres personalizar. Deja vacío un nivel que no uses.
+              quieres personalizar. Deja vacío un nivel que no uses. El botón{" "}
+              <b>«Cargar valores por defecto»</b> rellena los montos de los 7 niveles en los 5
+              países con la escalera estándar; los mensajes los pones tú.
             </p>
 
             {/* Selector de país (mismo estado que Datos de pago): el mínimo es del país activo. */}
