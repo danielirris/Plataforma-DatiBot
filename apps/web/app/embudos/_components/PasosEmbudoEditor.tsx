@@ -36,7 +36,7 @@ interface Bloque {
 const TIPO_LABEL: Record<BloqueTipo, string> = {
   mensaje: "💬 Mensaje",
   producto: "🧩 Mensaje del producto",
-  archivo: "📎 Archivo (video/PDF)",
+  archivo: "📎 Archivo (video/PDF/imagen)",
   boton: "🔘 Botón",
   etiqueta: "🏷️ Etiqueta",
 };
@@ -57,18 +57,30 @@ const MEDIA_SLOTS: { slot: string; label: string }[] = [
   { slot: "pdf_4", label: "PDF 4" },
   { slot: "pdf_5", label: "PDF 5" },
   { slot: "pdf_6", label: "PDF 6" },
+  // Imágenes img_1..img_10 (mismo nº que MAX_IMAGENES en lib/embudos/media.ts).
+  ...Array.from({ length: 10 }, (_, i) => ({ slot: `img_${i + 1}`, label: `Imagen ${i + 1}` })),
 ];
 
-function mediaCols(slot: string): { tipo: "video" | "pdf"; media_id: string; caption: string } {
+// tipo del paso en pasos_embudo: video | pdf | imagen (el motor de n8n envía según él).
+function mediaCols(slot: string): {
+  tipo: "video" | "pdf" | "imagen";
+  media_id: string;
+  caption: string;
+  url: string;
+} {
   if (slot === "video")
-    return { tipo: "video", media_id: "video_media_id", caption: "video_caption" };
-  const n = slot.slice(4);
-  return { tipo: "pdf", media_id: `pdf_${n}_media_id`, caption: `pdf_${n}_caption` };
+    return { tipo: "video", media_id: "video_media_id", caption: "video_caption", url: "url_video" };
+  return {
+    tipo: slot.startsWith("img_") ? "imagen" : "pdf",
+    media_id: `${slot}_media_id`,
+    caption: `${slot}_caption`,
+    url: `${slot}_url`,
+  };
 }
 function slotDeMediaId(col: string): string {
   if (col === "video_media_id") return "video";
-  const m = /^pdf_([1-6])_media_id$/.exec(col);
-  return m ? `pdf_${m[1]}` : "video";
+  const m = /^((?:pdf|img)_\d+)_media_id$/.exec(col);
+  return m ? m[1] : "video";
 }
 
 function nuevoId(): string {
@@ -317,7 +329,7 @@ export function PasosEmbudoEditor() {
     if (f.tipo === "etiqueta") {
       return { ...base, tipo: "etiqueta", texto: f.contenido };
     }
-    if (f.fuente === "media" || f.tipo === "video" || f.tipo === "pdf") {
+    if (f.fuente === "media" || f.tipo === "video" || f.tipo === "pdf" || f.tipo === "imagen") {
       const slot = slotDeMediaId(f.contenido);
       return { ...base, tipo: "archivo", mediaSlot: slot, caption: String(media[mediaCols(slot).caption] ?? "") };
     }
@@ -342,6 +354,14 @@ export function PasosEmbudoEditor() {
   }
   function add(est: string) {
     setBloques((prev) => ({ ...prev, [est]: [...(prev[est] ?? []), nuevoBloque("mensaje")] }));
+  }
+  // Inserta un bloque nuevo justo DEBAJO del bloque i (para ponerlo en cualquier lugar).
+  function insertarDebajo(est: string, i: number) {
+    setBloques((prev) => {
+      const arr = [...(prev[est] ?? [])];
+      arr.splice(i + 1, 0, nuevoBloque("mensaje"));
+      return { ...prev, [est]: arr };
+    });
   }
   function del(est: string, id: string) {
     setBloques((prev) => ({ ...prev, [est]: prev[est].filter((b) => b.id !== id) }));
@@ -653,7 +673,16 @@ export function PasosEmbudoEditor() {
                       <button onClick={() => mover(est, i, -1)} disabled={i === 0} className="rounded border border-[var(--hairline)] px-1.5 text-xs text-muted hover:text-text disabled:opacity-30">↑</button>
                       <button onClick={() => mover(est, i, 1)} disabled={i === (bloques[est]?.length ?? 0) - 1} className="rounded border border-[var(--hairline)] px-1.5 text-xs text-muted hover:text-text disabled:opacity-30">↓</button>
                     </div>
-                    <select value={b.tipo} onChange={(e) => upd(est, b.id, { tipo: e.target.value as BloqueTipo })} className={inputCls}>
+                    <select
+                      value={b.tipo}
+                      onChange={(e) => {
+                        const tipo = e.target.value as BloqueTipo;
+                        // Un bloque que pasa a «archivo» necesita un slot real: si no, el
+                        // select muestra «Video» pero se guardaría un media_id vacío.
+                        upd(est, b.id, tipo === "archivo" && !b.mediaSlot ? { tipo, mediaSlot: "video" } : { tipo });
+                      }}
+                      className={inputCls}
+                    >
                       {(Object.keys(TIPO_LABEL) as BloqueTipo[]).map((t) => (
                         <option key={t} value={t}>{TIPO_LABEL[t]}</option>
                       ))}
@@ -662,6 +691,7 @@ export function PasosEmbudoEditor() {
                       delay
                       <input type="number" min={0} max={30} value={b.delay} onChange={(e) => upd(est, b.id, { delay: Number(e.target.value) || 0 })} className={inputCls + " w-16"} />s
                     </label>
+                    <button onClick={() => insertarDebajo(est, i)} className="text-xs text-accent-2 hover:underline" title="Insertar un bloque nuevo justo debajo de este">+ debajo</button>
                     <button onClick={() => del(est, b.id)} className="text-xs text-muted hover:text-red-400">Quitar</button>
                   </div>
 
@@ -703,15 +733,34 @@ export function PasosEmbudoEditor() {
                     )}
 
                     {b.tipo === "archivo" && (
-                      <label className="flex max-w-xs flex-col gap-1 text-xs text-muted">
-                        Archivo (se sube en Media)
-                        <select value={b.mediaSlot} onChange={(e) => upd(est, b.id, { mediaSlot: e.target.value })} className={inputCls}>
-                          {MEDIA_SLOTS.map((m) => (<option key={m.slot} value={m.slot}>{m.label}</option>))}
-                        </select>
-                        <span className="text-[11px] text-muted">
-                          El texto que acompaña (caption) se edita en la pestaña <b>Media</b>.
-                        </span>
-                      </label>
+                      <div className="flex flex-wrap items-start gap-3">
+                        <label className="flex max-w-xs flex-col gap-1 text-xs text-muted">
+                          Archivo (se sube en Media)
+                          <select value={b.mediaSlot} onChange={(e) => upd(est, b.id, { mediaSlot: e.target.value })} className={inputCls}>
+                            {MEDIA_SLOTS.map((m) => {
+                              const subido = Boolean(String(mediaRow[mediaCols(m.slot).media_id] ?? "").trim());
+                              const nombre = String(mediaRow[`${m.slot}_filename`] ?? "");
+                              return (
+                                <option key={m.slot} value={m.slot}>
+                                  {m.label}
+                                  {subido ? (nombre ? ` · ${nombre}` : "") : " · sin subir"}
+                                </option>
+                              );
+                            })}
+                          </select>
+                          <span className="text-[11px] text-muted">
+                            El texto que acompaña (caption) se edita en la pestaña <b>Media</b>.
+                          </span>
+                        </label>
+                        {mediaCols(b.mediaSlot).tipo === "imagen" && String(mediaRow[mediaCols(b.mediaSlot).url] ?? "") && (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            src={String(mediaRow[mediaCols(b.mediaSlot).url])}
+                            alt=""
+                            className="h-16 w-16 rounded-md bg-[var(--bg)] object-cover"
+                          />
+                        )}
+                      </div>
                     )}
 
                     {b.tipo === "boton" && (

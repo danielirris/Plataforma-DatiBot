@@ -18,12 +18,21 @@ const SLOTS: { slot: string; label: string; acepta: string }[] = [
   { slot: "pdf_6", label: "PDF 6", acepta: "application/pdf,.pdf" },
 ];
 
+// Imágenes: slots img_1..img_10 (mismo nº que MAX_IMAGENES en lib/embudos/media.ts).
+const MAX_IMAGENES = 10;
+const IMAGENES = Array.from({ length: MAX_IMAGENES }, (_, i) => `img_${i + 1}`);
+const ACEPTA_IMAGEN = "image/jpeg,image/png,.jpg,.jpeg,.png";
+
 function cols(slot: string): { url: string; media_id: string; caption: string; filename: string | null } {
   if (slot === "video")
     return { url: "url_video", media_id: "video_media_id", caption: "video_caption", filename: null };
-  const n = slot.slice(4);
-  return { url: `pdf_${n}_url`, media_id: `pdf_${n}_media_id`, caption: `pdf_${n}_caption`, filename: `pdf_${n}_filename` };
+  // "pdf_3" → pdf_3_url… · "img_3" → img_3_url…
+  return { url: `${slot}_url`, media_id: `${slot}_media_id`, caption: `${slot}_caption`, filename: `${slot}_filename` };
 }
+
+const TODOS_SLOTS = [...SLOTS.map((s) => s.slot), ...IMAGENES];
+const labelSlot = (slot: string) =>
+  SLOTS.find((s) => s.slot === slot)?.label ?? `Imagen ${slot.slice(4)}`;
 
 export function MediaManager() {
   const [productosDatibot, setProductosDatibot] = useState<ProductoLite[]>([]);
@@ -59,7 +68,7 @@ export function MediaManager() {
   function aplicarMedia(row: MediaRow | null, key: string) {
     setMedia(row);
     const caps: Record<string, string> = {};
-    for (const { slot } of SLOTS) caps[slot] = String(row?.[cols(slot).caption] ?? "");
+    for (const slot of TODOS_SLOTS) caps[slot] = String(row?.[cols(slot).caption] ?? "");
     setCaptions(caps);
     // Número por defecto: PRIMERO el que ya aloja la media (row.phone_id) — así
     // "Reemplazar" un slot usa el número correcto y no choca con el guard de mezcla de
@@ -96,11 +105,12 @@ export function MediaManager() {
     setCargando(false);
   }
 
-  async function subir(slot: string, file: File) {
+  async function subir(slot: string, file: File): Promise<boolean> {
     if (!phoneId) {
       setMsgSlot((m) => ({ ...m, [slot]: "⚠️ Elige primero el número que aloja la media (arriba)." }));
-      return;
+      return false;
     }
+    let ok = false;
     setSubiendo((s) => ({ ...s, [slot]: true }));
     setMsgSlot((m) => ({ ...m, [slot]: "" })); // el botón ya muestra «Subiendo…»
     setEstado("");
@@ -116,6 +126,7 @@ export function MediaManager() {
       if (r.ok) {
         aplicarMedia((data.media ?? null) as MediaRow, productoKey);
         setMsgSlot((m) => ({ ...m, [slot]: `✓ Subido con éxito · 📄 ${file.name}` }));
+        ok = true;
       } else {
         setMsgSlot((m) => ({ ...m, [slot]: "⚠️ " + (data.error ?? `Error ${r.status}`) }));
       }
@@ -123,12 +134,35 @@ export function MediaManager() {
       setMsgSlot((m) => ({ ...m, [slot]: "⚠️ " + (e instanceof Error ? e.message : "Error de red") }));
     }
     setSubiendo((s) => ({ ...s, [slot]: false }));
+    return ok;
+  }
+
+  // «+ Agregar imágenes»: cada archivo va al siguiente slot libre, de a uno (la subida
+  // valida que todos usen el mismo número, así que no se paralelizan).
+  async function agregarImagenes(files: File[]) {
+    const libres = IMAGENES.filter((s) => !media?.[cols(s).media_id]);
+    if (!libres.length) {
+      setMsgSlot((m) => ({ ...m, imagenes: `⚠️ Ya tienes las ${MAX_IMAGENES} imágenes. Quita o reemplaza alguna.` }));
+      return;
+    }
+    const lote = files.slice(0, libres.length);
+    const sobran = files.length - lote.length;
+    setMsgSlot((m) => ({ ...m, imagenes: "" }));
+    let fallos = 0;
+    for (let i = 0; i < lote.length; i++) {
+      if (!(await subir(libres[i], lote[i]))) fallos += 1;
+    }
+    const partes: string[] = [];
+    if (lote.length - fallos) partes.push(`✓ ${lote.length - fallos} imagen(es) agregada(s)`);
+    if (fallos) partes.push(`⚠️ ${fallos} con error (mira el aviso de cada una)`);
+    if (sobran) partes.push(`⚠️ ${sobran} no entraron: el máximo es ${MAX_IMAGENES}`);
+    setMsgSlot((m) => ({ ...m, imagenes: partes.join(" · ") }));
   }
 
   async function guardarCaptions() {
     setEstado("Guardando captions…");
     const campos: Record<string, string> = {};
-    for (const { slot } of SLOTS) campos[cols(slot).caption] = captions[slot] ?? "";
+    for (const slot of TODOS_SLOTS) campos[cols(slot).caption] = captions[slot] ?? "";
     try {
       const r = await fetch("/api/embudos/media", {
         method: "POST",
@@ -165,7 +199,7 @@ export function MediaManager() {
   }
 
   async function borrarSlot(slot: string) {
-    const label = SLOTS.find((s) => s.slot === slot)?.label ?? slot;
+    const label = labelSlot(slot);
     if (!confirm(`¿Quitar «${label}»? Se borra el archivo y su media_id (podrás volver a subirlo).`))
       return;
     setBorrando((s) => ({ ...s, [slot]: true }));
@@ -220,9 +254,10 @@ export function MediaManager() {
   return (
     <section className="space-y-5">
       <div>
-        <h2 className="text-lg font-medium">Media (video y PDFs)</h2>
+        <h2 className="text-lg font-medium">Media (video, PDFs e imágenes)</h2>
         <p className="text-xs text-muted">
-          Sube el video y los PDFs. La app los guarda en el servidor de archivos y los sube
+          Sube el video, los PDFs y las imágenes. Luego, en el <b>constructor</b>, pones cada
+          uno en el lugar del embudo que quieras. La app los guarda en el servidor de archivos y los sube
           a WhatsApp para obtener el <code>media_id</code> (envío instantáneo). Se{" "}
           <b>renuevan solas cada ~20 días</b> (los media_id caducan); también puedes forzarlo
           con «Renovar media».
@@ -371,6 +406,115 @@ export function MediaManager() {
                 </div>
               );
             })}
+          </div>
+
+          {/* Imágenes */}
+          <div className="space-y-3 rounded-xl border border-[var(--hairline)] glass p-4">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-sm font-medium text-text">🖼️ Imágenes</span>
+              <span className="text-xs text-muted">
+                JPG o PNG, máx. 5 MB c/u · hasta {MAX_IMAGENES}. Colócalas en el embudo con un
+                bloque «Archivo» en el constructor.
+              </span>
+              <label
+                className={
+                  "ml-auto cursor-pointer rounded-lg border border-accent/50 bg-accent/10 px-3 py-1.5 text-xs font-medium text-accent-2 hover:bg-accent/20" +
+                  (IMAGENES.some((s) => subiendo[s]) ? " pointer-events-none opacity-50" : "")
+                }
+              >
+                {IMAGENES.some((s) => subiendo[s]) ? "Subiendo…" : "+ Agregar imágenes"}
+                <input
+                  type="file"
+                  accept={ACEPTA_IMAGEN}
+                  multiple
+                  className="hidden"
+                  onChange={(e) => {
+                    const fs = Array.from(e.target.files ?? []);
+                    e.target.value = "";
+                    if (fs.length) agregarImagenes(fs);
+                  }}
+                />
+              </label>
+            </div>
+            {msgSlot.imagenes && (
+              <p className={"text-xs " + (msgSlot.imagenes.startsWith("✓") ? "text-accent-2" : "text-red-400")}>
+                {msgSlot.imagenes}
+              </p>
+            )}
+
+            {(() => {
+              // Se muestran las imágenes subidas y las que tengan un aviso pendiente (p. ej.
+              // una subida que falló), para que el error se vea en su tarjeta.
+              const visibles = IMAGENES.filter((s) => media?.[cols(s).media_id] || msgSlot[s]);
+              if (!visibles.length)
+                return (
+                  <p className="rounded-lg border border-dashed border-[var(--hairline)] p-4 text-center text-xs text-muted">
+                    Aún no hay imágenes. Usa «+ Agregar imágenes».
+                  </p>
+                );
+              return (
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                  {visibles.map((slot) => {
+                    const c = cols(slot);
+                    const tieneId = Boolean(media?.[c.media_id]);
+                    const url = String(media?.[c.url] ?? "");
+                    const nombre = String(media?.[c.filename!] ?? "");
+                    return (
+                      <div key={slot} className="space-y-2 rounded-lg border border-[var(--hairline)] bg-[var(--field)] p-3">
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-medium text-text">{labelSlot(slot)}</span>
+                          {nombre && <span className="truncate text-[11px] text-muted" title={nombre}>{nombre}</span>}
+                        </div>
+                        {url ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img src={url} alt={labelSlot(slot)} className="h-36 w-full rounded-md bg-[var(--bg)] object-contain" />
+                        ) : (
+                          <div className="flex h-36 items-center justify-center rounded-md bg-[var(--bg)] text-xs text-muted">
+                            sin subir
+                          </div>
+                        )}
+                        <input
+                          value={captions[slot] ?? ""}
+                          placeholder="Caption (opcional)"
+                          onChange={(e) => setCaptions((prev) => ({ ...prev, [slot]: e.target.value }))}
+                          className={inputCls}
+                        />
+                        <div className="flex items-center gap-2">
+                          <label className="cursor-pointer rounded-lg border border-accent/50 bg-accent/10 px-3 py-1.5 text-xs font-medium text-accent-2 hover:bg-accent/20">
+                            {subiendo[slot] ? "Subiendo…" : tieneId ? "Reemplazar" : "Subir"}
+                            <input
+                              type="file"
+                              accept={ACEPTA_IMAGEN}
+                              className="hidden"
+                              disabled={subiendo[slot]}
+                              onChange={(e) => {
+                                const f = e.target.files?.[0];
+                                e.target.value = "";
+                                if (f) subir(slot, f);
+                              }}
+                            />
+                          </label>
+                          {tieneId && (
+                            <button
+                              onClick={() => borrarSlot(slot)}
+                              disabled={borrando[slot]}
+                              className="ml-auto rounded-lg border border-[var(--hairline)] px-3 py-1.5 text-xs text-muted hover:text-red-400 disabled:opacity-50"
+                            >
+                              {borrando[slot] ? "Quitando…" : "Quitar"}
+                            </button>
+                          )}
+                        </div>
+                        {msgSlot[slot] && (
+                          <p className={"text-xs " + (msgSlot[slot].startsWith("✓") ? "text-accent-2" : "text-red-400")}>
+                            {msgSlot[slot]}
+                          </p>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              );
+            })()}
           </div>
 
           <div className="flex flex-wrap items-center gap-3 rounded-xl border border-[var(--hairline)] glass p-4">

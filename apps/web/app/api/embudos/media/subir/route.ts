@@ -7,7 +7,13 @@ import {
   SupabaseError,
 } from "@/lib/embudos/supabase";
 import { leerVpsConfig, faltantesVps, subirImagen, eliminarImagen } from "@/lib/vps/upload";
-import { columnasSlot, mimeDe, subirMediaWhatsApp, SLOTS_MEDIA } from "@/lib/embudos/media";
+import {
+  columnasSlot,
+  esSlotImagen,
+  mimeDe,
+  subirMediaWhatsApp,
+  SLOTS_MEDIA,
+} from "@/lib/embudos/media";
 import { type NumeroBot } from "@/lib/embudos/types";
 import { toProductoId } from "@/lib/producto/id";
 
@@ -15,10 +21,11 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
 
-// Topes REALES de WhatsApp Cloud por tipo: video 16 MB, documentos (PDF) 100 MB.
-// Validar por tipo evita subir a `img` un archivo que WhatsApp va a rechazar (que
-// quedaría huérfano) y da un error claro en vez del genérico de la API.
+// Topes REALES de WhatsApp Cloud por tipo: video 16 MB, imagen 5 MB, documentos (PDF)
+// 100 MB. Validar por tipo evita subir a `img` un archivo que WhatsApp va a rechazar
+// (que quedaría huérfano) y da un error claro en vez del genérico de la API.
 const MAX_VIDEO = 16 * 1024 * 1024;
+const MAX_IMAGEN = 5 * 1024 * 1024;
 const MAX_DOC = 100 * 1024 * 1024;
 const mb = (n: number) => Math.round(n / (1024 * 1024));
 
@@ -52,14 +59,23 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Elige el número que aloja la media." }, { status: 400 });
   if (!(archivo instanceof File) || archivo.size === 0)
     return NextResponse.json({ error: "No se envió ningún archivo." }, { status: 400 });
-  const limite = slot === "video" ? MAX_VIDEO : MAX_DOC;
+  const imagen = esSlotImagen(slot);
+  // WhatsApp solo acepta imágenes JPG y PNG (WebP es para stickers).
+  if (imagen && !mimeDe(archivo.name).startsWith("image/"))
+    return NextResponse.json(
+      { error: "La imagen debe ser JPG o PNG (WhatsApp no acepta otros formatos)." },
+      { status: 400 },
+    );
+  const limite = slot === "video" ? MAX_VIDEO : imagen ? MAX_IMAGEN : MAX_DOC;
   if (archivo.size > limite)
     return NextResponse.json(
       {
         error:
           slot === "video"
             ? `El video pesa ${mb(archivo.size)} MB. WhatsApp acepta videos de máximo ${mb(MAX_VIDEO)} MB — compártelo comprimido o recórtalo.`
-            : `El archivo pesa ${mb(archivo.size)} MB. El máximo es ${mb(MAX_DOC)} MB.`,
+            : imagen
+              ? `La imagen pesa ${(archivo.size / (1024 * 1024)).toFixed(1)} MB. WhatsApp acepta imágenes de máximo ${mb(MAX_IMAGEN)} MB — redúcela o comprímela.`
+              : `El archivo pesa ${mb(archivo.size)} MB. El máximo es ${mb(MAX_DOC)} MB.`,
       },
       { status: 413 },
     );

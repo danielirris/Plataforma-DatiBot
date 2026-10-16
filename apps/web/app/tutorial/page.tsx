@@ -849,9 +849,11 @@ export default function TutorialPage() {
             </Paso>
             <Paso n={4}>
               <b>Media</b>: elige el <b>número que aloja la media</b> y sube el <b>video</b>
-              (máx. 16 MB) y los <b>PDFs</b> (máx. 100 MB c/u). La app los sube a WhatsApp
-              para obtener el <b>media_id</b> (envío instantáneo) y puedes ponerles un{" "}
-              <b>caption</b>. Se renueva sola cada <b>20 días</b> (los media_id caducan a los
+              (máx. 16 MB), los <b>PDFs</b> (máx. 100 MB c/u) y las <b>imágenes</b> (JPG o
+              PNG, máx. 5 MB c/u, hasta 10). La app los sube a WhatsApp para obtener el{" "}
+              <b>media_id</b> (envío instantáneo) y puedes ponerles un <b>caption</b>. Para
+              mandar una imagen en el embudo, en el constructor agrega un bloque{" "}
+              <b>📎 Archivo</b> donde quieras (usa <b>+ debajo</b>) y elige «Imagen N». Se renueva sola cada <b>20 días</b> (los media_id caducan a los
               ~30); o fuérzalo con <b>🔄 Renovar media</b>.
             </Paso>
             <Paso n={5}>

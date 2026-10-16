@@ -71,7 +71,7 @@ create table if not exists public.pasos_embudo (
   producto       text not null,
   estado         text not null,   -- MENU | VIDEO | CONFIRMACION | ENTREGA | STOP
   orden          int  not null,
-  tipo           text not null,   -- mensaje | video | pdf | boton | etiqueta | wait
+  tipo           text not null,   -- mensaje | video | pdf | imagen | boton | etiqueta | wait
   contenido      text,            -- según `fuente` (ver spec)
   fuente         text,            -- config | media | rotador | directo
   delay_segundos int  default 0,  -- espera DESPUÉS del paso (anti-baneo)
@@ -104,6 +104,22 @@ create table if not exists public.media_bots (
   pdf_6_url text, pdf_6_media_id text, pdf_6_caption text, pdf_6_filename text,
   media_actualizado_at timestamptz default now()
 );
+
+-- 5b) IMÁGENES — hasta 10 imágenes por producto (img_1..img_10), mismas 4 columnas que
+-- los PDFs. Idempotente: corre este bloque UNA vez si tu media_bots ya existía.
+-- En pasos_embudo se referencian con tipo='imagen', fuente='media',
+-- contenido='img_N_media_id' (igual que video/pdf).
+do $$
+begin
+  for n in 1..10 loop
+    execute format('alter table public.media_bots add column if not exists img_%s_url text', n);
+    execute format('alter table public.media_bots add column if not exists img_%s_media_id text', n);
+    execute format('alter table public.media_bots add column if not exists img_%s_caption text', n);
+    execute format('alter table public.media_bots add column if not exists img_%s_filename text', n);
+  end loop;
+end $$;
+-- PostgREST cachea el esquema: esto hace que vea las columnas nuevas al instante.
+notify pgrst, 'reload schema';
 
 -- ----------------------------------------------------------------------------
 -- SEGURIDAD (recomendado): estas tablas guardan tokens (capi_token). La app y el

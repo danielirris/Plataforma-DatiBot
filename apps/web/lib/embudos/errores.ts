@@ -21,6 +21,8 @@ export function explicarError(raw: string): string {
 
   // Columna inexistente en la tabla (PGRST204).
   const sinCol = /could not find the '([^']+)' column/i.exec(msg);
+  if (sinCol && /^img_\d+_/.test(sinCol[1]))
+    return "Las imágenes todavía no están activadas en Supabase: falta crear sus columnas en media_bots. Corre una vez el bloque «IMÁGENES» de apps/web/lib/embudos/schema.sql en el SQL editor de Supabase.";
   if (sinCol)
     return `La columna «${sinCol[1]}» no existe en esa tabla de Supabase. Falta crearla (revisa el schema.sql o corre un ALTER TABLE).`;
 

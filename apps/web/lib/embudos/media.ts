@@ -1,7 +1,12 @@
 // Helpers de MEDIA de embudos (SOLO servidor). Sube archivos a la API de WhatsApp
 // Cloud para obtener el media_id, y mapea cada "slot" a sus columnas en `media_bots`.
 
-export const SLOTS_MEDIA = [
+/** Cuántas imágenes puede tener un producto (columnas img_1..img_N en media_bots). */
+export const MAX_IMAGENES = 10;
+
+export const SLOTS_IMAGEN = Array.from({ length: MAX_IMAGENES }, (_, i) => `img_${i + 1}`);
+
+export const SLOTS_MEDIA: readonly string[] = [
   "video",
   "pdf_1",
   "pdf_2",
@@ -9,8 +14,12 @@ export const SLOTS_MEDIA = [
   "pdf_4",
   "pdf_5",
   "pdf_6",
-] as const;
-export type SlotMedia = (typeof SLOTS_MEDIA)[number];
+  ...SLOTS_IMAGEN,
+];
+
+export function esSlotImagen(slot: string): boolean {
+  return SLOTS_IMAGEN.includes(slot);
+}
 
 /** Columnas de `media_bots` que corresponden a un slot. */
 export function columnasSlot(
@@ -18,14 +27,14 @@ export function columnasSlot(
 ): { url: string; media_id: string; caption: string; filename?: string } | null {
   if (slot === "video")
     return { url: "url_video", media_id: "video_media_id", caption: "video_caption" };
-  const m = /^pdf_([1-6])$/.exec(slot);
-  if (m) {
-    const n = m[1];
+  const m = /^(pdf|img)_(\d+)$/.exec(slot);
+  if (m && SLOTS_MEDIA.includes(slot)) {
+    const [, pre, n] = m;
     return {
-      url: `pdf_${n}_url`,
-      media_id: `pdf_${n}_media_id`,
-      caption: `pdf_${n}_caption`,
-      filename: `pdf_${n}_filename`,
+      url: `${pre}_${n}_url`,
+      media_id: `${pre}_${n}_media_id`,
+      caption: `${pre}_${n}_caption`,
+      filename: `${pre}_${n}_filename`,
     };
   }
   return null;
@@ -39,6 +48,9 @@ export function mimeDe(nombre: string): string {
     m4v: "video/mp4",
     mov: "video/quicktime",
     webm: "video/webm",
+    jpg: "image/jpeg",
+    jpeg: "image/jpeg",
+    png: "image/png",
   };
   return map[ext] ?? "application/octet-stream";
 }

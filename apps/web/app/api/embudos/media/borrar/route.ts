@@ -54,6 +54,9 @@ export async function POST(req: Request) {
   const cambios: Record<string, unknown> = {};
   for (const s of slots) {
     const c = columnasSlot(s)!;
+    // Si la tabla aún no tiene las columnas del slot (p. ej. imágenes sin migrar), no
+    // hay nada que vaciar y el PATCH fallaría por columna inexistente.
+    if (!(c.media_id in fila)) continue;
     const url = String(fila[c.url] ?? "").trim();
     if (url) await eliminarImagen(url, cfg).catch(() => {});
     cambios[c.url] = "";
@@ -65,6 +68,12 @@ export async function POST(req: Request) {
   if (body.todo) {
     cambios.phone_id = "";
     cambios.capi_token = "";
+  }
+
+  if (!Object.keys(cambios).length) {
+    const g = { ...fila } as Record<string, unknown>;
+    delete g.capi_token;
+    return NextResponse.json({ media: g });
   }
 
   try {

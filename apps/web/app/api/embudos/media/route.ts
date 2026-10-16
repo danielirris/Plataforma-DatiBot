@@ -5,6 +5,7 @@ import {
   supabaseConfigurado,
   SupabaseError,
 } from "@/lib/embudos/supabase";
+import { SLOTS_MEDIA, columnasSlot } from "@/lib/embudos/media";
 import { toProductoId } from "@/lib/producto/id";
 
 export const runtime = "nodejs";
@@ -13,15 +14,7 @@ export const dynamic = "force-dynamic";
 type MediaRow = Record<string, unknown> & { producto?: string };
 
 // Columnas de caption que la app puede editar sin re-subir el archivo.
-const CAPTIONS = [
-  "video_caption",
-  "pdf_1_caption",
-  "pdf_2_caption",
-  "pdf_3_caption",
-  "pdf_4_caption",
-  "pdf_5_caption",
-  "pdf_6_caption",
-];
+const CAPTIONS = SLOTS_MEDIA.map((s) => columnasSlot(s)!.caption);
 
 // Lee la fila de media de un producto.
 export async function GET(req: Request) {
@@ -85,7 +78,9 @@ export async function POST(req: Request) {
 
   const cambios: Record<string, unknown> = {};
   for (const c of CAPTIONS) {
-    if (body.campos && c in body.campos) cambios[c] = String(body.campos[c] ?? "");
+    // Solo columnas que la tabla tiene (las de imagen pueden no estar migradas aún).
+    if (body.campos && c in body.campos && c in existentes[0])
+      cambios[c] = String(body.campos[c] ?? "");
   }
   if (!Object.keys(cambios).length) {
     const g = { ...existentes[0] } as Record<string, unknown>;
