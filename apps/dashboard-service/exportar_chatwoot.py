@@ -12,9 +12,18 @@ except ImportError:
     from openpyxl.styles import Font, PatternFill, Alignment
 
 # ====== CONFIGURA ESTO ======
-CHATWOOT_URL = "https://chatwoot.educarteonline.lat"  # Cambia si es diferente
-API_TOKEN = "Ty8626Djdsm74aYcH5gpc9pb"                       # Tu access token
-ACCOUNT_ID = 1
+# Credenciales desde el entorno (NUNCA escritas aquí: este repo es público).
+#   export CHATWOOT_URL=https://chatwoot.tudominio.com
+#   export CHATWOOT_API_TOKEN=...      # Perfil → Access token en Chatwoot
+#   export CHATWOOT_ACCOUNT_ID=1
+import os
+import sys
+
+CHATWOOT_URL = os.environ.get("CHATWOOT_URL", "").rstrip("/")
+API_TOKEN = os.environ.get("CHATWOOT_API_TOKEN", "")
+ACCOUNT_ID = int(os.environ.get("CHATWOOT_ACCOUNT_ID", "1"))
+if not CHATWOOT_URL or not API_TOKEN:
+    sys.exit("Faltan CHATWOOT_URL y/o CHATWOOT_API_TOKEN en el entorno.")
 # ============================
 
 headers = {"api_access_token": API_TOKEN}

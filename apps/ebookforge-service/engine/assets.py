@@ -38,7 +38,9 @@ def embed_images(html: str, base_dir: Path) -> str:
         if src.startswith("data:") or src.startswith("http"):
             return m.group(0)
         p = (base_dir / src).resolve()
-        if not p.exists():
+        # Solo imágenes DENTRO de base_dir: un src absoluto o con "../" leería
+        # cualquier imagen del disco del servidor y la metería en el PDF.
+        if not p.is_relative_to(Path(base_dir).resolve()) or not p.is_file():
             return m.group(0)  # se deja tal cual si no existe (se verá el alt)
         return f'{m.group(1)}{_img_to_datauri(p)}{m.group(3)}'
     return re.sub(r'(<img[^>]*\ssrc=")([^"]+)(")', repl, html)

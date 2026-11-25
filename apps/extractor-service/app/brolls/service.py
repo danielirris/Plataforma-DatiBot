@@ -13,7 +13,6 @@ import logging
 import random
 import subprocess
 import tempfile
-import urllib.request
 from pathlib import Path
 from typing import Callable
 
@@ -21,6 +20,7 @@ from app.brolls import people, postprocess, store, veo
 from app.brolls.config import BrollConfig
 from app.brolls.people import _probe_duration
 from app.brolls.prompts import build_broll_prompts
+from app.safe_url import abrir_url
 
 logger = logging.getLogger("brolls.service")
 
@@ -80,8 +80,8 @@ def _from_veo(product_id: str, product: dict, cfg: BrollConfig,
 
 
 def _download(url: str, dest: Path) -> Path:
-    req = urllib.request.Request(url, headers={"User-Agent": "datibot-brolls/1"})
-    with urllib.request.urlopen(req, timeout=120) as r, dest.open("wb") as f:  # noqa: S310
+    # abrir_url valida esquema/host/redirecciones (anti-SSRF, sin file://).
+    with abrir_url(url, timeout=120, user_agent="datibot-brolls/1") as r, dest.open("wb") as f:
         while chunk := r.read(1 << 16):
             f.write(chunk)
     return dest

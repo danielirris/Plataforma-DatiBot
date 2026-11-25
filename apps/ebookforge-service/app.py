@@ -18,6 +18,11 @@ app = FastAPI(title="EbookForge")
 # Este semáforo limita cuántos corren en paralelo.
 _LIMITE = asyncio.Semaphore(2)
 
+# CSP de la vista previa: solo estilos inline y recursos data: (fuentes/imágenes ya
+# incrustadas). Sin scripts, sin formularios, sin red. "sandbox" = origen opaco.
+PREVIEW_CSP = ("default-src 'none'; img-src data: https:; style-src 'unsafe-inline'; "
+               "font-src data:; base-uri 'none'; form-action 'none'; sandbox")
+
 
 def _leer_doc(content: str) -> dict:
     """Parsea el JSON del cuerpo; 400 claro si viene vacío/corrupto (antes: 500)."""
@@ -94,7 +99,10 @@ async def preview(content: str = Form(...), theme: str = Form("amigurumi"),
         # el workdir se puede borrar en cuanto retorna (finally). También en hilo
         # aparte para no bloquear el loop.
         async with _LIMITE:
-            return await run_in_threadpool(build_html, doc, get_theme(theme), imgdir)
+            html = await run_in_threadpool(build_html, doc, get_theme(theme), imgdir)
+        # El HTML lleva texto de la IA/usuario: se sirve con una CSP que impide
+        # ejecutar scripts y cargar recursos externos (evita XSS en este origen).
+        return HTMLResponse(html, headers={"Content-Security-Policy": PREVIEW_CSP})
     except HTTPException:
         raise
     except Exception as e:  # noqa: BLE001

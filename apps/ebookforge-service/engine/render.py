@@ -13,6 +13,7 @@ from pathlib import Path
 from weasyprint import HTML
 
 from .assets import embed_images, embed_fonts
+from .fetcher import url_fetcher_seguro
 
 
 def build_html(doc: dict, theme, base_dir: Path) -> str:
@@ -25,7 +26,8 @@ def build_html(doc: dict, theme, base_dir: Path) -> str:
 
 
 def to_pdf(html: str, out_path: str) -> str:
-    HTML(string=html).write_pdf(out_path)
+    # url_fetcher_seguro: sin file:// ni hosts internos (ver engine/fetcher.py).
+    HTML(string=html, url_fetcher=url_fetcher_seguro).write_pdf(out_path)
     return out_path
 
 

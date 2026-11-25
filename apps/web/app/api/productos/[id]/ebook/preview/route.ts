@@ -82,6 +82,13 @@ export async function POST(req: Request, { params }: Ctx) {
   const html = await res.text();
   return new NextResponse(html, {
     status: 200,
-    headers: { "Content-Type": "text/html; charset=utf-8" },
+    headers: {
+      "Content-Type": "text/html; charset=utf-8",
+      // HTML con texto de IA/usuario servido desde el origen AUTENTICADO: la CSP con
+      // "sandbox" impide que ejecute scripts aunque se abra fuera del iframe sandbox.
+      "Content-Security-Policy":
+        "default-src 'none'; img-src data: https:; style-src 'unsafe-inline'; font-src data:; base-uri 'none'; form-action 'none'; sandbox",
+      "X-Content-Type-Options": "nosniff",
+    },
   });
 }
