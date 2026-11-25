@@ -20,6 +20,7 @@ from starlette.concurrency import run_in_threadpool
 
 from app.config import BASE_DIR, get_settings
 from app.jobs import manager
+from app.safe_url import UnsafeURLError, abrir_url, validar_url
 from app import library
 from app.pipeline import cleanup, tts
 from app.tts_routes import router as tts_router
@@ -193,7 +194,11 @@ async def _download_url(url: str, max_bytes: int, allowed: set[str] = ALLOWED_EX
     servidor de archivos) en vez de una subida directa.
     """
     import urllib.parse
-    import urllib.request
+
+    try:
+        validar_url(url)
+    except UnsafeURLError as exc:
+        raise HTTPException(status_code=400, detail=f"URL de video no permitida ({exc}).")
 
     name = Path(urllib.parse.urlparse(url).path).name or "video.mp4"
     ext = Path(name).suffix.lower()
@@ -204,8 +209,7 @@ async def _download_url(url: str, max_bytes: int, allowed: set[str] = ALLOWED_EX
 
     def _do() -> int:
         size = 0
-        req = urllib.request.Request(url, headers={"User-Agent": "datibot-editor"})
-        with urllib.request.urlopen(req, timeout=120) as resp, open(tmp, "wb") as out:
+        with abrir_url(url, timeout=120, user_agent="datibot-editor") as resp, open(tmp, "wb") as out:
             while True:
                 chunk = resp.read(1024 * 1024)
                 if not chunk:
