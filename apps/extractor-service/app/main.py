@@ -842,7 +842,7 @@ async def hook_thumb(session: str, i: int) -> FileResponse:
     """Sirve la miniatura de un candidato de gancho."""
     base = settings.hooks_dir.resolve()
     thumb = (base / session / f"t{i}.jpg").resolve()
-    if not str(thumb).startswith(str(base)) or not thumb.is_file():
+    if not thumb.is_relative_to(base) or not thumb.is_file():
         raise HTTPException(status_code=404, detail="Miniatura no encontrada.")
     return FileResponse(path=str(thumb), media_type="image/jpeg")
 
@@ -1095,7 +1095,9 @@ async def delete_job(job_id: str) -> JSONResponse:
     """Borra un anuncio (job): su output, su fila y su estado."""
     if not manager.get(job_id):
         raise HTTPException(status_code=404, detail="Job no encontrado")
-    manager.delete(job_id)
+    if not manager.delete(job_id):
+        raise HTTPException(status_code=409,
+                            detail="Este anuncio se está procesando; espera a que termine para borrarlo.")
     return JSONResponse({"ok": True})
 
 
@@ -1182,6 +1184,9 @@ async def render_ad(job_id: str, payload: dict | None = Body(None)) -> JSONRespo
     """Dispara el render. Si se envía 'ad', renderiza con esa versión editada."""
     if not manager.get(job_id):
         raise HTTPException(status_code=404, detail="Job no encontrado")
+    if manager.ocupado(job_id):
+        # Antes se sobrescribía ad.json aunque hubiera un render en curso.
+        raise HTTPException(status_code=409, detail="Ya hay un render en curso para este anuncio.")
     if payload and isinstance(payload.get("ad"), dict):
         manager.save_ad_json(job_id, payload["ad"])
     if not manager.request_render(job_id):

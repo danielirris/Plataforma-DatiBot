@@ -45,6 +45,6 @@ def file_path(product_id: str, name: str) -> Path | None:
     """Ruta segura de un archivo de B-roll (evita path traversal)."""
     base = broll_dir(product_id).resolve()
     p = (base / Path(name).name).resolve()
-    if str(p).startswith(str(base)) and p.is_file():
+    if p.is_relative_to(base) and p.is_file():
         return p
     return None

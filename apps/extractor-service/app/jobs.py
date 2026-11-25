@@ -339,6 +339,11 @@ class JobManager:
                     job_id, mode, len(paths), len(music_paths))
         return job_id
 
+    def ocupado(self, job_id: str) -> bool:
+        """¿El job está en cola o lo está procesando el worker ahora mismo?"""
+        job = self.get(job_id)
+        return bool(job) and (job.status == JobStatus.QUEUED or job.status in self._EN_PROCESO)
+
     def request_render(self, job_id: str) -> bool:
         """Encola el render del proyecto Remotion ya generado (anuncio o flujo completo)."""
         job = self.get(job_id)
@@ -346,6 +351,14 @@ class JobManager:
             return False
         if not (Path(job.output_dir) / "remotion-ad").exists():
             return False
+        with self._lock:
+            # No encolar dos veces el mismo render (doble clic / dos pestañas).
+            actual = self._jobs.get(job_id) or job
+            if actual.status == JobStatus.QUEUED or actual.status in self._EN_PROCESO:
+                return False
+            # Tras un reinicio, un job terminado solo vive en SQLite: se vuelve a
+            # cargar en memoria para que el worker y la UI vean su progreso.
+            self._jobs.setdefault(job_id, job)
         self._update(job_id, status=JobStatus.RENDERING, message="En cola para renderizar")
         self._queue.put(("render", job_id))
         return True
@@ -406,7 +419,7 @@ class JobManager:
             return None
         public = (proj / "public").resolve()
         target = (public / rel).resolve()
-        if str(target).startswith(str(public)) and target.is_file():
+        if target.is_relative_to(public) and target.is_file():
             return target
         return None
 
@@ -473,8 +486,15 @@ class JobManager:
         return ""
 
     def delete(self, job_id: str) -> bool:
-        """Borra un job: su output en disco, su fila en la DB y el estado en memoria."""
-        job = self._jobs.get(job_id)
+        """Borra un job: su output en disco, su fila en la DB y el estado en memoria.
+
+        Devuelve False (sin tocar nada) si está en cola o procesándose: borrar la
+        carpeta mientras el worker renderiza la dejaba a medias y el worker la
+        volvía a crear. Resuelve el job también desde SQLite (tras un reinicio).
+        """
+        job = self.get(job_id)
+        if job and (job.status == JobStatus.QUEUED or job.status in self._EN_PROCESO):
+            return False
         with self._lock:
             if job and job.output_dir:
                 try:
@@ -500,13 +520,18 @@ class JobManager:
     def _update(self, job_id: str, **kwargs: Any) -> None:
         with self._lock:
             job = self._jobs.get(job_id)
-            if not job:
-                return
-            for key, value in kwargs.items():
-                setattr(job, key, value)
-            if "status" in kwargs:
-                job.progress = _PROGRESS.get(job.status, job.progress)
-            progress = job.progress
+            if job:
+                for key, value in kwargs.items():
+                    setattr(job, key, value)
+                if "status" in kwargs:
+                    job.progress = _PROGRESS.get(job.status, job.progress)
+                progress = job.progress
+            else:
+                # Job que solo vive en SQLite (p. ej. tras un reinicio): antes se
+                # ignoraba y la base quedaba desactualizada. Se escribe igual.
+                st = kwargs.get("status")
+                st = JobStatus(st) if isinstance(st, str) else st
+                progress = kwargs.get("progress", _PROGRESS.get(st, 0) if st else 0)
         # Replica en SQLite (fuera del lock).
         fields: dict[str, Any] = {}
         for key, value in kwargs.items():
@@ -550,19 +575,26 @@ class JobManager:
         El trabajo EN CURSO no se puede interrumpir (corre en el hilo del
         worker); terminará o fallará solo, pero ya no arrastra a los demás.
         """
-        descartados: list[str] = []
+        descartados: list[tuple[str, str]] = []
         while True:
             try:
-                _kind, job_id = self._queue.get_nowait()
+                kind, job_id = self._queue.get_nowait()
             except queue.Empty:
                 break
-            descartados.append(job_id)
+            descartados.append((kind, job_id))
             self._queue.task_done()
 
-        for jid in descartados:
-            self._update(jid, status=JobStatus.ERROR, progress=100,
-                         message="Cancelado",
-                         error="Cancelado al vaciar la cola.")
+        for kind, jid in descartados:
+            if kind == "render":
+                # Un render pendiente es de un anuncio YA generado: cancelarlo no
+                # debe marcarlo ERROR (dejaría de poder descargarse aunque sus
+                # archivos siguen en disco). Vuelve a DONE con un aviso.
+                self._update(jid, status=JobStatus.DONE, message="Completado",
+                             aviso="Render cancelado al vaciar la cola.")
+            else:
+                self._update(jid, status=JobStatus.ERROR, progress=100,
+                             message="Cancelado",
+                             error="Cancelado al vaciar la cola.")
         logger.info("Cola vaciada: %d trabajo(s) cancelado(s)", len(descartados))
         with self._lock:
             en_curso = [j.id for j in self._jobs.values() if j.status in self._EN_PROCESO]

@@ -33,34 +33,9 @@ load_dotenv()
 
 from currency import CURRENCY_RATES, currency_multiplier  # noqa: E402
 
-
-# ── Avisos visibles en la UI ─────────────────────────────────────────────────
-# Antes, un token caducado o una cuenta que fallaba solo dejaba un print en stderr:
-# el gasto total bajaba y el ROAS salía INFLADO sin que nadie se enterara. Ahora
-# cada aviso se guarda (con hora) y app.py los muestra con st.warning.
-_AVISOS: dict[str, float] = {}
-_AVISOS_LOCK = threading.Lock()
-
-
-def _avisar(msg: str) -> None:
-    print(msg, file=sys.stderr)
-    limpio = msg.removeprefix("[WARN]").strip()
-    with _AVISOS_LOCK:
-        _AVISOS[limpio] = time.time()
-
-
-def avisos_facebook(max_age_s: float = 600) -> list[str]:
-    """Avisos registrados en los últimos ``max_age_s`` segundos (más recientes primero)."""
-    limite = time.time() - max_age_s
-    with _AVISOS_LOCK:
-        for k in [k for k, t in _AVISOS.items() if t < limite]:
-            del _AVISOS[k]
-        return [k for k, _ in sorted(_AVISOS.items(), key=lambda kv: -kv[1])]
-
-
-def limpiar_avisos() -> None:
-    with _AVISOS_LOCK:
-        _AVISOS.clear()
+from avisos import avisar as _avisar  # noqa: E402
+from avisos import avisos_recientes as avisos_facebook  # noqa: E402,F401
+from avisos import limpiar_avisos  # noqa: E402
 
 FB_ACCESS_TOKEN = os.getenv("FB_ACCESS_TOKEN")
 # Filtro OPCIONAL. Si está vacío, descubrimos todas las cuentas que el token

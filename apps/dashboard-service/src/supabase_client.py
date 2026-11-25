@@ -24,6 +24,7 @@ from supabase import create_client
 sys.path.insert(0, str(Path(__file__).parent))
 load_dotenv()
 
+from avisos import avisar  # noqa: E402
 from currency import CURRENCY_RATES, currency_multiplier  # noqa: E402
 
 SUPABASE_URL = os.getenv("SUPABASE_URL")
@@ -62,7 +63,8 @@ def get_sales(since: str, until: str) -> pd.DataFrame:
     `valor_local` es el monto original en la moneda del país. `moneda` viene de
     la columna `moneda` de Supabase (si es NULL se asume COP). `valor_cop` es
     el monto convertido a pesos colombianos usando las tasas `*_TO_COP` del .env.
-    Si la moneda no tiene tasa configurada, `valor_cop` = NaN.
+    Las ventas sin tasa configurada (o con valor inválido) se excluyen y se
+    avisa en la UI (ver `avisos.py`).
     """
     client = create_client(SUPABASE_URL, SUPABASE_KEY)
     start_utc, end_utc_exclusive = _bogota_day_range_utc(since, until)
@@ -75,15 +77,21 @@ def get_sales(since: str, until: str) -> pd.DataFrame:
             .select("ad_id, valor, moneda, pais, fecha_compra")
             .gte("fecha_compra", start_utc.isoformat())
             .lt("fecha_compra", end_utc_exclusive.isoformat())
+            # Orden TOTAL (fecha + desempates): con solo `fecha_compra`, las filas
+            # empatadas podían repetirse u omitirse entre páginas.
             .order("fecha_compra")
+            .order("ad_id", nullsfirst=True)
+            .order("valor")
             .range(offset, offset + PAGE_SIZE - 1)
             .execute()
         )
         batch = result.data or []
         rows.extend(batch)
-        if len(batch) < PAGE_SIZE:
+        # Se sigue hasta una página VACÍA: si el proyecto limita `max_rows` por
+        # debajo de PAGE_SIZE, cortar en "len < PAGE_SIZE" truncaba en silencio.
+        if not batch:
             break
-        offset += PAGE_SIZE
+        offset += len(batch)
 
     df = pd.DataFrame(rows, columns=["ad_id", "valor", "moneda", "pais", "fecha_compra"])
     if not df.empty:
@@ -98,10 +106,9 @@ def get_sales(since: str, until: str) -> pd.DataFrame:
         # Moneda NULL → asumir COP.
         monedas_null = df["moneda"].isna()
         if monedas_null.any():
-            print(
+            avisar(
                 f"[WARN] {int(monedas_null.sum())} venta(s) con moneda NULL — "
-                f"asumiendo COP.",
-                file=sys.stderr,
+                f"asumiendo COP."
             )
             df["moneda"] = df["moneda"].fillna("COP")
         df["moneda"] = df["moneda"].str.upper()
@@ -114,14 +121,21 @@ def get_sales(since: str, until: str) -> pd.DataFrame:
                 return row["valor_local"]
             rate = CURRENCY_RATES.get(m)
             if rate is None:
-                print(
-                    f"[WARN] venta sin tasa para moneda {m}",
-                    file=sys.stderr,
-                )
                 return float("nan")
             return row["valor_local"] * rate
 
         df["valor_cop"] = df.apply(_to_cop, axis=1)
+        # Ventas sin tasa (o con valor inválido): se EXCLUYEN aquí, una sola vez, y
+        # se avisa en la UI. Antes quedaban con NaN: `n_ventas` las contaba (size)
+        # pero `monto_ventas` no (sum) → CPA y ROAS distorsionados sin aviso.
+        sin_valor = df["valor_cop"].isna()
+        if sin_valor.any():
+            monedas = ", ".join(sorted(df.loc[sin_valor, "moneda"].astype(str).unique()))
+            avisar(
+                f"[WARN] {int(sin_valor.sum())} venta(s) excluidas por no tener tasa "
+                f"de cambio o valor válido ({monedas}). Define <MONEDA>_TO_COP."
+            )
+            df = df[~sin_valor].reset_index(drop=True)
     else:
         df = df.rename(columns={"valor": "valor_local"})
         df["valor_cop"] = pd.Series(dtype=float)
@@ -154,14 +168,16 @@ def get_contactos(since: str, until: str) -> pd.DataFrame:
             .gte("primer_contacto_at", start_utc.isoformat())
             .lt("primer_contacto_at", end_utc_exclusive.isoformat())
             .order("primer_contacto_at")
+            .order("primer_ad_id", nullsfirst=True)
+            .order("pais", nullsfirst=True)
             .range(offset, offset + PAGE_SIZE - 1)
             .execute()
         )
         batch = result.data or []
         rows.extend(batch)
-        if len(batch) < PAGE_SIZE:
+        if not batch:  # ver get_sales: no cortar por página "corta"
             break
-        offset += PAGE_SIZE
+        offset += len(batch)
 
     df = pd.DataFrame(
         rows, columns=["primer_ad_id", "primer_contacto_at", "pais"]

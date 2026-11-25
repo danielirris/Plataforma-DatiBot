@@ -70,6 +70,16 @@ def _pais_from_code(code) -> str | None:
 # Sentinelas usados como id ficticio para las filas "sin atribuir".
 # Empiezan por "_" para no chocar con ningún id real de Facebook.
 NO_AD_SENTINEL = "_sin_anuncio_"
+# Ventas con ad_id NULL: una fila por país, con id "_venta_sin_anuncio_<País>".
+# Antes se descartaban de la tabla/KPIs pero SÍ entraban en la gráfica diaria, así
+# que "Ventas totales" y el ROAS global no cuadraban con la gráfica.
+NO_AD_SALES_PREFIX = "_venta_sin_anuncio_"
+NO_AD_SALES_LABEL = "Venta sin anuncio (no atribuida)"
+
+
+def _pais_venta(code) -> str:
+    """País (nombre largo) de una venta; NULL/desconocido → Colombia."""
+    return _pais_from_code(code) or "Colombia"
 NO_CAMPAIGN_SENTINEL = "_sin_campana_"
 NO_ACCOUNT_SENTINEL = "_sin_cuenta_"
 
@@ -216,6 +226,20 @@ def get_ad_performance(since: str, until: str) -> pd.DataFrame:
             moneda_info[["ad_id", "ventas_local_info"]], on="ad_id", how="left"
         )
 
+    # Ventas SIN ad_id: se agrupan por país en filas propias (ver NO_AD_SALES_PREFIX).
+    ventas_sin_ad = pd.DataFrame(columns=["ad_id", "n_ventas", "monto_ventas", "pais"])
+    if not sales_df.empty:
+        sin_ad = sales_df[sales_df["ad_id"].isna()].copy()
+        if not sin_ad.empty:
+            sin_ad["_pais"] = (sin_ad["pais"] if "pais" in sin_ad.columns
+                               else pd.Series(None, index=sin_ad.index)).apply(_pais_venta)
+            ventas_sin_ad = (
+                sin_ad.groupby("_pais", as_index=False)
+                .agg(n_ventas=("valor_cop", "size"), monto_ventas=("valor_cop", "sum"))
+                .rename(columns={"_pais": "pais"})
+            )
+            ventas_sin_ad["ad_id"] = NO_AD_SALES_PREFIX + ventas_sin_ad["pais"]
+
     # Conversaciones (solo las atribuidas a un ad_id).
     contactos_agg, n_sin_atribuir = _conversaciones_por_ad(contactos_df)
 
@@ -275,6 +299,22 @@ def get_ad_performance(since: str, until: str) -> pd.DataFrame:
             ignore_index=True,
         )
 
+    if not ventas_sin_ad.empty:
+        filas = [
+            {
+                "ad_id": r["ad_id"], "ad_name": NO_AD_SALES_LABEL,
+                "account_id": None, "account_name": None,
+                "campaign_id": None, "campaign_name": None,
+                "gasto": 0.0, "frequency": 0.0, "impressions": 0, "reach": 0,
+                "clicks": 0, "conversaciones": 0,
+                "n_ventas": int(r["n_ventas"]), "monto_ventas": float(r["monto_ventas"]),
+                "ventas_local_info": "", "cuenta_perfil": None,
+                "estado": "otro", "estado_raw": "",
+            }
+            for _, r in ventas_sin_ad.iterrows()
+        ]
+        merged = pd.concat([merged, pd.DataFrame(filas)], ignore_index=True)
+
     # Utilidad = ingresos - gasto (puede ser negativa).
     merged["utilidad"] = merged["monto_ventas"] - merged["gasto"]
 
@@ -317,6 +357,11 @@ def get_ad_performance(since: str, until: str) -> pd.DataFrame:
             mapped = _pais_from_code(row["pais"])
             if mapped and row["ad_id"] not in pais_supabase:
                 pais_supabase[row["ad_id"]] = mapped
+
+    # Las filas de "Venta sin anuncio" ya traen su país en el id.
+    for _pid in merged["ad_id"].astype(str):
+        if _pid.startswith(NO_AD_SALES_PREFIX):
+            pais_supabase[_pid] = _pid[len(NO_AD_SALES_PREFIX):]
 
     # 2) Asignar país fila a fila con prioridad.
     def _asignar_pais(row):
@@ -620,8 +665,15 @@ def get_daily_totals(
             spend = pd.DataFrame(columns=["date", "gasto"])
 
         if not sales_df.empty:
+            # Ventas del país: las atribuidas a sus anuncios + las SIN ad_id de ese
+            # país cuando su fila "Venta sin anuncio" está en la selección (así la
+            # gráfica cuadra con los KPI de la pestaña).
+            sin_ad = sales_df["ad_id"].isna()
+            pais_venta = (sales_df["pais"] if "pais" in sales_df.columns
+                          else pd.Series(None, index=sales_df.index)).apply(_pais_venta)
             sales_df = sales_df[
-                sales_df["ad_id"].astype(str).isin(ad_ids)
+                (~sin_ad & sales_df["ad_id"].astype(str).isin(ad_ids))
+                | (sin_ad & (NO_AD_SALES_PREFIX + pais_venta).isin(ad_ids))
             ]
     else:
         spend = get_daily_spend(since, until).rename(columns={"spend": "gasto"})

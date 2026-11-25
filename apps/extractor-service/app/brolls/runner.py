@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 import threading
 import uuid
 from pathlib import Path
@@ -24,6 +25,29 @@ logger = logging.getLogger("brolls.runner")
 
 _JOBS: dict[str, dict] = {}
 _MAX_JOBS = 30  # se conservan los últimos N estados en memoria
+
+# Antes cada POST lanzaba su propio hilo: N tandas de Veo en paralelo (gasto real,
+# hasta 20 clips × 6 reintentos cada una) y dos tandas del MISMO producto escribían
+# a la vez los mismos broll_XX.mp4. Ahora:
+#   - como mucho BROLLS_CONCURRENCY tandas a la vez (por defecto 1; el resto espera),
+#   - y nunca dos tandas del mismo producto a la vez.
+_SEM = threading.BoundedSemaphore(max(1, int(os.environ.get("BROLLS_CONCURRENCY", "1") or 1)))
+_LOCKS: dict[str, threading.Lock] = {}
+_LOCKS_LOCK = threading.Lock()
+_JOBS_LOCK = threading.Lock()
+
+
+def _lock_producto(product_id: str) -> threading.Lock:
+    with _LOCKS_LOCK:
+        return _LOCKS.setdefault(str(product_id), threading.Lock())
+
+
+def _set(job_id: str, **campos) -> None:
+    """Actualiza el estado si el job sigue registrado (nunca lanza KeyError)."""
+    with _JOBS_LOCK:
+        j = _JOBS.get(job_id)
+        if j is not None:
+            j.update(**campos)
 
 # Campos que se guardan en disco (el resto es reconstruible o irrelevante).
 _PERSIST_KEYS = ("status", "progress", "done", "total", "message",
@@ -56,8 +80,14 @@ def _persist(job_id: str) -> None:
 
 
 def _prune() -> None:
-    if len(_JOBS) > _MAX_JOBS:
-        for k in list(_JOBS)[: len(_JOBS) - _MAX_JOBS]:
+    """Olvida los estados más viejos YA TERMINADOS (nunca uno en cola o en curso:
+    antes se podaban y el hilo fallaba con KeyError, sin guardar el resultado).
+    Los terminados siguen recuperables desde disco con ``status()``."""
+    with _JOBS_LOCK:
+        sobran = len(_JOBS) - _MAX_JOBS
+        if sobran <= 0:
+            return
+        for k in [k for k, j in _JOBS.items() if j.get("status") in ("done", "error")][:sobran]:
             _JOBS.pop(k, None)
 
 
@@ -65,24 +95,37 @@ def _run(job_id: str, product_id: str, product: dict,
          source: str, overrides: dict | None,
          videos_locales: list[Path] | None = None) -> None:
     def prog(done: int, total: int, msg: str) -> None:
-        j = _JOBS.get(job_id)
-        if j:
-            j.update(done=done, total=total, message=msg,
-                     progress=min(100, int(done * 100 / max(1, total))))
-            _persist(job_id)
+        _set(job_id, done=done, total=total, message=msg,
+             progress=min(100, int(done * 100 / max(1, total))))
+        _persist(job_id)
 
+    lock = _lock_producto(product_id)
+    adquiridos: list = []
     try:
-        _JOBS[job_id].update(status="running", message="Preparando…")
+        if not lock.acquire(blocking=False):
+            _set(job_id, message="Esperando a que termine otra tanda de este producto…")
+            _persist(job_id)
+            lock.acquire()
+        adquiridos.append(lock)
+        if not _SEM.acquire(blocking=False):
+            _set(job_id, message="En cola: hay otra tanda de B-rolls en curso…")
+            _persist(job_id)
+            _SEM.acquire()
+        adquiridos.append(_SEM)
+
+        _set(job_id, status="running", message="Preparando…")
         _persist(job_id)
         res = generate_brolls(product_id, product, source=source,
                               overrides=overrides, on_progress=prog,
                               videos_locales=videos_locales)
-        _JOBS[job_id].update(status="done", progress=100, result=res,
-                             message=f"{len(res['clips'])} brolls listos.")
+        _set(job_id, status="done", progress=100, result=res,
+             message=f"{len(res['clips'])} brolls listos.")
     except Exception as e:  # noqa: BLE001
         logger.exception("Broll job %s falló", job_id)
-        _JOBS[job_id].update(status="error", error=str(e), message=f"Error: {e}")
+        _set(job_id, status="error", error=str(e), message=f"Error: {e}")
     finally:
+        for x in reversed(adquiridos):
+            x.release()
         _persist(job_id)
         # Limpia los videos temporales que mandó el web.
         for p in (videos_locales or []):
@@ -96,8 +139,9 @@ def start(product_id: str, product: dict, source: str,
           overrides: dict | None, videos_locales: list[Path] | None = None) -> str:
     job_id = uuid.uuid4().hex[:12]
     total = int((overrides or {}).get("n_brolls") or 10)
-    _JOBS[job_id] = {"status": "queued", "progress": 0, "done": 0, "total": total,
-                     "message": "En cola…", "product_id": product_id, "source": source}
+    with _JOBS_LOCK:
+        _JOBS[job_id] = {"status": "queued", "progress": 0, "done": 0, "total": total,
+                         "message": "En cola…", "product_id": product_id, "source": source}
     _persist(job_id)
     _prune()
     threading.Thread(target=_run,

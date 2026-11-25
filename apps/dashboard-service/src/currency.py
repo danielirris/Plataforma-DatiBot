@@ -44,18 +44,18 @@ CURRENCY_RATES = load_currency_rates()
 def currency_multiplier(currency: str) -> float:
     """Devuelve cuánto hay que multiplicar para pasar `currency` a COP.
 
-    Si la cuenta ya está en COP devuelve 1.0. Si no hay tasa configurada,
-    imprime un aviso y devuelve 1.0 (el importe se queda en su moneda original).
-    Define `<CCY>_TO_COP` en el `.env`.
+    Si la cuenta ya está en COP devuelve 1.0. Si no hay tasa configurada lanza
+    ``ValueError`` (la cuenta se omite y se avisa en la UI). Define
+    `<CCY>_TO_COP` en el `.env`.
     """
     if currency == TARGET_CURRENCY:
         return 1.0
     rate = CURRENCY_RATES.get(currency)
     if rate is None:
-        print(
-            f"[WARN] sin tasa configurada para {currency}; el importe NO se "
-            f"convertirá. Define {currency}_TO_COP en .env.",
-            file=sys.stderr,
+        # Antes devolvía 1.0: un gasto en USD se sumaba como si fueran PESOS (100 USD
+        # → 100 COP) y el ROAS salía inflado sin aviso. Ahora se lanza: quien llama
+        # omite esa cuenta y lo muestra en la UI (misma regla que las ventas).
+        raise ValueError(
+            f"sin tasa de cambio para {currency}: define {currency}_TO_COP en el entorno"
         )
-        return 1.0
     return rate

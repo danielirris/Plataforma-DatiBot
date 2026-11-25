@@ -632,13 +632,14 @@ st.caption(
 _avisos_fb = avisos_facebook(max_age_s=CACHE_TTL)
 if _avisos_fb:
     with st.expander(
-        f"⚠️ {len(_avisos_fb)} aviso(s) de Facebook: el gasto puede estar INCOMPLETO "
-        "(y el ROAS inflado)",
+        f"⚠️ {len(_avisos_fb)} aviso(s) de datos: gasto o ventas pueden estar "
+        "INCOMPLETOS (y el ROAS distorsionado)",
         expanded=True,
     ):
         for _a in _avisos_fb[:15]:
             st.warning(_a)
-        st.caption("Revisa el token o los permisos de esa cuenta y pulsa «🔁 Refrescar cuentas».")
+        st.caption("Revisa el token/permisos de la cuenta o la tasa <MONEDA>_TO_COP, "
+                   "y pulsa «🔁 Refrescar cuentas».")
 
 
 # ──────────────────────────────────────────────────────────────────────────────
