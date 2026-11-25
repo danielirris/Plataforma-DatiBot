@@ -421,7 +421,7 @@ class JobManager:
                 subprocess.run(
                     ["ffmpeg", "-y", "-ss", "0.6", "-i", str(clip),
                      "-frames:v", "1", "-vf", "scale=360:-2", str(thumb)],
-                    capture_output=True, check=True,
+                    capture_output=True, check=True, timeout=30,
                 )
             except Exception:  # noqa: BLE001 - si falla, la galería usa el <video>
                 return None

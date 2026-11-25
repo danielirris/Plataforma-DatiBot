@@ -14,6 +14,7 @@ from __future__ import annotations
 import os
 import re
 import sys
+import threading
 import time
 from datetime import date, datetime, timedelta, timezone
 from functools import lru_cache
@@ -31,6 +32,35 @@ sys.path.insert(0, str(Path(__file__).parent))
 load_dotenv()
 
 from currency import CURRENCY_RATES, currency_multiplier  # noqa: E402
+
+
+# ── Avisos visibles en la UI ─────────────────────────────────────────────────
+# Antes, un token caducado o una cuenta que fallaba solo dejaba un print en stderr:
+# el gasto total bajaba y el ROAS salía INFLADO sin que nadie se enterara. Ahora
+# cada aviso se guarda (con hora) y app.py los muestra con st.warning.
+_AVISOS: dict[str, float] = {}
+_AVISOS_LOCK = threading.Lock()
+
+
+def _avisar(msg: str) -> None:
+    print(msg, file=sys.stderr)
+    limpio = msg.removeprefix("[WARN]").strip()
+    with _AVISOS_LOCK:
+        _AVISOS[limpio] = time.time()
+
+
+def avisos_facebook(max_age_s: float = 600) -> list[str]:
+    """Avisos registrados en los últimos ``max_age_s`` segundos (más recientes primero)."""
+    limite = time.time() - max_age_s
+    with _AVISOS_LOCK:
+        for k in [k for k, t in _AVISOS.items() if t < limite]:
+            del _AVISOS[k]
+        return [k for k, _ in sorted(_AVISOS.items(), key=lambda kv: -kv[1])]
+
+
+def limpiar_avisos() -> None:
+    with _AVISOS_LOCK:
+        _AVISOS.clear()
 
 FB_ACCESS_TOKEN = os.getenv("FB_ACCESS_TOKEN")
 # Filtro OPCIONAL. Si está vacío, descubrimos todas las cuentas que el token
@@ -119,8 +149,29 @@ AD_INSIGHT_FIELDS = [
 ]
 
 
-@lru_cache(maxsize=1)
+# Caché del descubrimiento de cuentas. Antes era @lru_cache: si TODOS los tokens
+# fallaban una vez (corte de red), quedaba cacheado `{}` y el dashboard salía vacío
+# hasta reiniciar. Ahora un resultado completo se guarda hasta "Refrescar cuentas",
+# pero uno con fallos (o vacío) caduca a los 5 min y se reintenta.
+_META_TTL_FALLO_S = 300
+_meta_cache: tuple[dict[str, dict], float | None] | None = None  # (datos, caduca_en)
+_meta_lock = threading.Lock()
+
+
 def _account_metadata() -> dict[str, dict]:
+    global _meta_cache
+    with _meta_lock:
+        if _meta_cache is not None:
+            datos, caduca = _meta_cache
+            if caduca is None or time.time() < caduca:
+                return datos
+        datos, hubo_fallo = _descubrir_cuentas()
+        caduca = time.time() + _META_TTL_FALLO_S if (hubo_fallo or not datos) else None
+        _meta_cache = (datos, caduca)
+        return datos
+
+
+def _descubrir_cuentas() -> tuple[dict[str, dict], bool]:
     """`{account_id: {"api", "label", "name", "currency"}}` cacheado en proceso.
 
     Itera todos los tokens devueltos por `_load_tokens()`. Por cada uno crea su
@@ -140,6 +191,7 @@ def _account_metadata() -> dict[str, dict]:
       probando los tokens en orden.
     """
     metadata: dict[str, dict] = {}
+    hubo_fallo = False
     tokens = _load_tokens()
 
     for label, token in tokens:
@@ -150,11 +202,8 @@ def _account_metadata() -> dict[str, dict]:
             ):
                 acc_id = acc["id"]
                 if acc_id in metadata:
-                    print(
-                        f"[WARN] cuenta {acc_id} accesible por múltiples "
-                        f"tokens, usando label {metadata[acc_id]['label']}",
-                        file=sys.stderr,
-                    )
+                    _avisar(f"[WARN] cuenta {acc_id} accesible por múltiples "
+                        f"tokens, usando label {metadata[acc_id]['label']}")
                     continue
                 metadata[acc_id] = {
                     "api": api,
@@ -163,10 +212,8 @@ def _account_metadata() -> dict[str, dict]:
                     "currency": acc["currency"],
                 }
         except Exception as exc:  # noqa: BLE001
-            print(
-                f"[WARN] token con label {label} falló: {exc}",
-                file=sys.stderr,
-            )
+            hubo_fallo = True
+            _avisar(f"[WARN] token con label {label} falló: {exc}")
             continue
 
     # Cuentas explícitas en FB_AD_ACCOUNT_ID que no salieron por /me/adaccounts:
@@ -193,12 +240,10 @@ def _account_metadata() -> dict[str, dict]:
             except Exception:  # noqa: BLE001
                 continue
         if not found_via:
-            print(
-                f"[WARN] no se pudo leer metadata de {acc_id} con ningún token",
-                file=sys.stderr,
-            )
+            hubo_fallo = True
+            _avisar(f"[WARN] no se pudo leer metadata de {acc_id} con ningún token")
 
-    return metadata
+    return metadata, hubo_fallo
 
 
 def _account_ids() -> list[str]:
@@ -217,14 +262,17 @@ def _account_ids() -> list[str]:
 def clear_account_cache() -> None:
     """Limpia el caché de descubrimiento de tokens y cuentas.
 
-    `_load_tokens` y `_account_metadata` usan `@lru_cache` (viven por todo el
-    proceso). El botón "Refrescar datos" del dashboard solo borra el caché de
+    `_load_tokens` (`@lru_cache`) y `_account_metadata` (caché propio) viven
+    por todo el proceso. El botón "Refrescar datos" del dashboard solo borra el caché de
     Streamlit, no este. Llamar a esto fuerza a re-descubrir `/me/adaccounts`
     en la próxima consulta — necesario cuando se agrega una cuenta nueva al
     Business Manager sin reiniciar la app.
     """
+    global _meta_cache
     _load_tokens.cache_clear()
-    _account_metadata.cache_clear()
+    with _meta_lock:
+        _meta_cache = None
+    limpiar_avisos()
 
 
 def _extract_action_value(actions, action_type: str) -> float:
@@ -333,11 +381,8 @@ def discover_action_types(since: str, until: str) -> dict[str, float]:
     for acc_id in _account_ids():
         meta = metadata.get(acc_id)
         if meta is None:
-            print(
-                f"[WARN] {acc_id} omitida en inspección: no accesible por "
-                f"ningún token",
-                file=sys.stderr,
-            )
+            _avisar(f"[WARN] {acc_id} omitida en inspección: no accesible por "
+                f"ningún token")
             continue
         try:
             insights = AdAccount(acc_id, api=meta["api"]).get_insights(
@@ -357,10 +402,7 @@ def discover_action_types(since: str, until: str) -> dict[str, float]:
                         a.get("value", 0) or 0
                     )
         except Exception as exc:  # noqa: BLE001
-            print(
-                f"[WARN] {acc_id} omitida en inspección: {exc}",
-                file=sys.stderr,
-            )
+            _avisar(f"[WARN] {acc_id} omitida en inspección: {exc}")
     return counts
 
 
@@ -423,10 +465,7 @@ def get_ad_statuses() -> dict[str, str]:
             for ad in ads:
                 result[str(ad["id"])] = ad.get("effective_status", "")
         except Exception as exc:  # noqa: BLE001
-            print(
-                f"[WARN] no se pudo traer status de cuenta {acc_id}: {exc}",
-                file=sys.stderr,
-            )
+            _avisar(f"[WARN] no se pudo traer status de cuenta {acc_id}: {exc}")
         # Rate limit guard entre cuentas distintas (excepto después de la última).
         if i < len(accounts) - 1:
             time.sleep(0.5)
@@ -485,7 +524,7 @@ def get_daily_spend(since: str, until: str) -> pd.DataFrame:
         try:
             parts.append(_daily_spend_for_account(acc, since, until))
         except Exception as exc:  # noqa: BLE001
-            print(f"[WARN] cuenta {acc} omitida (daily): {exc}", file=sys.stderr)
+            _avisar(f"[WARN] cuenta {acc} omitida (daily): {exc}")
 
     if not parts:
         return pd.DataFrame(columns=["date", "spend"])
@@ -536,10 +575,7 @@ def get_daily_spend_by_ad(since: str, until: str) -> pd.DataFrame:
                     }
                 )
         except Exception as exc:  # noqa: BLE001
-            print(
-                f"[WARN] cuenta {acc} omitida (daily by ad): {exc}",
-                file=sys.stderr,
-            )
+            _avisar(f"[WARN] cuenta {acc} omitida (daily by ad): {exc}")
 
     if not parts:
         return pd.DataFrame(columns=["date", "ad_id", "spend"])
@@ -589,7 +625,7 @@ def get_ad_spend(since: str, until: str) -> pd.DataFrame:
         if df_acc is not None:
             parts.append(df_acc)
         else:
-            print(f"[WARN] cuenta {acc} omitida: {err}", file=sys.stderr)
+            _avisar(f"[WARN] cuenta {acc} omitida: {err}")
 
     if not parts:
         return pd.DataFrame(columns=out_cols)

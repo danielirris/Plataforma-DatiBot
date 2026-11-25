@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { headersInternos } from "@/lib/servicios/interno";
 import { getProduct, type Producto, type EbookFoto } from "@plataforma/products";
 import type { Bloque } from "@/lib/ebook/generarEbook";
 import { intercalarFotos } from "@/lib/ebook/fotos";
@@ -115,7 +116,7 @@ export async function POST(req: Request, { params }: Ctx) {
   // ── Render ───────────────────────────────────────────────────
   let res: Response;
   try {
-    res = await fetch(`${renderUrl()}/generate`, { method: "POST", body: form });
+    res = await fetch(`${renderUrl()}/generate`, { method: "POST", body: form, headers: headersInternos() });
   } catch {
     return NextResponse.json(
       { error: `No se pudo contactar al servicio de ebooks (${renderUrl()}).` },

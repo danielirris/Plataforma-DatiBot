@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { headersInternos } from "@/lib/servicios/interno";
 import { extractorUrl } from "@/lib/editor/extractor";
 
 export const runtime = "nodejs";
@@ -13,7 +14,7 @@ async function proxy(metodo: "GET" | "POST") {
     metodo === "GET" ? `${extractorUrl()}/api/queue` : `${extractorUrl()}/api/queue/reset`;
   let res: Response;
   try {
-    res = await fetch(url, { method: metodo, cache: "no-store" });
+    res = await fetch(url, { method: metodo, cache: "no-store", headers: headersInternos() });
   } catch {
     return NextResponse.json(
       { error: `No se pudo contactar al editor de video (${extractorUrl()}).` },

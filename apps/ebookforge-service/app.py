@@ -9,8 +9,11 @@ from starlette.concurrency import run_in_threadpool
 from themes import get_theme, list_themes
 from engine import generate
 from engine.render import build_html
+from service_auth import ServiceAuthMiddleware
 
 app = FastAPI(title="EbookForge")
+# Auth propia (token interno del web o Basic Auth del navegador). Ver service_auth.py.
+app.add_middleware(ServiceAuthMiddleware)
 
 # WeasyPrint (render a PDF) es pesado en RAM: incrusta todas las imágenes en un
 # único HTML y lo rasteriza en memoria. En el host compartido con el extractor

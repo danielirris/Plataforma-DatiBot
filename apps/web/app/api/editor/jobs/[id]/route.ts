@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { headersInternos } from "@/lib/servicios/interno";
 import { extractorUrl } from "@/lib/editor/extractor";
 
 export const runtime = "nodejs";
@@ -20,6 +21,7 @@ export async function GET(_req: Request, { params }: Ctx) {
     // (reintenta al siguiente tick), así que devolvemos 503 "transitorio".
     res = await fetch(`${extractorUrl()}/api/jobs/${id}`, {
       cache: "no-store",
+      headers: headersInternos(),
       signal: AbortSignal.timeout(15_000),
     });
   } catch {
@@ -41,6 +43,7 @@ export async function DELETE(_req: Request, { params }: Ctx) {
     const res = await fetch(`${extractorUrl()}/api/jobs/${id}`, {
       method: "DELETE",
       cache: "no-store",
+      headers: headersInternos(),
       signal: AbortSignal.timeout(15_000),
     });
     const data = await res.json().catch(() => ({}));

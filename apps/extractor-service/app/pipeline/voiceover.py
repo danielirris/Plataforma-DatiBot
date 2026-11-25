@@ -74,7 +74,11 @@ def pegar_voz_al_video(
            if usar_mezcla else build_pegar_voz_cmd(video, voz, salida))
     logger.info("Pegando voz al video (%s): %s",
                 "mezcla" if usar_mezcla else "reemplazo", salida.name)
-    proc = subprocess.run(cmd, capture_output=True, text=True)
+    try:
+        proc = subprocess.run(cmd, capture_output=True, text=True, timeout=600)
+    except subprocess.TimeoutExpired:
+        salida.unlink(missing_ok=True)
+        raise RuntimeError("FFmpeg tardó demasiado al pegar la voz (más de 10 min).") from None
     if proc.returncode != 0:
         raise RuntimeError(f"FFmpeg falló al pegar la voz: {proc.stderr[-800:]}")
     if not salida.exists() or salida.stat().st_size == 0:

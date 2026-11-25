@@ -1,9 +1,13 @@
 [server]
 port = 8501
 headless = true
-# Permite embeber el dashboard en el iframe del shell (otro origen: :3000).
-enableCORS = false
-enableXsrfProtection = false
+# Protección de origen ACTIVADA. El iframe del shell funciona igual: el documento
+# del iframe se sirve desde el propio dominio del dashboard, así que su WebSocket
+# es del MISMO origen. Con ambas en false, cualquier web podía abrir el WebSocket
+# con la sesión guardada del navegador y pulsar "Sincronizar" (escribe con la
+# service key de Supabase).
+enableCORS = true
+enableXsrfProtection = true
 
 [browser]
 gatherUsageStats = false

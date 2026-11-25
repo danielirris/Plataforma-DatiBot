@@ -98,6 +98,9 @@ class Settings(BaseSettings):
 
     # --- Límites / recursos ---
     max_upload_mb: int = 2048
+    # Tope TOTAL por petición (suma de todos los archivos de un multipart). Evita que
+    # una sola subida (20 videos × 2 GB + voces + guías) llene el volumen /data.
+    max_request_mb: int = 6144
     # Galería: nº de trabajos recientes que se conservan (y se muestran). En vez
     # de borrar por horas, mantenemos SIEMPRE los últimos N para poder verlos.
     galeria_max: int = 25

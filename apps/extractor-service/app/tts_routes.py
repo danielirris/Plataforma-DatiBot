@@ -28,7 +28,10 @@ async def voces() -> dict:
 
 
 @router.post("/api/generar-voz")
-async def generar_voz(payload: dict = Body(...)) -> FileResponse:
+# def (no async): llama a ElevenLabs y a ffmpeg de forma SÍNCRONA. Como `async def`
+# bloqueaba el event loop (hasta minutos) y el healthcheck fallaba → reinicio.
+# Como `def`, FastAPI la ejecuta en el threadpool.
+def generar_voz(payload: dict = Body(...)) -> FileResponse:
     """Genera la voz del guion y (opcional) la pega sobre el video del trabajo.
 
     Body: ``{ texto, voz, velocidad, videoId?, mezclar? }``.

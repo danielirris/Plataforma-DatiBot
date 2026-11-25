@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { headersInternos } from "@/lib/servicios/interno";
 import { extractorUrl } from "@/lib/editor/extractor";
 
 export const runtime = "nodejs";
@@ -38,7 +39,7 @@ export async function GET(_req: Request, { params }: Ctx) {
 
   let res: Response;
   try {
-    res = await fetch(`${extractorUrl()}/${rel}`, { cache: "no-store" });
+    res = await fetch(`${extractorUrl()}/${rel}`, { cache: "no-store", headers: headersInternos() });
   } catch {
     return NextResponse.json(
       { error: `No se pudo contactar al editor de video (${extractorUrl()}).` },

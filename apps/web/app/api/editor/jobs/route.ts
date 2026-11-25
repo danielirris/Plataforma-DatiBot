@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { headersInternos } from "@/lib/servicios/interno";
 import { stat } from "node:fs/promises";
 import { openAsBlob } from "node:fs";
 import path from "node:path";
@@ -166,7 +167,7 @@ export async function POST(req: Request) {
   const enviarPorUrls = () =>
     fetch(`${extractorUrl()}/api/jobs/from-urls`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: headersInternos({ "Content-Type": "application/json" }),
       signal: AbortSignal.timeout(EXTRACTOR_TIMEOUT_MS),
       body: JSON.stringify({
         video_urls: urls,
@@ -277,6 +278,7 @@ export async function POST(req: Request) {
       res = await fetch(`${extractorUrl()}/api/jobs/from-files`, {
         method: "POST",
         body: form,
+        headers: headersInternos(),
         signal: AbortSignal.timeout(EXTRACTOR_TIMEOUT_MS),
       });
       // 404 = el extractor aún no tiene el endpoint nuevo (no se ha redesplegado).

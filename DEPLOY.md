@@ -52,7 +52,7 @@ Para cada uno: **Create → App → Source: GitHub** (este repo, rama `main`).
   ```
 
 ### extractor
-- **Build:** Dockerfile · context `apps/extractor-service` · Dockerfile `Dockerfile`.
+- **Build:** Dockerfile · **context `/` (raíz del repo)** · Dockerfile `apps/extractor-service/Dockerfile`.
 - **Puerto:** 8000.
 - **Dominio:** `extractor.tudominio.com` · **Basic Auth** activado.
 - **Volumen persistente (CRÍTICO):** monta un volumen en **`/data`** y añade la env
@@ -72,6 +72,9 @@ Para cada uno: **Create → App → Source: GitHub** (este repo, rama `main`).
   OPENAI_API_KEY=...        (obligatorio: transcripción + análisis)
   ELEVENLABS_API_KEY=...    (opcional, solo voz)
   WHATSAPP_LINK=...         (CTA)
+  INTERNAL_TOKEN=...        (el MISMO que en web y ebooks; ver «Auth interna»)
+  SERVICE_AUTH_USER=...     (= usuario del Basic Auth de este dominio)
+  SERVICE_AUTH_PASSWORD=... (= clave del Basic Auth de este dominio)
   STORAGE_ROOT=/data        (persistencia; ver arriba)
   REMOTION_CONCURRENCY=1    (pestañas Chromium en paralelo al render. Por defecto 1
                              = lo más estable/menos RAM. Sube a 2 SOLO con RAM de
@@ -88,7 +91,7 @@ Para cada uno: **Create → App → Source: GitHub** (este repo, rama `main`).
 - **Build:** Dockerfile · **context `/` (raíz del repo)** · Dockerfile `apps/ebookforge-service/Dockerfile`.
 - **Puerto:** 8600.
 - **Dominio:** `ebooks.tudominio.com` · **Basic Auth** activado.
-- **Env:** ninguna (el motor no usa keys).
+- **Env:** `INTERNAL_TOKEN`, `SERVICE_AUTH_USER`, `SERVICE_AUTH_PASSWORD` (ver «Auth interna»).
 
 ---
 
@@ -107,6 +110,7 @@ Necesita las URLs de los 3 subdominios de arriba, así que va después.
   ```
   APP_AUTH_USER=tu_usuario
   APP_AUTH_PASSWORD=una_clave_fuerte
+  INTERNAL_TOKEN=...   (el MISMO que en extractor y ebooks)
   DATA_DIR=/data
   DASHBOARD_URL=https://dashboard.tudominio.com
   EXTRACTOR_URL=https://extractor.tudominio.com
@@ -150,6 +154,7 @@ Crea una **segunda App** en EasyPanel:
   APP_AUTH_PASSWORD=una_clave_distinta_a_la_tuya
   EXTRACTOR_INTERNAL_URL=http://extractor:8000
   EXTRACTOR_URL=https://extractor.tudominio.com
+  INTERNAL_TOKEN=...   (el mismo de web/extractor)
   IMG_PUBLIC_BASE=https://editor.tudominio.com
   VPS_LOCAL_DIR=/data/img
   ```
@@ -177,6 +182,29 @@ anuncios del DUEÑO, porque el extractor es compartido).
 
 ---
 
+## Auth interna (extractor y ebooks)
+
+El Basic Auth de EasyPanel solo protege el **dominio público**. Por la red interna
+(`http://extractor:8000`, `http://ebooks:8600`) los servicios quedaban abiertos, así
+que ahora tienen auth propia (`service_auth.py`). Cada petición debe traer UNA de:
+
+- `X-Internal-Token: <INTERNAL_TOKEN>` → lo manda el web en sus llamadas server-side.
+- `Authorization: Basic …` con `SERVICE_AUTH_USER` / `SERVICE_AUTH_PASSWORD` → el
+  navegador (UI del servicio, previews y descargas).
+
+Pasos:
+1. Genera un token largo una vez (p. ej. `openssl rand -hex 32`) y ponlo como
+   `INTERNAL_TOKEN` en **web, editor, extractor y ebooks** (el mismo valor).
+2. En extractor y ebooks pon `SERVICE_AUTH_USER`/`SERVICE_AUTH_PASSWORD` **iguales**
+   al usuario/clave del Basic Auth de EasyPanel de ese dominio. Traefik reenvía la
+   cabecera, así que el navegador no ve un segundo login.
+3. Redeploy de los cuatro. `/healthz` sigue público (HEALTHCHECK).
+
+Si no defines ninguna de las tres variables, el servicio queda abierto como antes y
+lo avisa en el log (útil en local).
+
+---
+
 ## 3. Post-despliegue
 
 1. Entra a `https://app.tudominio.com` → te pide el login de `APP_AUTH_*`.
@@ -194,8 +222,9 @@ anuncios del DUEÑO, porque el extractor es compartido).
 
 - **Redeploy automático:** conecta el repo para que cada `git push` a `main`
   redepliegue. Los datos persisten gracias a los volúmenes (`/data`, `/app/storage`).
-- **El dashboard (Streamlit) no carga en el iframe:** añade a su `ENTRYPOINT`
-  `--server.enableCORS=false --server.enableXsrfProtection=false` y redeploy.
+- **El dashboard (Streamlit) no carga en el iframe:** NO desactives `enableCORS` ni
+  `enableXsrfProtection` (dejaría que cualquier web maneje el dashboard con tu sesión).
+  El iframe funciona con ambas activadas; revisa la URL de `DASHBOARD_URL` y el HTTPS.
 - **Las keys del dashboard/extractor no se aplican:** recuerda que van como **env
   del servicio en EasyPanel**, no en /configuracion. Tras cambiarlas, redeploy del servicio.
 - **Cambiar de puerto:** los servicios leen `PORT` de la env; si lo cambias, ajusta

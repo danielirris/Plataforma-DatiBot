@@ -1,9 +1,9 @@
 """FastAPI: endpoints de la API, subida de videos y servidor web."""
 from __future__ import annotations
 
-import io
 import json
 import logging
+import os
 import re
 import shutil
 import tempfile
@@ -13,13 +13,15 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import Body, FastAPI, File, Form, HTTPException, Request, UploadFile
-from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, StreamingResponse
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
+from starlette.background import BackgroundTask
 from starlette.concurrency import run_in_threadpool
 
 from app.config import BASE_DIR, get_settings
 from app.jobs import manager
+from app.service_auth import ServiceAuthMiddleware
 from app.safe_url import UnsafeURLError, abrir_url, validar_url
 from app import library
 from app.pipeline import cleanup, tts
@@ -57,6 +59,8 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title="clip-generator", lifespan=lifespan)
+# Auth propia (token interno del web o Basic Auth del navegador). Ver service_auth.py.
+app.add_middleware(ServiceAuthMiddleware)
 app.mount("/static", StaticFiles(directory=str(WEB_DIR / "static")), name="static")
 app.include_router(tts_router)  # /api/voces, /api/generar-voz
 
@@ -99,7 +103,8 @@ async def galeria_list() -> JSONResponse:
 
 
 @app.get("/api/jobs/{job_id}/thumb/{n}")
-async def job_thumb(job_id: str, n: int) -> FileResponse:
+# def (no async): thumb_path lanza ffmpeg; FastAPI la corre en un hilo.
+def job_thumb(job_id: str, n: int) -> FileResponse:
     """Miniatura (primer frame) del clip ``n`` del job."""
     if not manager.get(job_id):
         raise HTTPException(status_code=404, detail="Job no encontrado")
@@ -125,7 +130,7 @@ async def library_add(files: list[UploadFile] = File(...)) -> JSONResponse:
         if not track.filename:
             continue
         tmp, name = await _save_upload(track, max_bytes, ALLOWED_AUDIO_EXT)
-        library.save_music(tmp, name)
+        await run_in_threadpool(library.save_music, tmp, name)
         added += 1
     return JSONResponse({"added": added, "tracks": [p.name for p in library.list_music()]})
 
@@ -185,6 +190,45 @@ async def _save_upload(
         tmp.unlink(missing_ok=True)
         raise HTTPException(status_code=400, detail=f"'{file.filename}' está vacío.")
     return tmp, file.filename or f"video{ext}"
+
+
+class _Presupuesto:
+    """Bytes que aún se pueden recibir en ESTA petición (suma de todos los archivos)."""
+
+    def __init__(self) -> None:
+        self.restante = settings.max_request_mb * 1024 * 1024
+
+
+async def _volcar(up: UploadFile, dest: Path, presupuesto: _Presupuesto | None = None) -> int:
+    """Copia un upload a ``dest`` con tope por archivo y por petición.
+
+    Si se pasa de cualquiera de los dos topes (o el cliente corta a mitad), borra
+    ``dest`` y relanza: nunca deja un temporal a medias en el volumen.
+    """
+    max_bytes = settings.max_upload_mb * 1024 * 1024
+    size = 0
+    try:
+        with dest.open("wb") as f:
+            while chunk := await up.read(1 << 20):
+                size += len(chunk)
+                if size > max_bytes:
+                    raise HTTPException(
+                        status_code=413,
+                        detail=f"'{up.filename}' supera el máximo de {settings.max_upload_mb} MB.")
+                if presupuesto is not None:
+                    presupuesto.restante -= len(chunk)
+                    if presupuesto.restante < 0:
+                        raise HTTPException(
+                            status_code=413,
+                            detail=f"La subida supera el máximo total de "
+                                   f"{settings.max_request_mb} MB por petición.")
+                f.write(chunk)
+    except BaseException:
+        dest.unlink(missing_ok=True)
+        raise
+    finally:
+        await up.close()
+    return size
 
 
 async def _download_url(url: str, max_bytes: int, allowed: set[str] = ALLOWED_EXT) -> tuple[Path, str]:
@@ -390,18 +434,22 @@ async def create_job_from_files(
         raise HTTPException(status_code=400, detail="Modo inválido (montage|ad|full).")
     settings.ensure_dirs()
 
+    presupuesto = _Presupuesto()
     saved: list[tuple[Path, str]] = []
-    for up in videos[:20]:
-        if not up.filename:
-            continue
-        ext = Path(up.filename).suffix.lower() or ".mp4"
-        if ext not in ALLOWED_EXT:
-            ext = ".mp4"
-        tmp = Path(tempfile.mkstemp(suffix=ext, dir=str(settings.tmp_dir))[1])
-        with tmp.open("wb") as f:
-            while chunk := await up.read(1 << 20):
-                f.write(chunk)
-        saved.append((tmp, up.filename))
+    try:
+        for up in videos[:20]:
+            if not up.filename:
+                continue
+            ext = Path(up.filename).suffix.lower() or ".mp4"
+            if ext not in ALLOWED_EXT:
+                ext = ".mp4"
+            tmp = Path(tempfile.mkstemp(suffix=ext, dir=str(settings.tmp_dir))[1])
+            await _volcar(up, tmp, presupuesto)
+            saved.append((tmp, up.filename))
+    except BaseException:
+        for p, _ in saved:
+            p.unlink(missing_ok=True)
+        raise
     if not saved:
         raise HTTPException(status_code=400, detail="No se enviaron videos.")
 
@@ -485,15 +533,24 @@ async def create_job_from_files(
                 p.unlink(missing_ok=True)
             for vp, _ in voces_saved:
                 vp.unlink(missing_ok=True)
+            if intro_saved:
+                intro_saved[0].unlink(missing_ok=True)
             raise HTTPException(
                 status_code=400,
                 detail=f"Audio no soportado ({vext or 'sin extensión'}). "
                        f"Usa: {', '.join(sorted(ALLOWED_AUDIO_EXT))}.",
             )
         vtmp = Path(tempfile.mkstemp(suffix=vext, dir=str(settings.tmp_dir))[1])
-        with vtmp.open("wb") as f:
-            while chunk := await up.read(1 << 20):
-                f.write(chunk)
+        try:
+            await _volcar(up, vtmp, presupuesto)
+        except BaseException:
+            for p, _ in saved:
+                p.unlink(missing_ok=True)
+            for vp, _ in voces_saved:
+                vp.unlink(missing_ok=True)
+            if intro_saved:
+                intro_saved[0].unlink(missing_ok=True)
+            raise
         voces_saved.append((vtmp, up.filename))
 
     # Regla "un audio por anuncio": si hay audios, deben ser exactamente N. El
@@ -504,6 +561,8 @@ async def create_job_from_files(
             p.unlink(missing_ok=True)
         for vp, _ in voces_saved:
             vp.unlink(missing_ok=True)
+        if intro_saved:
+            intro_saved[0].unlink(missing_ok=True)
         raise HTTPException(
             status_code=400,
             detail=f"Sube exactamente {n} audio(s), uno por anuncio (enviaste {len(voces_saved)}).",
@@ -523,6 +582,8 @@ async def create_job_from_files(
             hp.unlink(missing_ok=True)
         for gp, _gn in guias_saved:
             gp.unlink(missing_ok=True)
+        if intro_saved:
+            intro_saved[0].unlink(missing_ok=True)
 
     meta_list: list = []
     if hook_meta.strip():
@@ -551,9 +612,11 @@ async def create_job_from_files(
         if not (0 <= ad < max(1, n)):
             continue  # gancho para un anuncio que no existe: se ignora
         htmp = Path(tempfile.mkstemp(suffix=hext, dir=str(settings.tmp_dir))[1])
-        with htmp.open("wb") as f:
-            while chunk := await up.read(1 << 20):
-                f.write(chunk)
+        try:
+            await _volcar(up, htmp, presupuesto)
+        except BaseException:
+            _cleanup_all()
+            raise
         hook_tmps.append((ad, secs, htmp, up.filename))
 
     # Video-GUÍA sobrepuesto (PiP), opcional. Se sobrepone al anuncio (si subes una,
@@ -568,9 +631,11 @@ async def create_job_from_files(
                        f"Usa: {', '.join(sorted(ALLOWED_GUIDE_EXT))}.",
             )
         gtmp = Path(tempfile.mkstemp(suffix=gext, dir=str(settings.tmp_dir))[1])
-        with gtmp.open("wb") as f:
-            while chunk := await up.read(1 << 20):
-                f.write(chunk)
+        try:
+            await _volcar(up, gtmp, presupuesto)
+        except BaseException:
+            _cleanup_all()
+            raise
         guias_saved.append((gtmp, up.filename))
 
     job_id = manager.submit(saved, [], mode, voces_saved, n, guias_saved,
@@ -835,15 +900,21 @@ async def crear_brolls_con_archivos(
 
     settings.ensure_dirs()
     guardados: list[Path] = []
-    for up in videos:
-        if not up.filename:
-            continue
-        dest = Path(tempfile.mkstemp(suffix=Path(up.filename).suffix or ".mp4",
-                                     dir=str(settings.tmp_dir))[1])
-        with dest.open("wb") as f:
-            while chunk := await up.read(1 << 20):
-                f.write(chunk)
-        guardados.append(dest)
+    presupuesto = _Presupuesto()
+    try:
+        for up in videos[:20]:
+            if not up.filename:
+                continue
+            ext = Path(up.filename).suffix.lower()
+            if ext not in ALLOWED_EXT:
+                ext = ".mp4"
+            dest = Path(tempfile.mkstemp(suffix=ext, dir=str(settings.tmp_dir))[1])
+            await _volcar(up, dest, presupuesto)
+            guardados.append(dest)
+    except BaseException:
+        for p in guardados:
+            p.unlink(missing_ok=True)
+        raise
 
     if source == "uploaded" and not guardados:
         for p in guardados:
@@ -1149,13 +1220,25 @@ async def download_all(job_id: str):
         raise HTTPException(status_code=409, detail="El resultado aún no está listo")
 
     prod = _nombre_producto(job_id)
-    buffer = io.BytesIO()
-    with zipfile.ZipFile(buffer, "w", zipfile.ZIP_STORED) as zf:
-        for i, p in enumerate(paths, start=1):
-            zf.write(p, arcname=f"{prod}_anuncio_{i}.mp4")
-    buffer.seek(0)
-    return StreamingResponse(
-        buffer,
+    # El .zip se arma EN DISCO y en un hilo: antes iba entero a un BytesIO (hasta 20
+    # mp4 en RAM, en un contenedor que ya roza el OOM) y bloqueaba el event loop,
+    # tumbando el healthcheck mientras se armaba. Se borra tras enviarlo.
+    fd, zip_tmp = tempfile.mkstemp(suffix=".zip", dir=str(settings.tmp_dir))
+    os.close(fd)
+
+    def _armar() -> None:
+        with zipfile.ZipFile(zip_tmp, "w", zipfile.ZIP_STORED) as zf:
+            for i, p in enumerate(paths, start=1):
+                zf.write(p, arcname=f"{prod}_anuncio_{i}.mp4")
+
+    try:
+        await run_in_threadpool(_armar)
+    except BaseException:
+        Path(zip_tmp).unlink(missing_ok=True)
+        raise
+    return FileResponse(
+        zip_tmp,
         media_type="application/zip",
-        headers={"Content-Disposition": f'attachment; filename="{prod}_anuncios.zip"'},
+        filename=f"{prod}_anuncios.zip",
+        background=BackgroundTask(Path(zip_tmp).unlink, missing_ok=True),
     )

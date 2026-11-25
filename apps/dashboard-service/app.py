@@ -24,7 +24,9 @@ sys.path.insert(0, str(Path(__file__).parent / "src"))
 
 from config import get_config, save_config  # noqa: E402
 from facebook_client import (  # noqa: E402
+    avisos_facebook,
     clear_account_cache,
+    limpiar_avisos,
     get_daily_spend_by_ad,
     sync_ads_to_supabase,
 )
@@ -486,6 +488,7 @@ st.sidebar.caption(f"Periodo: **{since}** → **{until}**")
 
 if st.sidebar.button("🔄 Refrescar datos"):
     st.cache_data.clear()
+    limpiar_avisos()
     st.rerun()
 
 if st.sidebar.button(
@@ -623,6 +626,19 @@ st.caption(
     f"Periodo: **{since}** → **{until}** · "
     f"Todos los valores convertidos a COP"
 )
+
+# Cuentas/tokens de Facebook que fallaron al cargar: sin este aviso el gasto sale
+# incompleto (y el ROAS inflado) en silencio. Ventana = TTL del caché de datos.
+_avisos_fb = avisos_facebook(max_age_s=CACHE_TTL)
+if _avisos_fb:
+    with st.expander(
+        f"⚠️ {len(_avisos_fb)} aviso(s) de Facebook: el gasto puede estar INCOMPLETO "
+        "(y el ROAS inflado)",
+        expanded=True,
+    ):
+        for _a in _avisos_fb[:15]:
+            st.warning(_a)
+        st.caption("Revisa el token o los permisos de esa cuenta y pulsa «🔁 Refrescar cuentas».")
 
 
 # ──────────────────────────────────────────────────────────────────────────────

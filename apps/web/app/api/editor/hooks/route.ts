@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { headersInternos } from "@/lib/servicios/interno";
 import { extractorUrl, extractorPublicUrl } from "@/lib/editor/extractor";
 
 export const runtime = "nodejs";
@@ -29,7 +30,7 @@ export async function POST(req: Request) {
   try {
     res = await fetch(`${extractorUrl()}/api/hooks`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: headersInternos({ "Content-Type": "application/json" }),
       signal: AbortSignal.timeout(EXTRACTOR_TIMEOUT_MS),
       body: JSON.stringify({ video_urls: urls, variant }),
     });
