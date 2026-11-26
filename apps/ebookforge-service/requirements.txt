@@ -1,4 +1,4 @@
-weasyprint>=60
+weasyprint>=60,<67  # 67+ cambió la API de url_fetcher (engine/fetcher.py usa default_url_fetcher)
 pillow>=10
 fastapi>=0.110
 uvicorn[standard]>=0.29
